@@ -131,11 +131,13 @@ def replace_provider_items(
 
     initialize(path)
     with _connect(path) as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
+        rows = conn.execute(
+            "SELECT id FROM items WHERE provider = ? AND active = 1",
             (provider,),
-        ).fetchone()
-        active_before = int(row["n"])
+        ).fetchall()
+        previous_ids = {str(row["id"]) for row in rows}
+        active_before = len(previous_ids)
+        incoming_ids = {item.id for item in items}
 
         conn.execute(
             "UPDATE items SET active = 0 WHERE provider = ? AND active = 1",
@@ -165,7 +167,7 @@ def replace_provider_items(
         fetched=len(items),
         active_before=active_before,
         active_after=active_after,
-        deactivated=max(0, active_before - active_after),
+        deactivated=len(previous_ids - incoming_ids),
     )
 
 
