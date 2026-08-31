@@ -217,6 +217,7 @@ def search_items(
     where = ["i.active = 1"]
     params: list[object] = []
     joins = ""
+    rank_select = "0.0 AS fts_rank"
     order = "i.indexed_at DESC"
 
     tokens = _token_re.findall(query.lower())
@@ -225,7 +226,8 @@ def search_items(
         joins = "JOIN items_fts ON items_fts.id = i.id"
         where.append("items_fts MATCH ?")
         params.append(fts_query)
-        order = "bm25(items_fts) ASC"
+        rank_select = "bm25(items_fts, 0.0, 8.0, 2.0, 0.0) AS fts_rank"
+        order = "fts_rank ASC"
 
     if provider:
         where.append("i.provider = ?")
@@ -243,7 +245,8 @@ def search_items(
     sql = f"""
         SELECT
             i.id, i.provider, i.title, i.url, i.thumbnail,
-            i.duration_seconds, i.quality, i.tags_json
+            i.duration_seconds, i.quality, i.tags_json,
+            {rank_select}
         FROM items i
         {joins}
         WHERE {' AND '.join(where)}
@@ -255,17 +258,25 @@ def search_items(
     with _connect(path) as conn:
         rows = conn.execute(sql, params).fetchall()
 
-    return [
-        SearchItem(
-            id=row["id"],
-            provider=row["provider"],
-            title=row["title"],
-            url=row["url"],
-            thumbnail=row["thumbnail"],
-            duration_seconds=row["duration_seconds"],
-            quality=row["quality"],
-            tags=json.loads(row["tags_json"] or "[]"),
-            score=1.0,
+    result: list[SearchItem] = []
+    total_rows = max(1, len(rows))
+    for position, row in enumerate(rows):
+        if tokens:
+            score = -float(row["fts_rank"] or 0.0)
+        else:
+            score = 1.0 - (position / total_rows)
+
+        result.append(
+            SearchItem(
+                id=row["id"],
+                provider=row["provider"],
+                title=row["title"],
+                url=row["url"],
+                thumbnail=row["thumbnail"],
+                duration_seconds=row["duration_seconds"],
+                quality=row["quality"],
+                tags=json.loads(row["tags_json"] or "[]"),
+                score=score,
+            )
         )
-        for row in rows
-    ]
+    return result
