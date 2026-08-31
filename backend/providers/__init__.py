@@ -35,6 +35,7 @@ def _configured_sitemap_providers() -> list[SearchProvider]:
                     delay_seconds=float(row.get("delay_seconds", 0.25)),
                     timeout_seconds=float(row.get("timeout_seconds", 15.0)),
                     obey_robots=bool(row.get("obey_robots", True)),
+                    sync_mode=str(row.get("sync_mode", "incremental")),
                 )
             )
         except KeyError as exc:
