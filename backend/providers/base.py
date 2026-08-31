@@ -12,3 +12,11 @@ class SearchProvider(ABC):
     async def search(self, query: str, limit: int = 40) -> list[SearchItem]:
         """Return normalized metadata results for one provider."""
         raise NotImplementedError
+
+    async def collect(self, limit: int = 1000) -> list[SearchItem]:
+        """Collect a provider snapshot for indexing.
+
+        Search-only providers may keep the default behavior. Providers with a
+        dedicated catalog/feed endpoint should override this method.
+        """
+        return await self.search("", limit=limit)
