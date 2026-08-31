@@ -7,6 +7,7 @@ from pathlib import Path
 from backend.index import (
     count_items,
     deactivate_provider,
+    merge_provider_items,
     replace_provider_items,
     search_items,
 )
@@ -72,6 +73,27 @@ class ProviderSnapshotTests(unittest.TestCase):
         self.assertEqual(result.deactivated, 1)
         self.assertEqual(result.active_after, 0)
         self.assertEqual(count_items(self.db), 0)
+
+    def test_incremental_merge_keeps_older_provider_items(self) -> None:
+        replace_provider_items(
+            "demo",
+            [item("old", "Older item")],
+            path=self.db,
+        )
+
+        result = merge_provider_items(
+            "demo",
+            [item("new", "New item")],
+            path=self.db,
+        )
+
+        self.assertEqual(result.active_before, 1)
+        self.assertEqual(result.active_after, 2)
+        self.assertEqual(result.deactivated, 0)
+        self.assertEqual(
+            {row.id for row in search_items("", path=self.db)},
+            {"old", "new"},
+        )
 
     def test_deactivate_provider_removes_it_from_search(self) -> None:
         replace_provider_items("demo", [item("a", "Alpha")], path=self.db)
