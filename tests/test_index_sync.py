@@ -72,6 +72,24 @@ class ProviderSnapshotTests(unittest.TestCase):
         self.assertEqual(result.active_after, 0)
         self.assertEqual(count_items(self.db), 0)
 
+    def test_empty_query_preserves_provider_snapshot_order(self) -> None:
+        replace_provider_items(
+            "demo",
+            [
+                item("newest", "Newest"),
+                item("middle", "Middle"),
+                item("oldest", "Oldest"),
+            ],
+            path=self.db,
+        )
+
+        rows = search_items("", path=self.db)
+
+        self.assertEqual(
+            [row.id for row in rows[:3]],
+            ["newest", "middle", "oldest"],
+        )
+
     def test_provider_mismatch_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             replace_provider_items(
