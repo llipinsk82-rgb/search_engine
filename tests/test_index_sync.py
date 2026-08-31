@@ -6,6 +6,7 @@ from pathlib import Path
 
 from backend.index import (
     count_items,
+    deactivate_provider,
     replace_provider_items,
     search_items,
 )
@@ -71,6 +72,15 @@ class ProviderSnapshotTests(unittest.TestCase):
         self.assertEqual(result.deactivated, 1)
         self.assertEqual(result.active_after, 0)
         self.assertEqual(count_items(self.db), 0)
+
+    def test_deactivate_provider_removes_it_from_search(self) -> None:
+        replace_provider_items("demo", [item("a", "Alpha")], path=self.db)
+
+        removed = deactivate_provider("demo", path=self.db)
+
+        self.assertEqual(removed, 1)
+        self.assertEqual(count_items(self.db), 0)
+        self.assertEqual(search_items("Alpha", path=self.db), [])
 
     def test_empty_query_preserves_provider_snapshot_order(self) -> None:
         replace_provider_items(
