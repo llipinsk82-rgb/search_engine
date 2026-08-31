@@ -5,10 +5,23 @@ Mobile-first search engine / PWA with a small FastAPI backend designed to sit be
 ## Architecture
 
 - **Nginx**: public HTTP(S), static frontend, reverse proxy for `/api/`
-- **FastAPI**: search API on `127.0.0.1:8765`
+- **FastAPI**: API on `127.0.0.1:8765`
 - **Frontend**: dependency-free PWA (HTML/CSS/JS)
-- **Providers**: pluggable adapters; the initial repository ships only with a demo provider
-- **Search layer**: provider aggregation, normalization, ranking and duplicate collapsing
+- **SQLite FTS5**: first-stage local search index
+- **Providers**: pluggable adapters that collect and normalize metadata
+- **Search layer**: indexed search, ranking and duplicate collapsing
+
+The public request path is:
+
+```text
+browser / PWA
+    -> Nginx
+       -> static files
+       -> /api/* -> FastAPI (localhost only)
+                     -> SQLite FTS index
+```
+
+Provider collection is separate from user search. Once the index contains data, normal searches query the local index instead of contacting external providers.
 
 ## Development
 
@@ -16,10 +29,12 @@ Mobile-first search engine / PWA with a small FastAPI backend designed to sit be
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
+python -m backend.cli init
+python -m backend.cli seed-demo
 uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 ```
 
-Serve `frontend/` with any static server and keep API requests under `/api/`.
+Local database defaults to `./search_engine.db`. Production uses `/var/lib/search_engine/search.db` via the included systemd unit.
 
 ## Production layout
 
@@ -32,23 +47,37 @@ Recommended path:
   deploy/
 ```
 
-Install the systemd unit from `deploy/search-engine.service` and adapt the example Nginx site in `deploy/nginx-search-engine.conf`.
+Nginx serves `/opt/search_engine/frontend` directly and proxies only `/api/` to `127.0.0.1:8765`.
 
-The backend intentionally listens only on localhost. TLS and public traffic terminate at Nginx.
+Example files:
+
+- `deploy/nginx-search-engine.conf`
+- `deploy/search-engine.service`
 
 ## API
 
 - `GET /api/health`
 - `GET /api/providers`
+- `GET /api/stats`
 - `GET /api/search?q=...`
 
-Optional search parameters:
+Search parameters:
 
 - `provider`
 - `quality`
 - `min_duration`
 - `max_duration`
 - `limit`
+
+## Index commands
+
+```bash
+python -m backend.cli init
+python -m backend.cli seed-demo
+python -m backend.cli stats
+```
+
+The demo provider exists only to exercise the complete pipeline before real source adapters are added.
 
 ## Provider contract
 

@@ -4,6 +4,7 @@ import asyncio
 import re
 from collections import defaultdict
 
+from backend.index import count_items, indexed_providers, search_items
 from backend.models import SearchItem, SourceVariant
 from backend.providers import PROVIDERS
 from backend.providers.base import SearchProvider
@@ -24,14 +25,34 @@ def _quality_rank(value: str | None) -> int:
     return table.get(value.lower(), 0)
 
 
-async def search_all(
+def _collapse(items: list[SearchItem], limit: int) -> list[SearchItem]:
+    grouped: dict[tuple[str, int], list[SearchItem]] = defaultdict(list)
+    for item in items:
+        duration_bucket = round((item.duration_seconds or 0) / 15)
+        grouped[(_title_key(item.title), duration_bucket)].append(item)
+
+    collapsed: list[SearchItem] = []
+    for group in grouped.values():
+        group.sort(key=lambda item: (item.score, _quality_rank(item.quality)), reverse=True)
+        primary = group[0]
+        primary.alternate_sources = [
+            SourceVariant(provider=alt.provider, url=alt.url, quality=alt.quality)
+            for alt in group[1:]
+        ]
+        collapsed.append(primary)
+
+    collapsed.sort(key=lambda item: (item.score, _quality_rank(item.quality)), reverse=True)
+    return collapsed[:limit]
+
+
+async def _live_search(
     query: str,
     *,
-    provider: str | None = None,
-    quality: str | None = None,
-    min_duration: int | None = None,
-    max_duration: int | None = None,
-    limit: int = 40,
+    provider: str | None,
+    quality: str | None,
+    min_duration: int | None,
+    max_duration: int | None,
+    limit: int,
 ) -> tuple[list[SearchItem], list[str]]:
     selected: list[SearchProvider] = [
         item for item in PROVIDERS if provider is None or item.name == provider
@@ -57,20 +78,37 @@ async def search_all(
                 continue
             flat.append(item)
 
-    grouped: dict[tuple[str, int], list[SearchItem]] = defaultdict(list)
-    for item in flat:
-        duration_bucket = round((item.duration_seconds or 0) / 15)
-        grouped[(_title_key(item.title), duration_bucket)].append(item)
+    return _collapse(flat, limit), used_providers
 
-    collapsed: list[SearchItem] = []
-    for group in grouped.values():
-        group.sort(key=lambda item: (item.score, _quality_rank(item.quality)), reverse=True)
-        primary = group[0]
-        primary.alternate_sources = [
-            SourceVariant(provider=alt.provider, url=alt.url, quality=alt.quality)
-            for alt in group[1:]
-        ]
-        collapsed.append(primary)
 
-    collapsed.sort(key=lambda item: (item.score, _quality_rank(item.quality)), reverse=True)
-    return collapsed[:limit], used_providers
+async def search_all(
+    query: str,
+    *,
+    provider: str | None = None,
+    quality: str | None = None,
+    min_duration: int | None = None,
+    max_duration: int | None = None,
+    limit: int = 40,
+) -> tuple[list[SearchItem], list[str]]:
+    if count_items() > 0:
+        indexed = search_items(
+            query,
+            provider=provider,
+            quality=quality,
+            min_duration=min_duration,
+            max_duration=max_duration,
+            limit=limit,
+        )
+        providers = indexed_providers()
+        if provider:
+            providers = [name for name in providers if name == provider]
+        return _collapse(indexed, limit), providers
+
+    return await _live_search(
+        query,
+        provider=provider,
+        quality=quality,
+        min_duration=min_duration,
+        max_duration=max_duration,
+        limit=limit,
+    )

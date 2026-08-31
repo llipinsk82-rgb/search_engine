@@ -2,26 +2,46 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query
 
+from backend.index import count_items, indexed_providers, initialize
 from backend.models import SearchResponse
 from backend.providers import PROVIDERS
 from backend.search import search_all
 
 app = FastAPI(
     title="Search Engine API",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
 
 
+@app.on_event("startup")
+async def startup() -> None:
+    initialize()
+
+
 @app.get("/api/health")
 async def health() -> dict[str, object]:
-    return {"status": "ok", "version": app.version, "providers": len(PROVIDERS)}
+    return {
+        "status": "ok",
+        "version": app.version,
+        "providers": len(PROVIDERS),
+        "indexed_items": count_items(),
+    }
 
 
 @app.get("/api/providers")
 async def providers() -> dict[str, list[str]]:
-    return {"providers": [provider.name for provider in PROVIDERS]}
+    names = sorted({provider.name for provider in PROVIDERS} | set(indexed_providers()))
+    return {"providers": names}
+
+
+@app.get("/api/stats")
+async def stats() -> dict[str, object]:
+    return {
+        "indexed_items": count_items(),
+        "indexed_providers": indexed_providers(),
+    }
 
 
 @app.get("/api/search", response_model=SearchResponse)
@@ -36,7 +56,7 @@ async def search(
     if min_duration is not None and max_duration is not None and min_duration > max_duration:
         raise HTTPException(status_code=400, detail="min_duration cannot exceed max_duration")
 
-    known = {item.name for item in PROVIDERS}
+    known = {item.name for item in PROVIDERS} | set(indexed_providers())
     if provider is not None and provider not in known:
         raise HTTPException(status_code=400, detail="unknown provider")
 
