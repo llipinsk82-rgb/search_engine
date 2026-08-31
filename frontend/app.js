@@ -6,7 +6,11 @@ const durationSelect = document.querySelector("#duration");
 const resultsEl = document.querySelector("#results");
 const statusEl = document.querySelector("#status");
 const clearBtn = document.querySelector("#clear");
+const moreBtn = document.querySelector("#more");
 const template = document.querySelector("#card-template");
+
+const PAGE_SIZE = 40;
+let nextOffset = 0;
 
 function durationText(seconds) {
   if (!Number.isFinite(seconds)) return "";
@@ -76,9 +80,42 @@ function restoreState() {
   return [...params.keys()].length > 0;
 }
 
-function render(items) {
-  resultsEl.replaceChildren();
-  if (!items.length) {
+function resultCard(item) {
+  const card = template.content.firstElementChild.cloneNode(true);
+  const thumb = card.querySelector(".thumb");
+  const title = card.querySelector(".title");
+  const preview = card.querySelector(".preview");
+  const placeholder = card.querySelector(".placeholder");
+
+  thumb.href = item.url;
+  title.href = item.url;
+
+  if (item.thumbnail) {
+    preview.src = item.thumbnail;
+    preview.hidden = false;
+    placeholder.hidden = true;
+    preview.addEventListener("error", () => {
+      preview.hidden = true;
+      placeholder.hidden = false;
+    }, { once: true });
+  }
+
+  title.textContent = item.title;
+  card.querySelector(".source").textContent = item.provider;
+  card.querySelector(".quality").textContent = item.quality || "";
+  card.querySelector(".duration").textContent = durationText(item.duration_seconds);
+
+  const count = item.alternate_sources?.length || 0;
+  card.querySelector(".alternates").textContent =
+    count ? `+${count} source${count === 1 ? "" : "s"}` : "";
+
+  return card;
+}
+
+function render(items, { append = false } = {}) {
+  if (!append) resultsEl.replaceChildren();
+
+  if (!items.length && !append) {
     const empty = document.createElement("div");
     empty.className = "empty";
     empty.textContent = "No results";
@@ -87,54 +124,44 @@ function render(items) {
   }
 
   for (const item of items) {
-    const card = template.content.firstElementChild.cloneNode(true);
-    const thumb = card.querySelector(".thumb");
-    const title = card.querySelector(".title");
-    const preview = card.querySelector(".preview");
-    const placeholder = card.querySelector(".placeholder");
-
-    thumb.href = item.url;
-    title.href = item.url;
-
-    if (item.thumbnail) {
-      preview.src = item.thumbnail;
-      preview.hidden = false;
-      placeholder.hidden = true;
-      preview.addEventListener("error", () => {
-        preview.hidden = true;
-        placeholder.hidden = false;
-      }, { once: true });
-    }
-
-    title.textContent = item.title;
-    card.querySelector(".source").textContent = item.provider;
-    card.querySelector(".quality").textContent = item.quality || "";
-    card.querySelector(".duration").textContent = durationText(item.duration_seconds);
-
-    const count = item.alternate_sources?.length || 0;
-    card.querySelector(".alternates").textContent =
-      count ? `+${count} source${count === 1 ? "" : "s"}` : "";
-
-    resultsEl.append(card);
+    resultsEl.append(resultCard(item));
   }
 }
 
-async function search({ persist = true } = {}) {
-  const params = buildSearchParams();
-  if (persist) persistState(params);
+async function search({ persist = true, append = false } = {}) {
+  const stateParams = buildSearchParams();
+  if (persist) persistState(stateParams);
 
-  statusEl.textContent = "Searching…";
+  const requestParams = new URLSearchParams(stateParams);
+  const offset = append ? nextOffset : 0;
+  requestParams.set("offset", String(offset));
+  requestParams.set("limit", String(PAGE_SIZE));
+
+  if (!append) {
+    nextOffset = 0;
+    moreBtn.hidden = true;
+  }
+  moreBtn.disabled = true;
+  statusEl.textContent = append ? "Loading more…" : "Searching…";
+
   try {
-    const response = await fetch(`/api/search?${params.toString()}`);
+    const response = await fetch(`/api/search?${requestParams.toString()}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Search failed");
 
-    render(data.items || []);
+    const items = data.items || [];
+    render(items, { append });
+
+    nextOffset = offset + items.length;
+    moreBtn.hidden = !data.has_more;
+    moreBtn.disabled = false;
+
     statusEl.textContent =
-      `${data.total} result${data.total === 1 ? "" : "s"} · ` +
-      `${data.providers.join(", ") || "no provider"}`;
+      `${nextOffset} shown · ${data.providers.join(", ") || "no provider"}`;
   } catch (error) {
-    resultsEl.replaceChildren();
+    if (!append) resultsEl.replaceChildren();
+    moreBtn.hidden = true;
+    moreBtn.disabled = false;
     statusEl.textContent = error.message || "Search failed";
   }
 }
@@ -148,12 +175,18 @@ for (const el of [providerSelect, qualitySelect, durationSelect]) {
   el.addEventListener("change", () => search());
 }
 
+moreBtn.addEventListener("click", () => {
+  search({ persist: false, append: true });
+});
+
 clearBtn.addEventListener("click", () => {
   queryInput.value = "";
   providerSelect.value = "";
   qualitySelect.value = "";
   durationSelect.value = "";
   resultsEl.replaceChildren();
+  nextOffset = 0;
+  moreBtn.hidden = true;
   statusEl.textContent = "Ready";
   persistState(new URLSearchParams());
   queryInput.focus();
