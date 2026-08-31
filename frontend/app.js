@@ -52,12 +52,15 @@ function buildSearchParams() {
 
 function persistState(params) {
   const query = params.toString();
-  const next = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+  const next = query ? `${window.location.pathname}#${query}` : window.location.pathname;
   window.history.replaceState(null, "", next);
 }
 
 function restoreState() {
-  const params = new URLSearchParams(window.location.search);
+  const rawState = window.location.hash
+    ? window.location.hash.slice(1)
+    : window.location.search.slice(1);
+  const params = new URLSearchParams(rawState);
   queryInput.value = params.get("q") || "";
 
   const provider = params.get("provider") || "";
@@ -132,10 +135,20 @@ async function search({ persist = true, append = false } = {}) {
   const stateParams = buildSearchParams();
   if (persist) persistState(stateParams);
 
-  const requestParams = new URLSearchParams(stateParams);
   const offset = append ? nextOffset : 0;
-  requestParams.set("offset", String(offset));
-  requestParams.set("limit", String(PAGE_SIZE));
+  const payload = {
+    q: stateParams.get("q") || "",
+    offset,
+    limit: PAGE_SIZE,
+  };
+  if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
+  if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
+  if (stateParams.has("min_duration")) {
+    payload.min_duration = Number(stateParams.get("min_duration"));
+  }
+  if (stateParams.has("max_duration")) {
+    payload.max_duration = Number(stateParams.get("max_duration"));
+  }
 
   if (!append) {
     nextOffset = 0;
@@ -145,7 +158,14 @@ async function search({ persist = true, append = false } = {}) {
   statusEl.textContent = append ? "Loading more…" : "Searching…";
 
   try {
-    const response = await fetch(`/api/search?${requestParams.toString()}`);
+    const response = await fetch("/api/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      },
+      body: JSON.stringify(payload),
+    });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Search failed");
 
