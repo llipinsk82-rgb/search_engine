@@ -66,9 +66,17 @@ def initialize(path: Path = DB_PATH) -> None:
             for row in conn.execute("PRAGMA table_info(items)").fetchall()
         }
         if "source_order" not in columns:
-            conn.execute(
-                "ALTER TABLE items ADD COLUMN source_order INTEGER NOT NULL DEFAULT 0"
-            )
+            try:
+                conn.execute(
+                    "ALTER TABLE items ADD COLUMN source_order INTEGER NOT NULL DEFAULT 0"
+                )
+            except sqlite3.OperationalError:
+                columns = {
+                    str(row["name"])
+                    for row in conn.execute("PRAGMA table_info(items)").fetchall()
+                }
+                if "source_order" not in columns:
+                    raise
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)"
         )
@@ -189,6 +197,33 @@ def replace_provider_items(
         active_after=active_after,
         deactivated=len(previous_ids - incoming_ids),
     )
+
+
+def deactivate_provider(provider: str, path: Path = DB_PATH) -> int:
+    initialize(path)
+    with _connect(path) as conn:
+        rows = conn.execute(
+            "SELECT id FROM items WHERE provider = ? AND active = 1",
+            (provider,),
+        ).fetchall()
+        ids = [str(row["id"]) for row in rows]
+        if not ids:
+            return 0
+
+        conn.execute(
+            "UPDATE items SET active = 0 WHERE provider = ? AND active = 1",
+            (provider,),
+        )
+        conn.execute(
+            """
+            DELETE FROM items_fts
+            WHERE id IN (
+                SELECT id FROM items WHERE provider = ? AND active = 0
+            )
+            """,
+            (provider,),
+        )
+        return len(ids)
 
 
 def count_items(path: Path = DB_PATH) -> int:
