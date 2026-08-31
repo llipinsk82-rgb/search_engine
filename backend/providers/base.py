@@ -7,6 +7,7 @@ from backend.models import SearchItem
 
 class SearchProvider(ABC):
     name: str
+    sync_mode: str = "snapshot"
 
     @abstractmethod
     async def search(self, query: str, limit: int = 40) -> list[SearchItem]:
@@ -14,7 +15,7 @@ class SearchProvider(ABC):
         raise NotImplementedError
 
     async def collect(self, limit: int = 1000) -> list[SearchItem]:
-        """Collect a provider snapshot for indexing.
+        """Collect provider metadata for indexing.
 
         Search-only providers may keep the default behavior. Providers with a
         dedicated catalog/feed endpoint should override this method.
