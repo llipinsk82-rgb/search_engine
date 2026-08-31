@@ -9,7 +9,7 @@ from backend.search import search_all
 
 app = FastAPI(
     title="Search Engine API",
-    version="0.3.0",
+    version="0.4.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
@@ -52,6 +52,7 @@ async def search(
     quality: str | None = None,
     min_duration: int | None = Query(default=None, ge=0),
     max_duration: int | None = Query(default=None, ge=0),
+    offset: int = Query(default=0, ge=0, le=5000),
     limit: int = Query(default=40, ge=1, le=100),
 ) -> SearchResponse:
     if min_duration is not None and max_duration is not None and min_duration > max_duration:
@@ -61,12 +62,21 @@ async def search(
     if provider is not None and provider not in known:
         raise HTTPException(status_code=400, detail="unknown provider")
 
-    items, used = await search_all(
+    items, used, has_more = await search_all(
         q,
         provider=provider,
         quality=quality,
         min_duration=min_duration,
         max_duration=max_duration,
+        offset=offset,
         limit=limit,
     )
-    return SearchResponse(query=q, total=len(items), providers=used, items=items)
+    return SearchResponse(
+        query=q,
+        total=len(items),
+        offset=offset,
+        limit=limit,
+        has_more=has_more,
+        providers=used,
+        items=items,
+    )
