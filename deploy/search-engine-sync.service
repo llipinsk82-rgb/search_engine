@@ -1,0 +1,21 @@
+[Unit]
+Description=Refresh Search Engine provider index
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/search_engine
+Environment=PYTHONUNBUFFERED=1
+Environment=SEARCH_DB_PATH=/var/lib/search_engine/search.db
+Environment=SEARCH_SYNC_LIMIT=500
+EnvironmentFile=-/etc/search_engine.env
+StateDirectory=search_engine
+StateDirectoryMode=0750
+ExecStart=/bin/sh -c '/opt/search_engine/.venv/bin/python -m backend.cli sync-all --limit "$SEARCH_SYNC_LIMIT"'
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
