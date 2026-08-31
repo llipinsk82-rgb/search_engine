@@ -289,6 +289,7 @@ class SitemapProvider(SearchProvider):
         delay_seconds: float = 0.25,
         timeout_seconds: float = 15.0,
         obey_robots: bool = True,
+        sync_mode: str = "incremental",
     ) -> None:
         self.name = name.strip()
         self.sitemap_url = sitemap_url.strip()
@@ -296,12 +297,15 @@ class SitemapProvider(SearchProvider):
         self.delay_seconds = max(0.0, float(delay_seconds))
         self.timeout_seconds = max(1.0, float(timeout_seconds))
         self.obey_robots = bool(obey_robots)
+        self.sync_mode = sync_mode.strip().lower()
         self._robots: dict[str, urllib.robotparser.RobotFileParser | None] = {}
 
         if not self.name:
             raise ValueError("provider name cannot be empty")
         if urlparse(self.sitemap_url).scheme not in {"http", "https"}:
             raise ValueError("sitemap_url must use http or https")
+        if self.sync_mode not in {"incremental", "snapshot"}:
+            raise ValueError("sync_mode must be 'incremental' or 'snapshot'")
 
     def _fetch_text(self, url: str) -> str:
         request = Request(
