@@ -58,6 +58,7 @@ Example files:
 
 - `deploy/nginx-search-engine.conf`
 - `deploy/search-engine.service`
+- optional provider configuration: `/etc/search_engine.env`
 
 ## API
 
@@ -103,9 +104,40 @@ One JSON object per line:
 
 `id` is optional; when omitted it is derived deterministically from `provider + url`. Media files themselves are not copied into the index.
 
+## Sitemap providers
+
+The built-in generic sitemap adapter can index video-page metadata from standard XML sitemaps and reads Schema.org `VideoObject` / OpenGraph metadata from the page.
+
+Production provider configuration is loaded from `/etc/search_engine.env`:
+
+```bash
+SEARCH_SITEMAP_PROVIDERS_JSON='[
+  {
+    "name": "source_name",
+    "sitemap_url": "https://example.com/sitemap.xml",
+    "max_pages": 1000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 15,
+    "obey_robots": true
+  }
+]'
+```
+
+Then:
+
+```bash
+systemctl restart search-engine
+cd /opt/search_engine
+. .venv/bin/activate
+python -m backend.cli providers
+python -m backend.cli sync source_name --limit 1000
+```
+
+The sitemap adapter respects `robots.txt` by default and only stores page metadata plus the source URL.
+
 ## Provider contract
 
-Create a provider implementing `SearchProvider` from `backend/providers/base.py`, then register it in `backend/providers/__init__.py`.
+Create a provider implementing `SearchProvider` from `backend/providers/base.py`. Providers may override `collect()` when catalog ingestion differs from live search.
 
 Provider adapters should return metadata only. Do not store or mirror third-party media in this project.
 
