@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Search</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">SEARCH</div>
+    <span class="badge">DEV</span>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <h1>Find content. Skip the noise.</h1>
+      <form id="search-form" class="searchbox">
+        <input id="q" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Search…" autofocus>
+        <button type="submit">Search</button>
+      </form>
+
+      <div class="filters">
+        <select id="provider" aria-label="Provider"><option value="">All sources</option></select>
+        <select id="quality" aria-label="Quality">
+          <option value="">Any quality</option>
+          <option>720p</option>
+          <option>1080p</option>
+          <option>4K</option>
+        </select>
+        <select id="duration" aria-label="Duration">
+          <option value="">Any length</option>
+          <option value="0:600">Under 10 min</option>
+          <option value="600:1800">10–30 min</option>
+          <option value="1800:">30+ min</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="statusbar">
+      <span id="status">Ready</span>
+      <button id="clear" class="ghost" type="button">Clear</button>
+    </section>
+
+    <section id="results" class="grid" aria-live="polite"></section>
+  </main>
+
+  <template id="card-template">
+    <article class="card">
+      <a class="thumb" target="_blank" rel="noopener noreferrer">
+        <div class="placeholder">Preview</div>
+        <span class="duration"></span>
+      </a>
+      <div class="meta">
+        <a class="title" target="_blank" rel="noopener noreferrer"></a>
+        <div class="subline">
+          <span class="source"></span>
+          <span class="quality"></span>
+          <span class="alternates"></span>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

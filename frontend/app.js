@@ -1,0 +1,107 @@
+const form = document.querySelector("#search-form");
+const queryInput = document.querySelector("#q");
+const providerSelect = document.querySelector("#provider");
+const qualitySelect = document.querySelector("#quality");
+const durationSelect = document.querySelector("#duration");
+const resultsEl = document.querySelector("#results");
+const statusEl = document.querySelector("#status");
+const clearBtn = document.querySelector("#clear");
+const template = document.querySelector("#card-template");
+
+function durationText(seconds) {
+  if (!Number.isFinite(seconds)) return "";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+async function loadProviders() {
+  try {
+    const response = await fetch("/api/providers");
+    if (!response.ok) return;
+    const data = await response.json();
+    for (const provider of data.providers || []) {
+      const option = document.createElement("option");
+      option.value = provider;
+      option.textContent = provider;
+      providerSelect.append(option);
+    }
+  } catch (_) {}
+}
+
+function render(items) {
+  resultsEl.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No results";
+    resultsEl.append(empty);
+    return;
+  }
+
+  for (const item of items) {
+    const card = template.content.firstElementChild.cloneNode(true);
+    const thumb = card.querySelector(".thumb");
+    const title = card.querySelector(".title");
+    thumb.href = item.url;
+    title.href = item.url;
+    title.textContent = item.title;
+    card.querySelector(".source").textContent = item.provider;
+    card.querySelector(".quality").textContent = item.quality || "";
+    card.querySelector(".duration").textContent = durationText(item.duration_seconds);
+    const count = item.alternate_sources?.length || 0;
+    card.querySelector(".alternates").textContent = count ? `+${count} source${count === 1 ? "" : "s"}` : "";
+    resultsEl.append(card);
+  }
+}
+
+async function search() {
+  const params = new URLSearchParams();
+  params.set("q", queryInput.value.trim());
+
+  if (providerSelect.value) params.set("provider", providerSelect.value);
+  if (qualitySelect.value) params.set("quality", qualitySelect.value);
+
+  if (durationSelect.value) {
+    const [min, max] = durationSelect.value.split(":");
+    if (min) params.set("min_duration", min);
+    if (max) params.set("max_duration", max);
+  }
+
+  statusEl.textContent = "Searching…";
+  try {
+    const response = await fetch(`/api/search?${params.toString()}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Search failed");
+    render(data.items || []);
+    statusEl.textContent = `${data.total} result${data.total === 1 ? "" : "s"} · ${data.providers.join(", ") || "no provider"}`;
+  } catch (error) {
+    resultsEl.replaceChildren();
+    statusEl.textContent = error.message || "Search failed";
+  }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  search();
+});
+
+for (const el of [providerSelect, qualitySelect, durationSelect]) {
+  el.addEventListener("change", () => search());
+}
+
+clearBtn.addEventListener("click", () => {
+  queryInput.value = "";
+  providerSelect.value = "";
+  qualitySelect.value = "";
+  durationSelect.value = "";
+  resultsEl.replaceChildren();
+  statusEl.textContent = "Ready";
+  queryInput.focus();
+});
+
+loadProviders();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}

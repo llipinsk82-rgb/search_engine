@@ -1,0 +1,20 @@
+[Unit]
+Description=Search Engine API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/search_engine
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/search_engine/.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8765 --workers 2
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
