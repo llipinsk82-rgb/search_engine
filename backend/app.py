@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query
 
-from backend.index import count_items, indexed_providers, initialize
+from backend.index import count_items, indexed_providers, initialize, provider_counts
 from backend.models import SearchResponse
 from backend.providers import PROVIDERS
 from backend.search import search_all
 
 app = FastAPI(
     title="Search Engine API",
-    version="0.2.0",
+    version="0.3.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
@@ -41,6 +41,7 @@ async def stats() -> dict[str, object]:
     return {
         "indexed_items": count_items(),
         "indexed_providers": indexed_providers(),
+        "provider_counts": provider_counts(),
     }
 
 
