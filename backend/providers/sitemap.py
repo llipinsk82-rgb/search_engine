@@ -41,6 +41,7 @@ class _MetadataParser(HTMLParser):
                 attrs_map.get("property")
                 or attrs_map.get("name")
                 or attrs_map.get("itemprop")
+                or ""
             ).strip().lower()
             content = attrs_map.get("content", "").strip()
             if key and content and key not in self.meta:
