@@ -44,6 +44,7 @@ def initialize(path: Path = DB_PATH) -> None:
                 quality TEXT,
                 tags_json TEXT NOT NULL DEFAULT '[]',
                 indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                source_order INTEGER NOT NULL DEFAULT 0,
                 active INTEGER NOT NULL DEFAULT 1
             );
 
@@ -60,15 +61,32 @@ def initialize(path: Path = DB_PATH) -> None:
             """
         )
 
+        columns = {
+            str(row["name"])
+            for row in conn.execute("PRAGMA table_info(items)").fetchall()
+        }
+        if "source_order" not in columns:
+            conn.execute(
+                "ALTER TABLE items ADD COLUMN source_order INTEGER NOT NULL DEFAULT 0"
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)"
+        )
 
-def _write_item(conn: sqlite3.Connection, item: SearchItem) -> None:
+
+def _write_item(
+    conn: sqlite3.Connection,
+    item: SearchItem,
+    *,
+    source_order: int = 0,
+) -> None:
     tags_json = json.dumps(item.tags, ensure_ascii=False)
     conn.execute(
         """
         INSERT INTO items (
             id, provider, title, url, thumbnail, duration_seconds,
-            quality, tags_json, indexed_at, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
+            quality, tags_json, indexed_at, source_order, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
         ON CONFLICT(id) DO UPDATE SET
             provider=excluded.provider,
             title=excluded.title,
@@ -78,6 +96,7 @@ def _write_item(conn: sqlite3.Connection, item: SearchItem) -> None:
             quality=excluded.quality,
             tags_json=excluded.tags_json,
             indexed_at=CURRENT_TIMESTAMP,
+            source_order=excluded.source_order,
             active=1
         """,
         (
@@ -89,6 +108,7 @@ def _write_item(conn: sqlite3.Connection, item: SearchItem) -> None:
             item.duration_seconds,
             item.quality,
             tags_json,
+            max(0, int(source_order)),
         ),
     )
     conn.execute("DELETE FROM items_fts WHERE id = ?", (item.id,))
@@ -101,8 +121,8 @@ def _write_item(conn: sqlite3.Connection, item: SearchItem) -> None:
 def upsert_items(items: list[SearchItem], path: Path = DB_PATH) -> int:
     initialize(path)
     with _connect(path) as conn:
-        for item in items:
-            _write_item(conn, item)
+        for source_order, item in enumerate(items):
+            _write_item(conn, item, source_order=source_order)
     return len(items)
 
 
@@ -143,8 +163,8 @@ def replace_provider_items(
             "UPDATE items SET active = 0 WHERE provider = ? AND active = 1",
             (provider,),
         )
-        for item in items:
-            _write_item(conn, item)
+        for source_order, item in enumerate(items):
+            _write_item(conn, item, source_order=source_order)
 
         conn.execute(
             """
@@ -218,7 +238,7 @@ def search_items(
     params: list[object] = []
     joins = ""
     rank_select = "0.0 AS fts_rank"
-    order = "i.indexed_at DESC"
+    order = "i.indexed_at DESC, i.source_order ASC"
 
     tokens = _token_re.findall(query.lower())
     if tokens:
@@ -227,7 +247,7 @@ def search_items(
         where.append("items_fts MATCH ?")
         params.append(fts_query)
         rank_select = "bm25(items_fts, 0.0, 8.0, 2.0, 0.0) AS fts_rank"
-        order = "fts_rank ASC"
+        order = "fts_rank ASC, i.indexed_at DESC, i.source_order ASC"
 
     if provider:
         where.append("i.provider = ?")
