@@ -6,11 +6,11 @@ Mobile-first search engine / PWA with a small FastAPI backend designed to sit be
 
 - **Nginx**: public HTTP(S), static frontend, reverse proxy for `/api/`
 - **FastAPI**: API on `127.0.0.1:8765`
-- **Frontend**: dependency-free PWA (HTML/CSS/JS)
+- **Frontend**: dependency-free PWA (HTML/CSS/JS) with lazy provider thumbnails
 - **SQLite FTS5**: first-stage local search index
 - **Providers**: pluggable adapters that collect and normalize metadata
 - **Ingestion**: atomic provider snapshots plus normalized JSONL import
-- **Search layer**: indexed search, ranking and duplicate collapsing
+- **Search layer**: weighted FTS ranking, browse recency and duplicate collapsing
 
 The public request path is:
 
@@ -58,6 +58,9 @@ Example files:
 
 - `deploy/nginx-search-engine.conf`
 - `deploy/search-engine.service`
+- `deploy/search-engine-sync.service`
+- `deploy/search-engine-sync.timer`
+- `deploy/search-engine.env.example`
 - optional provider configuration: `/etc/search_engine.env`
 
 ## API
@@ -83,7 +86,7 @@ python -m backend.cli seed-demo
 python -m backend.cli stats
 ```
 
-The demo provider exists only to exercise the complete pipeline before real source adapters are added.
+The demo provider exists only to exercise the complete pipeline before real source adapters are added. It is used automatically only when no real provider is configured. Set `SEARCH_ENABLE_DEMO=1` to include it explicitly alongside real providers.
 
 Provider synchronization is snapshot-based: the new dataset is fetched first, then published atomically. An empty provider result is rejected by default so a broken parser cannot accidentally wipe a working catalog. Use `--allow-empty` only for an intentional provider clear.
 
@@ -134,6 +137,22 @@ python -m backend.cli sync source_name --limit 1000
 ```
 
 The sitemap adapter respects `robots.txt` by default and only stores page metadata plus the source URL.
+
+The bundled `deploy/search-engine.env.example` contains a working configuration for the Xvideos new-video sitemap. The generic parser reads title, thumbnail, tags, OpenGraph duration and common quality/resolution badges without copying the media file.
+
+## Periodic refresh
+
+Install the one-shot sync service and timer:
+
+```bash
+install -m 0644 deploy/search-engine-sync.service /etc/systemd/system/
+install -m 0644 deploy/search-engine-sync.timer /etc/systemd/system/
+install -m 0600 deploy/search-engine.env.example /etc/search_engine.env
+systemctl daemon-reload
+systemctl enable --now search-engine-sync.timer
+```
+
+The default timer runs about every 30 minutes and uses `SEARCH_SYNC_LIMIT=500`. Change those values before production if a source requires a slower crawl.
 
 ## Provider contract
 
