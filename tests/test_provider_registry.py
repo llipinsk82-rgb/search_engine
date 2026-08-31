@@ -42,6 +42,29 @@ class ProviderRegistryTests(unittest.TestCase):
             providers = build_providers()
 
         self.assertEqual([provider.name for provider in providers], ["real"])
+        self.assertEqual(providers[0].sync_mode, "incremental")
+
+    def test_snapshot_mode_can_be_configured_explicitly(self) -> None:
+        config = json.dumps(
+            [
+                {
+                    "name": "full",
+                    "sitemap_url": "https://example.com/sitemap.xml",
+                    "sync_mode": "snapshot",
+                }
+            ]
+        )
+        with patch.dict(
+            os.environ,
+            {
+                "SEARCH_SITEMAP_PROVIDERS_JSON": config,
+                "SEARCH_ENABLE_DEMO": "",
+            },
+            clear=False,
+        ):
+            providers = build_providers()
+
+        self.assertEqual(providers[0].sync_mode, "snapshot")
 
     def test_demo_can_be_enabled_explicitly(self) -> None:
         config = json.dumps(
