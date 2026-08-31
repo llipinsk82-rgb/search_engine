@@ -36,7 +36,10 @@ button, input, select { font: inherit; }
   display: block; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; position: relative;
   text-decoration: none; background: #1b1b1f; border: 1px solid #25252a;
 }
+.preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.preview[hidden] { display: none; }
 .placeholder { height: 100%; display: grid; place-items: center; color: #52525b; font-weight: 800; }
+.placeholder[hidden] { display: none; }
 .duration {
   position: absolute; right: 7px; bottom: 7px; padding: 3px 6px; border-radius: 5px;
   background: rgba(0,0,0,.78); color: #fff; font-size: 12px;
