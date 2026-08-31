@@ -128,7 +128,7 @@ def search_items(
     tokens = _token_re.findall(query.lower())
     if tokens:
         fts_query = " ".join(f'"{token}"' for token in tokens)
-        joins = "JOIN items_fts f ON f.id = i.id"
+        joins = "JOIN items_fts ON items_fts.id = i.id"
         where.append("items_fts MATCH ?")
         params.append(fts_query)
         order = "bm25(items_fts) ASC"
