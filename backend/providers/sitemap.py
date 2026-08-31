@@ -15,7 +15,8 @@ from xml.etree import ElementTree
 from backend.models import SearchItem
 from backend.providers.base import SearchProvider
 
-_USER_AGENT = "SearchEngineIndexer/0.3"
+_USER_AGENT = "SearchEngineIndexer/0.5"
+_VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
 _DURATION_RE = re.compile(
     r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+(?:\.\d+)?)S)?)?$",
     re.IGNORECASE,
@@ -40,14 +41,15 @@ class _MetadataParser(HTMLParser):
         tag = tag.lower()
 
         if self._quality_depth > 0:
-            self._quality_depth += 1
+            if tag not in _VOID_TAGS:
+                self._quality_depth += 1
         else:
             classes = {
                 item.strip().lower()
                 for item in attrs_map.get("class", "").split()
                 if item.strip()
             }
-            if any(
+            if tag not in _VOID_TAGS and any(
                 "quality" in item
                 or "resolution" in item
                 or "hd-mark" in item
