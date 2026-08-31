@@ -9,6 +9,7 @@ Mobile-first search engine / PWA with a small FastAPI backend designed to sit be
 - **Frontend**: dependency-free PWA (HTML/CSS/JS)
 - **SQLite FTS5**: first-stage local search index
 - **Providers**: pluggable adapters that collect and normalize metadata
+- **Ingestion**: atomic provider snapshots plus normalized JSONL import
 - **Search layer**: indexed search, ranking and duplicate collapsing
 
 The public request path is:
@@ -30,7 +31,11 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 python -m backend.cli init
+python -m backend.cli providers
 python -m backend.cli seed-demo
+python -m backend.cli sync demo --limit 1000
+python -m backend.cli sync-all --limit 1000
+python -m backend.cli stats
 uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 ```
 
@@ -78,6 +83,25 @@ python -m backend.cli stats
 ```
 
 The demo provider exists only to exercise the complete pipeline before real source adapters are added.
+
+Provider synchronization is snapshot-based: the new dataset is fetched first, then published atomically. An empty provider result is rejected by default so a broken parser cannot accidentally wipe a working catalog. Use `--allow-empty` only for an intentional provider clear.
+
+## JSONL ingestion
+
+Collectors do not have to live inside this repository. Any external crawler can emit normalized JSONL and feed the index:
+
+```bash
+python -m backend.cli import-jsonl ./source.jsonl
+python -m backend.cli import-jsonl ./source.jsonl --provider source_name
+```
+
+One JSON object per line:
+
+```json
+{"provider":"source_name","title":"Example title","url":"https://example.com/watch/123","thumbnail":"https://example.com/thumb.jpg","duration_seconds":900,"quality":"1080p","tags":["tag-a","tag-b"]}
+```
+
+`id` is optional; when omitted it is derived deterministically from `provider + url`. Media files themselves are not copied into the index.
 
 ## Provider contract
 
