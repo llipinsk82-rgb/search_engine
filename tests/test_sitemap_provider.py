@@ -10,6 +10,7 @@ class VideoMetadataParserTests(unittest.TestCase):
         html = """
         <html>
           <head>
+            <meta charset="utf-8">
             <meta property="video:height" content="1080">
             <script type="application/ld+json">
             {
