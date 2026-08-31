@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from pathlib import Path
 
-from backend.index import count_items, initialize, provider_counts
+from backend.importer import load_jsonl
+from backend.index import count_items, initialize, provider_counts, replace_provider_items
 from backend.ingest import sync_provider
 from backend.providers import PROVIDERS
 from backend.providers.base import SearchProvider
@@ -77,6 +79,11 @@ def main() -> None:
     sync_all.add_argument("--limit", type=int, default=1000)
     sync_all.add_argument("--allow-empty", action="store_true")
 
+    import_jsonl = subparsers.add_parser("import-jsonl")
+    import_jsonl.add_argument("path", type=Path)
+    import_jsonl.add_argument("--provider")
+    import_jsonl.add_argument("--allow-empty", action="store_true")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -106,6 +113,24 @@ def main() -> None:
 
     if args.command == "sync-all":
         asyncio.run(_sync_all(args.limit, args.allow_empty))
+        return
+
+    if args.command == "import-jsonl":
+        groups = load_jsonl(args.path, provider_override=args.provider)
+        if not groups:
+            raise SystemExit("no rows found")
+        for provider, items in sorted(groups.items()):
+            result = replace_provider_items(
+                provider,
+                items,
+                allow_empty=args.allow_empty,
+            )
+            print(
+                f"{result.provider}: fetched={result.fetched} "
+                f"active_before={result.active_before} "
+                f"active_after={result.active_after} "
+                f"deactivated={result.deactivated}"
+            )
         return
 
 
