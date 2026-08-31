@@ -51,6 +51,13 @@ button, input, select { font: inherit; }
 }
 .subline { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 6px; color: #8b8b93; font-size: 12px; }
 .empty { grid-column: 1 / -1; padding: 52px 0; color: #71717a; text-align: center; }
+.more-row { display: flex; justify-content: center; padding: 26px 0 0; }
+.more {
+  border: 1px solid #34343a; border-radius: 12px; background: #17171a; color: #f4f4f5;
+  padding: 12px 22px; font-weight: 800; cursor: pointer;
+}
+.more:hover { border-color: #52525b; }
+.more[hidden] { display: none; }
 @media (max-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 680px) {
   .shell { padding-top: 14px; }
