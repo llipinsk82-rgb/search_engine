@@ -29,6 +29,53 @@ async function loadProviders() {
   } catch (_) {}
 }
 
+function buildSearchParams() {
+  const params = new URLSearchParams();
+  const query = queryInput.value.trim();
+  if (query) params.set("q", query);
+
+  if (providerSelect.value) params.set("provider", providerSelect.value);
+  if (qualitySelect.value) params.set("quality", qualitySelect.value);
+
+  if (durationSelect.value) {
+    const [min, max] = durationSelect.value.split(":");
+    if (min) params.set("min_duration", min);
+    if (max) params.set("max_duration", max);
+  }
+
+  return params;
+}
+
+function persistState(params) {
+  const query = params.toString();
+  const next = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+  window.history.replaceState(null, "", next);
+}
+
+function restoreState() {
+  const params = new URLSearchParams(window.location.search);
+  queryInput.value = params.get("q") || "";
+
+  const provider = params.get("provider") || "";
+  if ([...providerSelect.options].some((option) => option.value === provider)) {
+    providerSelect.value = provider;
+  }
+
+  const quality = params.get("quality") || "";
+  if ([...qualitySelect.options].some((option) => option.value === quality)) {
+    qualitySelect.value = quality;
+  }
+
+  const min = params.get("min_duration") || "";
+  const max = params.get("max_duration") || "";
+  const duration = `${min}:${max}`;
+  if ([...durationSelect.options].some((option) => option.value === duration)) {
+    durationSelect.value = duration;
+  }
+
+  return [...params.keys()].length > 0;
+}
+
 function render(items) {
   resultsEl.replaceChildren();
   if (!items.length) {
@@ -45,6 +92,7 @@ function render(items) {
     const title = card.querySelector(".title");
     const preview = card.querySelector(".preview");
     const placeholder = card.querySelector(".placeholder");
+
     thumb.href = item.url;
     title.href = item.url;
 
@@ -57,36 +105,34 @@ function render(items) {
         placeholder.hidden = false;
       }, { once: true });
     }
+
     title.textContent = item.title;
     card.querySelector(".source").textContent = item.provider;
     card.querySelector(".quality").textContent = item.quality || "";
     card.querySelector(".duration").textContent = durationText(item.duration_seconds);
+
     const count = item.alternate_sources?.length || 0;
-    card.querySelector(".alternates").textContent = count ? `+${count} source${count === 1 ? "" : "s"}` : "";
+    card.querySelector(".alternates").textContent =
+      count ? `+${count} source${count === 1 ? "" : "s"}` : "";
+
     resultsEl.append(card);
   }
 }
 
-async function search() {
-  const params = new URLSearchParams();
-  params.set("q", queryInput.value.trim());
-
-  if (providerSelect.value) params.set("provider", providerSelect.value);
-  if (qualitySelect.value) params.set("quality", qualitySelect.value);
-
-  if (durationSelect.value) {
-    const [min, max] = durationSelect.value.split(":");
-    if (min) params.set("min_duration", min);
-    if (max) params.set("max_duration", max);
-  }
+async function search({ persist = true } = {}) {
+  const params = buildSearchParams();
+  if (persist) persistState(params);
 
   statusEl.textContent = "Searching…";
   try {
     const response = await fetch(`/api/search?${params.toString()}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Search failed");
+
     render(data.items || []);
-    statusEl.textContent = `${data.total} result${data.total === 1 ? "" : "s"} · ${data.providers.join(", ") || "no provider"}`;
+    statusEl.textContent =
+      `${data.total} result${data.total === 1 ? "" : "s"} · ` +
+      `${data.providers.join(", ") || "no provider"}`;
   } catch (error) {
     resultsEl.replaceChildren();
     statusEl.textContent = error.message || "Search failed";
@@ -109,11 +155,22 @@ clearBtn.addEventListener("click", () => {
   durationSelect.value = "";
   resultsEl.replaceChildren();
   statusEl.textContent = "Ready";
+  persistState(new URLSearchParams());
   queryInput.focus();
 });
 
-loadProviders();
+async function boot() {
+  await loadProviders();
+  const restored = restoreState();
+  if (restored) {
+    await search({ persist: false });
+  }
+}
+
+boot();
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("/sw.js").catch(() => {})
+  );
 }
