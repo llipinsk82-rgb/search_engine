@@ -68,7 +68,8 @@ Example files:
 - `GET /api/health`
 - `GET /api/providers`
 - `GET /api/stats`
-- `GET /api/search?q=...`
+- `GET /api/search?q=...` (compatibility/debug clients)
+- `POST /api/search` (preferred private client path)
 
 Search parameters:
 
@@ -80,6 +81,8 @@ Search parameters:
 - `limit` (1–100)
 
 The response includes `offset`, `limit` and `has_more`. The PWA uses these fields for a dedupe-aware **Show more** flow.
+
+The PWA uses `POST /api/search` and stores its restorable UI state in the URL fragment (`#...`), not the server-visible query string. API responses are marked `no-store`. The supplied Nginx and systemd examples disable Nginx/Uvicorn request access logs so search terms are not retained in ordinary request logs.
 
 ## Index commands
 
@@ -162,6 +165,19 @@ The default timer runs about every 30 minutes and uses `SEARCH_SYNC_LIMIT=500`. 
 Create a provider implementing `SearchProvider` from `backend/providers/base.py`. Providers may override `collect()` when catalog ingestion differs from live search.
 
 Provider adapters should return metadata only. Do not store or mirror third-party media in this project.
+
+## Privacy behavior
+
+- no application search-history database,
+- no LocalStorage/sessionStorage search history,
+- service worker bypasses `/api/` requests,
+- result-page state uses a client-only URL fragment,
+- PWA search uses POST,
+- API responses use `Cache-Control: no-store`,
+- example Nginx/Uvicorn configuration disables request access logs,
+- `Referrer-Policy: no-referrer` prevents result destinations receiving the search page as referrer.
+
+Intentional provider index data is persistent; user search queries are not.
 
 ## Production note
 
