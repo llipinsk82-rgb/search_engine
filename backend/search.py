@@ -45,6 +45,16 @@ def _collapse(items: list[SearchItem], limit: int) -> list[SearchItem]:
     return collapsed[:limit]
 
 
+def _slice_page(
+    items: list[SearchItem],
+    *,
+    offset: int,
+    limit: int,
+) -> tuple[list[SearchItem], bool]:
+    end = offset + limit
+    return items[offset:end], len(items) > end
+
+
 async def _live_search(
     query: str,
     *,
@@ -52,14 +62,18 @@ async def _live_search(
     quality: str | None,
     min_duration: int | None,
     max_duration: int | None,
+    offset: int,
     limit: int,
-) -> tuple[list[SearchItem], list[str]]:
+) -> tuple[list[SearchItem], list[str], bool]:
     selected: list[SearchProvider] = [
         item for item in PROVIDERS if provider is None or item.name == provider
     ]
 
+    target = offset + limit + 1
+    provider_limit = max(target * 2, limit)
+
     batches = await asyncio.gather(
-        *(item.search(query, limit=limit) for item in selected),
+        *(item.search(query, limit=provider_limit) for item in selected),
         return_exceptions=True,
     )
 
@@ -78,7 +92,9 @@ async def _live_search(
                 continue
             flat.append(item)
 
-    return _collapse(flat, limit), used_providers
+    collapsed = _collapse(flat, target)
+    page, has_more = _slice_page(collapsed, offset=offset, limit=limit)
+    return page, used_providers, has_more
 
 
 async def search_all(
@@ -88,21 +104,31 @@ async def search_all(
     quality: str | None = None,
     min_duration: int | None = None,
     max_duration: int | None = None,
+    offset: int = 0,
     limit: int = 40,
-) -> tuple[list[SearchItem], list[str]]:
-    if count_items() > 0:
+) -> tuple[list[SearchItem], list[str], bool]:
+    indexed_names = indexed_providers() if count_items() > 0 else []
+    can_use_index = bool(indexed_names) and (
+        provider is None or provider in indexed_names
+    )
+
+    if can_use_index:
+        target = offset + limit + 1
         indexed = search_items(
             query,
             provider=provider,
             quality=quality,
             min_duration=min_duration,
             max_duration=max_duration,
-            limit=limit,
+            limit=max(target * 2, limit),
         )
-        providers = indexed_providers()
+        collapsed = _collapse(indexed, target)
+        page, has_more = _slice_page(collapsed, offset=offset, limit=limit)
+
+        providers = indexed_names
         if provider:
             providers = [name for name in providers if name == provider]
-        return _collapse(indexed, limit), providers
+        return page, providers, has_more
 
     return await _live_search(
         query,
@@ -110,5 +136,6 @@ async def search_all(
         quality=quality,
         min_duration=min_duration,
         max_duration=max_duration,
+        offset=offset,
         limit=limit,
     )
