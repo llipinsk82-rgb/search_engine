@@ -3,12 +3,22 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 
 from backend.models import SearchItem
 from backend.settings import DB_PATH
 
 _token_re = re.compile(r"\w+", re.UNICODE)
+
+
+@dataclass(frozen=True)
+class ProviderSyncStats:
+    provider: str
+    fetched: int
+    active_before: int
+    active_after: int
+    deactivated: int
 
 
 def _connect(path: Path = DB_PATH) -> sqlite3.Connection:
@@ -51,45 +61,112 @@ def initialize(path: Path = DB_PATH) -> None:
         )
 
 
+def _write_item(conn: sqlite3.Connection, item: SearchItem) -> None:
+    tags_json = json.dumps(item.tags, ensure_ascii=False)
+    conn.execute(
+        """
+        INSERT INTO items (
+            id, provider, title, url, thumbnail, duration_seconds,
+            quality, tags_json, indexed_at, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
+        ON CONFLICT(id) DO UPDATE SET
+            provider=excluded.provider,
+            title=excluded.title,
+            url=excluded.url,
+            thumbnail=excluded.thumbnail,
+            duration_seconds=excluded.duration_seconds,
+            quality=excluded.quality,
+            tags_json=excluded.tags_json,
+            indexed_at=CURRENT_TIMESTAMP,
+            active=1
+        """,
+        (
+            item.id,
+            item.provider,
+            item.title,
+            str(item.url),
+            str(item.thumbnail) if item.thumbnail else None,
+            item.duration_seconds,
+            item.quality,
+            tags_json,
+        ),
+    )
+    conn.execute("DELETE FROM items_fts WHERE id = ?", (item.id,))
+    conn.execute(
+        "INSERT INTO items_fts (id, title, tags, provider) VALUES (?, ?, ?, ?)",
+        (item.id, item.title, " ".join(item.tags), item.provider),
+    )
+
+
 def upsert_items(items: list[SearchItem], path: Path = DB_PATH) -> int:
     initialize(path)
     with _connect(path) as conn:
         for item in items:
-            tags_json = json.dumps(item.tags, ensure_ascii=False)
-            conn.execute(
-                """
-                INSERT INTO items (
-                    id, provider, title, url, thumbnail, duration_seconds,
-                    quality, tags_json, indexed_at, active
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)
-                ON CONFLICT(id) DO UPDATE SET
-                    provider=excluded.provider,
-                    title=excluded.title,
-                    url=excluded.url,
-                    thumbnail=excluded.thumbnail,
-                    duration_seconds=excluded.duration_seconds,
-                    quality=excluded.quality,
-                    tags_json=excluded.tags_json,
-                    indexed_at=CURRENT_TIMESTAMP,
-                    active=1
-                """,
-                (
-                    item.id,
-                    item.provider,
-                    item.title,
-                    str(item.url),
-                    str(item.thumbnail) if item.thumbnail else None,
-                    item.duration_seconds,
-                    item.quality,
-                    tags_json,
-                ),
-            )
-            conn.execute("DELETE FROM items_fts WHERE id = ?", (item.id,))
-            conn.execute(
-                "INSERT INTO items_fts (id, title, tags, provider) VALUES (?, ?, ?, ?)",
-                (item.id, item.title, " ".join(item.tags), item.provider),
-            )
+            _write_item(conn, item)
     return len(items)
+
+
+def replace_provider_items(
+    provider: str,
+    items: list[SearchItem],
+    *,
+    allow_empty: bool = False,
+    path: Path = DB_PATH,
+) -> ProviderSyncStats:
+    """Atomically replace the active snapshot for one provider.
+
+    Provider collection happens before this function is called. If the fetched
+    set is empty, the existing index is preserved unless allow_empty=True.
+    """
+    if not provider.strip():
+        raise ValueError("provider cannot be empty")
+    if not items and not allow_empty:
+        raise ValueError("refusing to replace provider with an empty result set")
+
+    mismatched = [item.id for item in items if item.provider != provider]
+    if mismatched:
+        raise ValueError(
+            f"provider mismatch for {len(mismatched)} item(s); expected {provider!r}"
+        )
+
+    initialize(path)
+    with _connect(path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
+            (provider,),
+        ).fetchone()
+        active_before = int(row["n"])
+
+        conn.execute(
+            "UPDATE items SET active = 0 WHERE provider = ? AND active = 1",
+            (provider,),
+        )
+        for item in items:
+            _write_item(conn, item)
+
+        conn.execute(
+            """
+            DELETE FROM items_fts
+            WHERE id IN (
+                SELECT id FROM items WHERE provider = ? AND active = 0
+            )
+            """,
+            (provider,),
+        )
+
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
+            (provider,),
+        ).fetchone()
+        active_after = int(row["n"])
+
+    return ProviderSyncStats(
+        provider=provider,
+        fetched=len(items),
+        active_before=active_before,
+        active_after=active_after,
+        deactivated=max(0, active_before - active_after),
+    )
 
 
 def count_items(path: Path = DB_PATH) -> int:
@@ -106,6 +183,21 @@ def indexed_providers(path: Path = DB_PATH) -> list[str]:
             "SELECT DISTINCT provider FROM items WHERE active = 1 ORDER BY provider"
         ).fetchall()
         return [str(row["provider"]) for row in rows]
+
+
+def provider_counts(path: Path = DB_PATH) -> dict[str, int]:
+    initialize(path)
+    with _connect(path) as conn:
+        rows = conn.execute(
+            """
+            SELECT provider, COUNT(*) AS n
+            FROM items
+            WHERE active = 1
+            GROUP BY provider
+            ORDER BY provider
+            """
+        ).fetchall()
+        return {str(row["provider"]): int(row["n"]) for row in rows}
 
 
 def search_items(
