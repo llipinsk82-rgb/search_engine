@@ -28,13 +28,33 @@ class _MetadataParser(HTMLParser):
         self.meta: dict[str, str] = {}
         self.title_parts: list[str] = []
         self.jsonld_parts: list[str] = []
+        self.quality_hints: list[str] = []
         self._in_title = False
         self._in_jsonld = False
         self._jsonld_buffer: list[str] = []
+        self._quality_depth = 0
+        self._quality_buffer: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attrs_map = {str(k).lower(): (v or "") for k, v in attrs}
         tag = tag.lower()
+
+        if self._quality_depth > 0:
+            self._quality_depth += 1
+        else:
+            classes = {
+                item.strip().lower()
+                for item in attrs_map.get("class", "").split()
+                if item.strip()
+            }
+            if any(
+                "quality" in item
+                or "resolution" in item
+                or "hd-mark" in item
+                for item in classes
+            ):
+                self._quality_depth = 1
+                self._quality_buffer = []
 
         if tag == "meta":
             key = (
@@ -69,11 +89,21 @@ class _MetadataParser(HTMLParser):
             self._jsonld_buffer = []
             self._in_jsonld = False
 
+        if self._quality_depth > 0:
+            self._quality_depth -= 1
+            if self._quality_depth == 0:
+                hint = " ".join(self._quality_buffer).strip()
+                if hint:
+                    self.quality_hints.append(hint)
+                self._quality_buffer = []
+
     def handle_data(self, data: str) -> None:
         if self._in_title:
             self.title_parts.append(data)
         if self._in_jsonld:
             self._jsonld_buffer.append(data)
+        if self._quality_depth > 0:
+            self._quality_buffer.append(data)
 
 
 def _duration_seconds(value: Any) -> int | None:
@@ -140,7 +170,11 @@ def _keywords(value: Any) -> list[str]:
     return []
 
 
-def _quality_from_metadata(meta: dict[str, str], video: dict[str, Any] | None) -> str | None:
+def _quality_from_metadata(
+    meta: dict[str, str],
+    video: dict[str, Any] | None,
+    hints: list[str] | None = None,
+) -> str | None:
     candidates: list[Any] = []
     if video:
         candidates.extend([video.get("height"), video.get("videoHeight")])
@@ -161,6 +195,19 @@ def _quality_from_metadata(meta: dict[str, str], video: dict[str, Any] | None) -
             return "1080p"
         if height >= 720:
             return "720p"
+
+    for hint in hints or []:
+        match = re.search(r"(?<!\d)(4320|2160|1440|1080|720)p\b", hint, re.IGNORECASE)
+        if match:
+            height = int(match.group(1))
+            if height >= 4320:
+                return "8K"
+            if height >= 2160:
+                return "4K"
+            return f"{height}p"
+        match = re.search(r"\b(8k|4k)\b", hint, re.IGNORECASE)
+        if match:
+            return match.group(1).upper()
     return None
 
 
@@ -226,7 +273,7 @@ def parse_video_metadata(
         url=page_url,
         thumbnail=thumbnail,
         duration_seconds=duration,
-        quality=_quality_from_metadata(meta, video),
+        quality=_quality_from_metadata(meta, video, parser.quality_hints),
         tags=tags[:80],
         score=1.0,
     )
