@@ -43,8 +43,20 @@ function render(items) {
     const card = template.content.firstElementChild.cloneNode(true);
     const thumb = card.querySelector(".thumb");
     const title = card.querySelector(".title");
+    const preview = card.querySelector(".preview");
+    const placeholder = card.querySelector(".placeholder");
     thumb.href = item.url;
     title.href = item.url;
+
+    if (item.thumbnail) {
+      preview.src = item.thumbnail;
+      preview.hidden = false;
+      placeholder.hidden = true;
+      preview.addEventListener("error", () => {
+        preview.hidden = true;
+        placeholder.hidden = false;
+      }, { once: true });
+    }
     title.textContent = item.title;
     card.querySelector(".source").textContent = item.provider;
     card.querySelector(".quality").textContent = item.quality || "";
