@@ -52,8 +52,12 @@ def _truthy_env(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-_configured = _configured_sitemap_providers()
+def build_providers() -> list[SearchProvider]:
+    configured = _configured_sitemap_providers()
+    providers: list[SearchProvider] = list(configured)
+    if not configured or _truthy_env("SEARCH_ENABLE_DEMO"):
+        providers.insert(0, DemoProvider())
+    return providers
 
-PROVIDERS: list[SearchProvider] = list(_configured)
-if not _configured or _truthy_env("SEARCH_ENABLE_DEMO"):
-    PROVIDERS.insert(0, DemoProvider())
+
+PROVIDERS: list[SearchProvider] = build_providers()
