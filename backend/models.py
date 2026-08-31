@@ -25,5 +25,8 @@ class SourceVariant(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     total: int
+    offset: int
+    limit: int
+    has_more: bool
     providers: list[str]
     items: list[SearchItem]
