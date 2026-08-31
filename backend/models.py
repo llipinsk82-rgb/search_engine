@@ -22,6 +22,16 @@ class SourceVariant(BaseModel):
     quality: str | None = None
 
 
+class SearchRequest(BaseModel):
+    q: str = Field(default="", max_length=200)
+    provider: str | None = None
+    quality: str | None = None
+    min_duration: int | None = Field(default=None, ge=0)
+    max_duration: int | None = Field(default=None, ge=0)
+    offset: int = Field(default=0, ge=0, le=5000)
+    limit: int = Field(default=40, ge=1, le=100)
+
+
 class SearchResponse(BaseModel):
     query: str
     total: int
