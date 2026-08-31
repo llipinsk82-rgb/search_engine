@@ -67,6 +67,30 @@ class VideoMetadataParserTests(unittest.TestCase):
         self.assertEqual(item.quality, "4K")
         self.assertEqual(item.tags, ["one", "two", "three"])
 
+    def test_quality_badge_is_used_when_metadata_has_no_height(self) -> None:
+        html = """
+        <html>
+          <head>
+            <meta property="og:title" content="Badge Quality Video">
+            <meta property="og:image" content="https://cdn.example.com/preview.jpg">
+            <meta property="og:duration" content="60">
+          </head>
+          <body>
+            <span class="video-hd-mark">1080p</span>
+          </body>
+        </html>
+        """
+
+        item = parse_video_metadata(
+            html,
+            provider="sample",
+            page_url="https://example.com/watch/badge",
+        )
+
+        self.assertIsNotNone(item)
+        assert item is not None
+        self.assertEqual(item.quality, "1080p")
+
     def test_page_without_title_is_ignored(self) -> None:
         item = parse_video_metadata(
             "<html><head></head><body></body></html>",
