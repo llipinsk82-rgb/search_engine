@@ -42,10 +42,18 @@ def _configured_sitemap_providers() -> list[SearchProvider]:
                 f"sitemap provider #{index + 1} is missing {exc.args[0]!r}"
             ) from exc
 
+    names = [provider.name for provider in providers]
+    if len(names) != len(set(names)):
+        raise RuntimeError("configured provider names must be unique")
     return providers
 
 
-PROVIDERS: list[SearchProvider] = [
-    DemoProvider(),
-    *_configured_sitemap_providers(),
-]
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+_configured = _configured_sitemap_providers()
+
+PROVIDERS: list[SearchProvider] = list(_configured)
+if not _configured or _truthy_env("SEARCH_ENABLE_DEMO"):
+    PROVIDERS.insert(0, DemoProvider())
