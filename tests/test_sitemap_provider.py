@@ -47,7 +47,7 @@ class VideoMetadataParserTests(unittest.TestCase):
           <head>
             <meta property="og:title" content="Open Graph Video">
             <meta property="og:image" content="https://cdn.example.com/preview.jpg">
-            <meta property="og:video:duration" content="95">
+            <meta property="og:duration" content="95">
             <meta property="og:video:height" content="2160">
             <meta name="keywords" content="one, two; three">
           </head>
