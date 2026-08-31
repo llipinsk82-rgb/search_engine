@@ -94,7 +94,12 @@ python -m backend.cli stats
 
 The demo provider exists only to exercise the complete pipeline before real source adapters are added. It is used automatically only when no real provider is configured. Set `SEARCH_ENABLE_DEMO=1` to include it explicitly alongside real providers.
 
-Provider synchronization is snapshot-based: the new dataset is fetched first, then published atomically. An empty provider result is rejected by default so a broken parser cannot accidentally wipe a working catalog. Use `--allow-empty` only for an intentional provider clear.
+Provider synchronization supports two modes:
+
+- `incremental` — merge the fetched batch into the existing catalog and keep older records; this is the default for sitemap providers and is appropriate for rolling “new videos” feeds,
+- `snapshot` — atomically replace the provider's active catalog; use this only when the fetched dataset is authoritative and complete.
+
+An empty result is rejected by default so a broken parser cannot accidentally alter a working catalog. Use `--allow-empty` only for an intentional empty snapshot/merge.
 
 ## JSONL ingestion
 
@@ -127,7 +132,8 @@ SEARCH_SITEMAP_PROVIDERS_JSON='[
     "max_pages": 1000,
     "delay_seconds": 0.25,
     "timeout_seconds": 15,
-    "obey_robots": true
+    "obey_robots": true,
+    "sync_mode": "incremental"
   }
 ]'
 ```
@@ -144,7 +150,7 @@ python -m backend.cli sync source_name --limit 1000
 
 The sitemap adapter respects `robots.txt` by default and only stores page metadata plus the source URL.
 
-The bundled `deploy/search-engine.env.example` contains a working configuration for the Xvideos new-video sitemap. The generic parser reads title, thumbnail, tags, OpenGraph duration and common quality/resolution badges without copying the media file.
+The bundled `deploy/search-engine.env.example` contains a working configuration for the Xvideos new-video sitemap in `incremental` mode. Each refresh merges the newest batch into the existing index, so the catalog grows instead of replacing the previous 500 records. The generic parser reads title, thumbnail, tags, OpenGraph duration and common quality/resolution badges without copying the media file.
 
 ## Periodic refresh
 
