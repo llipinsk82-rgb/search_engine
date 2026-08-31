@@ -206,7 +206,11 @@ def parse_video_metadata(
 
     duration = _duration_seconds(video.get("duration") if video else None)
     if duration is None:
-        duration = _duration_seconds(meta.get("video:duration") or meta.get("og:video:duration"))
+        duration = _duration_seconds(
+            meta.get("video:duration")
+            or meta.get("og:video:duration")
+            or meta.get("og:duration")
+        )
 
     tags: list[str] = []
     if video:
