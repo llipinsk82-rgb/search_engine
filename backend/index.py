@@ -134,6 +134,51 @@ def upsert_items(items: list[SearchItem], path: Path = DB_PATH) -> int:
     return len(items)
 
 
+def merge_provider_items(
+    provider: str,
+    items: list[SearchItem],
+    *,
+    allow_empty: bool = False,
+    path: Path = DB_PATH,
+) -> ProviderSyncStats:
+    """Merge a partial provider batch without deactivating older items."""
+    if not provider.strip():
+        raise ValueError("provider cannot be empty")
+    if not items and not allow_empty:
+        raise ValueError("refusing to merge an empty provider result set")
+
+    mismatched = [item.id for item in items if item.provider != provider]
+    if mismatched:
+        raise ValueError(
+            f"provider mismatch for {len(mismatched)} item(s); expected {provider!r}"
+        )
+
+    initialize(path)
+    with _connect(path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
+            (provider,),
+        ).fetchone()
+        active_before = int(row["n"])
+
+        for source_order, item in enumerate(items):
+            _write_item(conn, item, source_order=source_order)
+
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
+            (provider,),
+        ).fetchone()
+        active_after = int(row["n"])
+
+    return ProviderSyncStats(
+        provider=provider,
+        fetched=len(items),
+        active_before=active_before,
+        active_after=active_after,
+        deactivated=0,
+    )
+
+
 def replace_provider_items(
     provider: str,
     items: list[SearchItem],
