@@ -6,7 +6,7 @@ Mobile-first search engine / PWA with a small FastAPI backend designed to sit be
 
 - **Nginx**: public HTTP(S), static frontend, reverse proxy for `/api/`
 - **FastAPI**: API on `127.0.0.1:8765`
-- **Frontend**: dependency-free PWA (HTML/CSS/JS) with lazy provider thumbnails
+- **Frontend**: dependency-free PWA (HTML/CSS/JS) with lazy provider thumbnails, URL-restored filters and paged “Show more” results
 - **SQLite FTS5**: first-stage local search index
 - **Providers**: pluggable adapters that collect and normalize metadata
 - **Ingestion**: atomic provider snapshots plus normalized JSONL import
@@ -76,7 +76,10 @@ Search parameters:
 - `quality`
 - `min_duration`
 - `max_duration`
-- `limit`
+- `offset` (0–5000)
+- `limit` (1–100)
+
+The response includes `offset`, `limit` and `has_more`. The PWA uses these fields for a dedupe-aware **Show more** flow.
 
 ## Index commands
 
