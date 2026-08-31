@@ -5,7 +5,13 @@ import asyncio
 from pathlib import Path
 
 from backend.importer import load_jsonl
-from backend.index import count_items, initialize, provider_counts, replace_provider_items
+from backend.index import (
+    count_items,
+    deactivate_provider,
+    initialize,
+    provider_counts,
+    replace_provider_items,
+)
 from backend.ingest import sync_provider
 from backend.providers import PROVIDERS
 from backend.providers.base import SearchProvider
@@ -36,6 +42,12 @@ async def _sync_one(name: str, limit: int, allow_empty: bool) -> None:
 
 async def _sync_all(limit: int, allow_empty: bool) -> None:
     failures = 0
+    provider_names = {provider.name for provider in PROVIDERS}
+    if "demo" not in provider_names:
+        removed = deactivate_provider("demo")
+        if removed:
+            print(f"demo: deactivated={removed} (production providers configured)")
+
     for provider in PROVIDERS:
         try:
             result = await sync_provider(
