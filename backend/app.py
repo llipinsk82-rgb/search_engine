@@ -4,7 +4,7 @@ import asyncio
 import logging
 import sqlite3
 from urllib.parse import urlparse
-from urllib.request import Request as UrlRequest, urlopen
+from urllib.request import HTTPRedirectHandler, Request as UrlRequest, build_opener, urlopen
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
@@ -42,6 +42,15 @@ _THUMBNAIL_PROXY_RULES: dict[str, tuple[str, str]] = {
 _THUMBNAIL_PROXY_MAX_BYTES = 2 * 1024 * 1024
 
 
+class _ThumbnailProxyNoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _thumbnail_proxy_open(request: UrlRequest):
+    return build_opener(_ThumbnailProxyNoRedirect()).open(request, timeout=8.0)
+
+
 def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
     rule = _THUMBNAIL_PROXY_RULES.get(provider)
     if rule is None:
@@ -49,7 +58,13 @@ def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
     allowed_suffix, referer = rule
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
-    if parsed.scheme != "https" or not host.endswith(allowed_suffix):
+    if (
+        parsed.scheme != "https"
+        or not host.endswith(allowed_suffix)
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
         raise ValueError("thumbnail host is not allowed")
     request = UrlRequest(
         url,
@@ -59,7 +74,7 @@ def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
             "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         },
     )
-    with urlopen(request, timeout=8.0) as response:
+    with _thumbnail_proxy_open(request) as response:
         content_type = response.headers.get_content_type()
         if not content_type.startswith("image/"):
             raise ValueError("upstream did not return an image")
