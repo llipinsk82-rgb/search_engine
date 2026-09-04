@@ -157,3 +157,11 @@ No provider was auto-enabled in this pass.
 - Generic sitemap crawler hardened: a 404 from a child shard advertised by a sitemap index is skipped; root sitemap and non-404 HTTP failures remain fatal. This handles rotating indexes without hiding real provider outages.
 - TXXX technical probe after hardening: 20/20 thumbnail, 20/20 duration, 20/20 tags; no quality metadata. Commit `337069d0bc4e` promotes TXXX to production catalog and source policy; 107 tests PASS and helper check PASS.
 - TXXX deploy is pending only because the maintenance lock was legitimately busy on two attempts. Both attempts aborted before active changes; do not kill healthy maintenance work. Retry after lock becomes free.
+
+## Production update 2026-09-04 — Pornhub live + proxy hardening + sync limit migration
+- Production build `0704d42b589f` enabled Pornhub in the live adapter set. Technical probe before deploy: 6 query/page combinations, each 10/10 thumbnail, preview and duration. Production acceptance: 5/5 thumbnail, 5/5 preview, 5/5 duration.
+- Production now has 11 live adapters and 15 available/searchable providers; TXXX remains production-configured and searchable.
+- Thumbnail proxy security was hardened in `8a3fcb74d0cc`: Thumbzilla proxy rejects credentials, non-default ports and all upstream redirects instead of following them. This closes the redirect-to-untrusted-host gap while retaining the strict `.ypncdn.com` allowlist and HTTPS requirement.
+- Legacy production `SEARCH_SYNC_LIMIT=500` caused a healthy sync cycle to run for roughly 9 minutes and block the maintenance lock. Commit `ed702e121291` migrates only that exact legacy shipped default to 100 while preserving custom operator values. During deploy the sync command was observed using `--limit 100`.
+- Release `ed702e121291`: 113 tests PASS, helper CHECK PASS, deploy PASS, backup `/opt/search_engine-backups/20260904T141413Z-ed702e121291`. Independent acceptance: health build matches, Thumbzilla proxy returns 200 image/avif, 5749 bytes, preview remains available. Service, sync timer and backfill timer active.
+- Do not kill healthy maintenance jobs; backfill after release was observed running normally with its existing 180-second cap.
