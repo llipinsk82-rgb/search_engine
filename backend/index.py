@@ -108,15 +108,29 @@ def initialize(path: Path = DB_PATH) -> None:
             )
 
             # Older indexed Beeg rows used /-0/<id>, while the accepted public
-            # route is /-0<id>. This migration is idempotent and URL-only.
-            conn.execute(
-                """
-                UPDATE items
-                SET url = REPLACE(url, 'https://beeg.com/-0/', 'https://beeg.com/-0')
-                WHERE provider = 'beeg'
-                  AND url LIKE 'https://beeg.com/-0/%'
-                """
-            )
+            # route is /-0<id>. Run the data migration once instead of scanning
+            # the full production index on every API worker startup.
+            migration_key = "migration:beeg_url_dash0_v1"
+            migrated = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", migration_key),
+            ).fetchone()
+            if migrated is None:
+                conn.execute(
+                    """
+                    UPDATE items
+                    SET url = REPLACE(url, 'https://beeg.com/-0/', 'https://beeg.com/-0')
+                    WHERE provider = 'beeg'
+                      AND url LIKE 'https://beeg.com/-0/%'
+                    """
+                )
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO provider_state(provider, state_key, state_value, updated_at)
+                    VALUES (?, ?, 'done', CURRENT_TIMESTAMP)
+                    """,
+                    ("__system__", migration_key),
+                )
         _initialized_paths.add(key)
 
 
