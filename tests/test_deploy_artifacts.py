@@ -21,6 +21,11 @@ class DeployArtifactTests(unittest.TestCase):
         env=(ROOT/'deploy'/'search-engine.env.example').read_text()
         self.assertIn('SEARCH_SYNC_LIMIT=100',env)
 
+    def test_deploy_migrates_only_legacy_sync_limit_default(self):
+        t=(ROOT/'deploy'/'deploy-production.sh').read_text()
+        self.assertIn("grep -qx 'SEARCH_SYNC_LIMIT=500'",t)
+        self.assertIn("s/^SEARCH_SYNC_LIMIT=500$/SEARCH_SYNC_LIMIT=100/",t)
+
     def test_service_and_acceptance_use_production_port(self):
         self.assertIn('--port 8775',(ROOT/'deploy'/'search-engine.service').read_text()); self.assertIn('127.0.0.1:8775',(ROOT/'deploy'/'acceptance.sh').read_text())
     def test_post_deploy_warmup_is_bounded_and_non_destructive(self):

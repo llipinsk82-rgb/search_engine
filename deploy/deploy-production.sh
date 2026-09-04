@@ -151,6 +151,10 @@ if [ ! -e "$ENV_FILE" ]; then
 elif ! grep -Eq '^SEARCH_PROVIDER_CONFIG_FILE=' "$ENV_FILE"; then
     printf '\nSEARCH_PROVIDER_CONFIG_FILE=/etc/search_engine-providers.json\n' >>"$ENV_FILE"
 fi
+# Migrate only the legacy shipped default. Preserve any operator-chosen custom value.
+if grep -qx 'SEARCH_SYNC_LIMIT=500' "$ENV_FILE"; then
+    sed -i 's/^SEARCH_SYNC_LIMIT=500$/SEARCH_SYNC_LIMIT=100/' "$ENV_FILE"
+fi
 for unit in search-engine.service search-engine-sync.service search-engine-sync.timer search-engine-backfill.service search-engine-backfill.timer; do
     install -m 0644 "$SOURCE/deploy/$unit" "$SYSTEMD_DIR/$unit"
 done
