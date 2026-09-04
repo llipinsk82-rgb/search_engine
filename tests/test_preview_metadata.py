@@ -31,7 +31,7 @@ class PreviewMetadataTests(unittest.TestCase):
     def test_final_live_provider_set(self):
         self.assertEqual(
             {a.name for a in LIVE_ADAPTERS},
-            {"beeg","xnxx","youjizz","pornone","hqporner","eporner","tnaflix","spankbang","thumbzilla","xhamster","tube8"},
+            {"beeg","xnxx","youjizz","pornone","hqporner","eporner","tnaflix","spankbang","thumbzilla","xhamster"},
         )
 
 if __name__ == "__main__":
