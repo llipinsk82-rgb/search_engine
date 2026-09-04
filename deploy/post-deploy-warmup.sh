@@ -2,12 +2,19 @@
 set -euo pipefail
 
 BASE_URL="${SEARCH_WARMUP_BASE_URL:-http://127.0.0.1:8775}"
+SYNC_SERVICE="${SEARCH_WARMUP_SYNC_SERVICE:-search-engine-sync.service}"
 SERVICE="${SEARCH_WARMUP_SERVICE:-search-engine-backfill.service}"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 curl -fsS --max-time 10 "$BASE_URL/api/stats" >"$tmp/before.json"
+
+if ! systemctl start "$SYNC_SERVICE"; then
+    echo "SEARCH_WARMUP=DEGRADED reason=sync-service-failed service=$SYNC_SERVICE" >&2
+    systemctl status "$SYNC_SERVICE" --no-pager -n 40 >&2 || true
+    exit 1
+fi
 
 if ! systemctl start "$SERVICE"; then
     echo "SEARCH_WARMUP=DEGRADED reason=backfill-service-failed service=$SERVICE" >&2

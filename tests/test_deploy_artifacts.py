@@ -17,7 +17,8 @@ class DeployArtifactTests(unittest.TestCase):
     def test_service_and_acceptance_use_production_port(self):
         self.assertIn('--port 8775',(ROOT/'deploy'/'search-engine.service').read_text()); self.assertIn('127.0.0.1:8775',(ROOT/'deploy'/'acceptance.sh').read_text())
     def test_post_deploy_warmup_is_bounded_and_non_destructive(self):
-        t=(ROOT/'deploy'/'post-deploy-warmup.sh').read_text(); self.assertIn('search-engine-backfill.service',t); self.assertIn('items_before=',t); self.assertIn('grown_providers=',t); self.assertNotIn('rm -rf /opt/search_engine',t)
+        t=(ROOT/'deploy'/'post-deploy-warmup.sh').read_text(); self.assertIn('search-engine-sync.service',t); self.assertIn('search-engine-backfill.service',t); self.assertIn('items_before=',t); self.assertIn('grown_providers=',t); self.assertNotIn('rm -rf /opt/search_engine',t)
+        self.assertLess(t.index('systemctl start "$SYNC_SERVICE"'), t.index('systemctl start "$SERVICE"'))
     def test_warmup_failure_does_not_trigger_release_rollback(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text(); a=t.index('post-deploy-warmup.sh'); b=t.rindex('SEARCH_DEPLOY=PASS'); tail=t[a:b]; self.assertNotIn('rollback "warmup',tail); self.assertIn('SEARCH_DEPLOY_WARMUP=DEGRADED',tail)
     def test_nginx_csp_is_rollback_managed(self):
