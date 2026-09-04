@@ -150,3 +150,10 @@ No provider was auto-enabled in this pass.
 - Independent production XHamster live-refresh acceptance PASS: 5/5 items with thumbnail+preview+duration, no provider error.
 - Do not chase the old 520 finding: current repeated target probes are HTTP 200.
 - Next: audit Tube8 as a separate login/source-UX case, then broaden provider discovery. XGroovy remains Cloudflare 403 and no bypass should be added.
+
+## Provider discovery continuation 2026-09-04
+- XGroovy is now production-configured and searchable. Direct generic urllib/Mozilla checks still see Cloudflare 403, but the Search Engine crawler identity can fetch its sitemap and production search returns indexed XGroovy results. No Cloudflare bypass was added.
+- Broader discovery checked PornHat, PornTrex, PornHits, Porn00 and TXXX. Only TXXX met the current generic-sitemap technical bar.
+- Generic sitemap crawler hardened: a 404 from a child shard advertised by a sitemap index is skipped; root sitemap and non-404 HTTP failures remain fatal. This handles rotating indexes without hiding real provider outages.
+- TXXX technical probe after hardening: 20/20 thumbnail, 20/20 duration, 20/20 tags; no quality metadata. Commit `337069d0bc4e` promotes TXXX to production catalog and source policy; 107 tests PASS and helper check PASS.
+- TXXX deploy is pending only because the maintenance lock was legitimately busy on two attempts. Both attempts aborted before active changes; do not kill healthy maintenance work. Retry after lock becomes free.
