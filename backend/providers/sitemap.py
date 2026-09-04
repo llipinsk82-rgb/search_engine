@@ -307,6 +307,11 @@ def parse_sitemap_video_metadata(
     page_url = _first_xml_text(node, "loc")
     title = _first_xml_text(node, "title")
     thumbnail = _first_xml_text(node, "thumbnail_loc")
+    if provider == "porndig" and thumbnail:
+        thumbnail = thumbnail.replace(
+            "https://videoassets.porndig.com/",
+            "https://image-cdn.porndig.com/",
+        ).replace("/320x180/", "/400x225/")
     if not page_url or not title or not thumbnail:
         return None
     if urlparse(page_url).scheme not in {"http", "https"}:

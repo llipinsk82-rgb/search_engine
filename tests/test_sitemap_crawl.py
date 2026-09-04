@@ -129,5 +129,14 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
             text = provider._fetch_text("https://example.com/videos.xml.gz")
         self.assertIn("https://example.com/v/1", text)
 
+    def test_porndig_sitemap_thumbnail_uses_live_cdn_shape(self):
+        import xml.etree.ElementTree as ET
+        from backend.providers.sitemap import parse_sitemap_video_metadata
+
+        node = ET.fromstring('<url xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"><loc>https://www.porndig.com/videos/1/x.html</loc><video:video><video:title>X</video:title><video:thumbnail_loc>https://videoassets.porndig.com/thumbs/2014/08/1/320x180/2.jpg</video:thumbnail_loc><video:duration>90</video:duration></video:video></url>')
+        item = parse_sitemap_video_metadata(node, provider="porndig")
+        self.assertIsNotNone(item)
+        self.assertEqual(str(item.thumbnail), "https://image-cdn.porndig.com/thumbs/2014/08/1/400x225/2.jpg")
+
 if __name__ == "__main__":
     unittest.main()
