@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "name": "txxx",
+    "sitemap_url": "https://txxx.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 15,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap_vids_[0-9]+\\\\.xml$",
+    "sitemap_child_order": "reverse",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 70,
+    "backfill_max_records": 50000
+  }
+]

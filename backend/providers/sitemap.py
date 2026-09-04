@@ -9,6 +9,7 @@ import time
 import urllib.robotparser
 from html.parser import HTMLParser
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
@@ -463,7 +464,15 @@ class SitemapProvider(SearchProvider):
             timeout = None
             if deadline is not None:
                 timeout = max(1.0, min(self.timeout_seconds, deadline - time.monotonic()))
-            xml = self._fetch_text(current, timeout_seconds=timeout)
+            try:
+                xml = self._fetch_text(current, timeout_seconds=timeout)
+            except HTTPError as exc:
+                # Some sitemap indexes briefly advertise child shards that are
+                # not published yet or were just rotated out. Skip only missing
+                # child shards; root and all other HTTP failures remain fatal.
+                if current != url and exc.code == 404:
+                    continue
+                raise
             root = ElementTree.fromstring(xml)
             root_name = _local_name(root.tag)
 

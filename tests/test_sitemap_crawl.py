@@ -82,6 +82,32 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(item.quality, "720p")
         self.assertEqual(item.tags, ["integration", "crawler"])
 
+    async def test_missing_child_sitemap_does_not_abort_index(self) -> None:
+        provider = SitemapProvider(
+            name="local",
+            sitemap_url=f"http://127.0.0.1:{self.server.server_port}/sitemap-index.xml",
+            max_pages=10,
+            delay_seconds=0,
+            timeout_seconds=2,
+            obey_robots=False,
+        )
+        original = provider._fetch_text
+
+        def fake_fetch(url: str, *, timeout_seconds=None):
+            if url.endswith("/sitemap-index.xml"):
+                origin = f"http://127.0.0.1:{self.server.server_port}"
+                return (
+                    '<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                    f'<sitemap><loc>{origin}/missing.xml</loc></sitemap>'
+                    f'<sitemap><loc>{origin}/sitemap.xml</loc></sitemap></sitemapindex>'
+                )
+            return original(url, timeout_seconds=timeout_seconds)
+
+        provider._fetch_text = fake_fetch
+        items = await provider.collect(limit=10)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].title, "Crawler Integration Sample")
+
 
 if __name__ == "__main__":
     unittest.main()

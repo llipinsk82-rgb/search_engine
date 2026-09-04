@@ -15,9 +15,17 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("sunporno", trusted_provider_names())
         self.assertTrue(is_searchable_provider("sunporno"))
 
-    def test_candidate_catalog_is_empty_after_promotion(self):
+    def test_candidate_catalog_contains_only_pending_sources(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
-        self.assertEqual(rows, [])
+        self.assertEqual({row["name"] for row in rows}, {"txxx"})
+
+    def test_txxx_is_candidate_only(self):
+        candidates = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
+        production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
+        row = next(item for item in candidates if item["name"] == "txxx")
+        self.assertEqual(row["sitemap_url"], "https://txxx.com/sitemap.xml")
+        self.assertEqual(row["sitemap_child_order"], "reverse")
+        self.assertNotIn("txxx", {item["name"] for item in production})
 
 if __name__ == "__main__":
     unittest.main()
