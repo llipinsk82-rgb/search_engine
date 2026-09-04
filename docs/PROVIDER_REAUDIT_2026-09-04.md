@@ -40,10 +40,10 @@ Policy used: ordinary ads/interstitials and one or two popups are not automatic 
 The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwright/Selenium/Pyppeteer module. Therefore this pass does not claim a real browser popup/redirect behavior audit. Technical readiness and HTTP behavior were verified without bypassing site protections.
 
 ## Discovery continuation — 2026-09-04
-- XGroovy rechecked: home and sitemap endpoints still return Cloudflare 403; robots.txt is reachable. No bypass will be implemented.
+- XGroovy rechecked again: home, robots and `/sitemap/` now return HTTP 200 without bypass. Video sitemap shards are generic-ready; production promotion prepared separately.
 - PornHat: reachable, but advertised `/sitemap.xml` currently returns an empty body; not a generic sitemap candidate.
 - PornTrex: DNS resolution failed from the server; not promoted.
 - PornHits: redirects to Pornhub, so it is not an independent source.
 - Porn00: reachable but no sitemap at `/sitemap.xml`; not promoted in this pass.
 - TXXX: reachable, robots allows normal crawling, sitemap index exposes video shards. The index currently advertises several not-yet-published 404 child shards. Generic crawler hardened to skip only missing child sitemap 404s while preserving fatal behavior for root/other HTTP failures.
-- TXXX post-hardening probe: 20/20 unique video records with thumbnail, duration and tags; quality metadata absent. Added as candidate-only configuration, not searchable or production-configured yet.
+- TXXX candidate discovered with 2072 video sitemap shards. Candidate filter corrected to match `/sitemap_vids_<n>.xml`; post-fix probe must pass before promotion.

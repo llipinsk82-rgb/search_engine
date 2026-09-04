@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 import unittest
 from pathlib import Path
 from backend.source_policy import is_searchable_provider, trusted_provider_names
@@ -25,6 +26,7 @@ class ProviderCandidateTests(unittest.TestCase):
         row = next(item for item in candidates if item["name"] == "txxx")
         self.assertEqual(row["sitemap_url"], "https://txxx.com/sitemap.xml")
         self.assertEqual(row["sitemap_child_order"], "reverse")
+        self.assertRegex("https://txxx.com/sitemap_vids_2071.xml", re.compile(row["sitemap_include_pattern"]))
         self.assertNotIn("txxx", {item["name"] for item in production})
 
 if __name__ == "__main__":
