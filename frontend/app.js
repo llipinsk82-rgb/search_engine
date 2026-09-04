@@ -146,7 +146,9 @@ function resultCard(item) {
   title.href = item.url;
 
   if (item.thumbnail) {
-    const resolvedThumb = item.thumbnail;
+    const resolvedThumb = item.provider === "thumbzilla"
+      ? `/thumb-proxy?provider=thumbzilla&url=${encodeURIComponent(item.thumbnail)}`
+      : item.thumbnail;
     preview.src = resolvedThumb;
     preview.hidden = false;
     placeholder.hidden = true;

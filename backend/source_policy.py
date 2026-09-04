@@ -36,6 +36,7 @@ TRUSTED_PROVIDER_POLICIES: dict[str, ProviderPolicy] = {
     "spankbang": ProviderPolicy("spankbang", "SpankBang", frozenset({"spankbang.com", "www.spankbang.com"})),
     "beeg": ProviderPolicy("beeg", "Beeg", frozenset({"beeg.com", "www.beeg.com"}), default_age_check="not_required"),
     "tnaflix": ProviderPolicy("tnaflix", "TNAFlix", frozenset({"tnaflix.com", "www.tnaflix.com"})),
+    "sunporno": ProviderPolicy("sunporno", "SunPorno", frozenset({"sunporno.com", "www.sunporno.com"})),
 }
 
 
@@ -46,7 +47,7 @@ def trusted_provider_names() -> set[str]:
 # Recovery baseline matches production d054dd7. These are search-state flags only.
 # Provider suitability will be re-audited after recovery under the owner's
 # clarified "aggressive redirect/tab storm only" policy.
-_SEARCH_DISABLED_PROVIDERS = {"tube8", "thumbzilla", "xhamster", "spankbang"}
+_SEARCH_DISABLED_PROVIDERS = {"tube8", "thumbzilla", "xhamster", "spankbang", "sunporno"}
 
 
 def is_searchable_provider(name: str) -> bool:

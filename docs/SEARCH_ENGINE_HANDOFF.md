@@ -101,3 +101,15 @@ Fresh technical re-audit is in `docs/PROVIDER_REAUDIT_2026-09-04.md`.
 - XGroovy: Cloudflare 403 from server; do not bypass.
 - SunPorno: generic sitemap probe is GENERIC_READY; no custom provider code required; browser behavior check pending.
 No provider was auto-enabled in this pass.
+
+## Update 2026-09-04 — provider media hardening
+- Baseline recovery is closed; GitHub push works with dedicated Search Engine deploy key.
+- Re-audit commit 1fe0868f5ec4 is on origin/feature/provider-registry-probe.
+- Thumbzilla parser was updated for current article/video-box markup and live probe returns thumbnails, previews and durations.
+- Thumbzilla hotlink thumbnails require Referer; sandbox now has a strict /thumb-proxy endpoint limited to HTTPS hosts under *.ypncdn.com with Thumbzilla Referer, image-only responses and 2 MiB cap. Frontend uses it only for provider=thumbzilla.
+- Real live proxy acceptance passed (image/avif returned from fresh Thumbzilla result).
+- SunPorno generic sitemap probe is GENERIC_READY (thumbnail/duration/tags complete). It is registered as trusted candidate but remains search-disabled; candidate config lives in deploy/search-engine-provider-candidates.example.json and is not part of the production provider catalog.
+- XGroovy remains Cloudflare 403 from server-side client; do not bypass.
+- SpankBang remains technically ready but not auto-enabled until browser-behavior acceptance under the clarified aggressive-spam-only policy.
+- XHamster live metadata works; server-side target may receive Cloudflare 520, so keep disabled pending browser acceptance.
+- Current suite after proxy/candidate work: 99 passed, 2 FastAPI deprecation warnings.

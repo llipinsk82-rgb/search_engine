@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import sqlite3
+from urllib.parse import urlparse
+from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 
 from backend.index import (
     count_items,
@@ -32,6 +35,38 @@ from backend.source_policy import (
 )
 
 logger = logging.getLogger(__name__)
+
+_THUMBNAIL_PROXY_RULES: dict[str, tuple[str, str]] = {
+    "thumbzilla": (".ypncdn.com", "https://www.thumbzilla.com/"),
+}
+_THUMBNAIL_PROXY_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
+    rule = _THUMBNAIL_PROXY_RULES.get(provider)
+    if rule is None:
+        raise ValueError("thumbnail proxy is not enabled for provider")
+    allowed_suffix, referer = rule
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not host.endswith(allowed_suffix):
+        raise ValueError("thumbnail host is not allowed")
+    request = UrlRequest(
+        url,
+        headers={
+            "User-Agent": "SearchEngineLive/0.6",
+            "Referer": referer,
+            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        },
+    )
+    with urlopen(request, timeout=8.0) as response:
+        content_type = response.headers.get_content_type()
+        if not content_type.startswith("image/"):
+            raise ValueError("upstream did not return an image")
+        body = response.read(_THUMBNAIL_PROXY_MAX_BYTES + 1)
+        if len(body) > _THUMBNAIL_PROXY_MAX_BYTES:
+            raise ValueError("thumbnail exceeds proxy size limit")
+        return body, content_type
 
 app = FastAPI(
     title="Search Engine API",
@@ -173,6 +208,25 @@ async def _search_response(
         has_more=has_more,
         providers=used,
         items=items,
+    )
+
+
+@app.get("/thumb-proxy", include_in_schema=False)
+async def thumbnail_proxy(provider: str, url: str) -> Response:
+    try:
+        body, content_type = await asyncio.to_thread(_thumbnail_proxy_fetch, provider, url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.warning("thumbnail proxy upstream failure for %s", provider, exc_info=True)
+        raise HTTPException(status_code=502, detail="thumbnail upstream unavailable") from exc
+    return Response(
+        content=body,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=21600",
+            "X-Robots-Tag": "noindex, nofollow",
+        },
     )
 
 

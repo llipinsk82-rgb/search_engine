@@ -1,0 +1,19 @@
+[
+  {
+    "name": "sunporno",
+    "sitemap_url": "https://www.sunporno.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.5,
+    "timeout_seconds": 15,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 60,
+    "backfill_max_records": 50000,
+    "candidate_only": true,
+    "note": "Re-audit 2026-09-04: generic sitemap probe READY; keep disabled until browser-behavior acceptance."
+  }
+]
