@@ -10,7 +10,7 @@ WorkingDirectory=/opt/search_engine
 Environment=PYTHONUNBUFFERED=1
 Environment=SEARCH_DB_PATH=/var/lib/search_engine/search.db
 EnvironmentFile=-/etc/search_engine.env
-ExecStart=/opt/search_engine/.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8775 --workers 2 --no-access-log
+ExecStart=/opt/search_engine/.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8775 --workers 1 --no-access-log
 Restart=on-failure
 RestartSec=3
 StateDirectory=search_engine

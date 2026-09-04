@@ -100,12 +100,20 @@ def initialize(path: Path = DB_PATH) -> None:
                     if name not in current:
                         raise
 
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_items_age_check ON items(age_check_status)"
-            )
+            # Schema indexes are also migrations: do not make every uvicorn worker
+            # contend on CREATE INDEX against a large production database.
+            index_key = "migration:indexes_v1"
+            indexes_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", index_key),
+            ).fetchone()
+            if indexes_done is None:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_items_age_check ON items(age_check_status)")
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", index_key),
+                )
 
             # Older indexed Beeg rows used /-0/<id>, while the accepted public
             # route is /-0<id>. Run the data migration once instead of scanning
