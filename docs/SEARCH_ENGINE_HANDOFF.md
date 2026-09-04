@@ -125,3 +125,17 @@ No provider was auto-enabled in this pass.
 - Thumbzilla strict thumbnail proxy live check PASS (200 image/avif).
 - Public endpoint from the bridge host returns 401 at the external auth layer; this is not an app health failure because helper/local acceptance passed.
 - Still disabled/pending: XHamster (Cloudflare target instability/browser check), SunPorno (candidate config ready; browser behavior check), Tube8 (login/source UX), XGroovy (Cloudflare 403; no bypass).
+
+## Production update 2026-09-04 — SunPorno promoted + immediate seed
+- SunPorno was promoted from candidate-only to the production sitemap provider catalog.
+- Generic provider path only; no custom parser/live adapter was added.
+- Filtered production config probe: 20/20 unique video URLs, thumbnails, durations and tags.
+- Release commits: `2a9d369bec4b` (provider promotion), `cc277967d148` (deploy catalog guard), `c4b755ffb1ee` (sync-before-backfill warmup).
+- Final full suite: 103 passed, 2 FastAPI deprecation warnings.
+- Helper check/deploy PASS. Production backup: `/opt/search_engine-backups/20260904T101703Z-c4b755ffb1ee`.
+- Warmup now starts existing `search-engine-sync.service` before backfill so newly configured providers do not wait up to the regular 30-minute timer.
+- Warmup result: items 293509 -> 293759, grown provider `sunporno`.
+- Production SunPorno count after deployment: 250.
+- Production search acceptance: total=250; first 5/5 results have thumbnail + duration + tags.
+- Current production build `c4b755ffb1ee`; service, sync timer and backfill timer active.
+- Remaining provider work: XHamster browser/target stability, Tube8 login/source UX, XGroovy Cloudflare 403 (no bypass), then continue provider discovery/expansion.
