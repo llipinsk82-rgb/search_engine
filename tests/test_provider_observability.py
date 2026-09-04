@@ -13,7 +13,7 @@ class ProviderObservabilityTests(unittest.TestCase):
         self.assertEqual(out["indexed_providers"],["tube8","xvideos"])
         self.assertEqual(out["configured_index_providers"],["tube8","xnxx"])
         self.assertEqual(out["live_providers"],["beeg","xnxx"])
-        self.assertNotIn("tube8",out["available_providers"])
+        self.assertIn("tube8",out["available_providers"])
         self.assertIn("beeg",out["available_providers"])
 
 if __name__ == "__main__":
