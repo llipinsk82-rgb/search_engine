@@ -47,7 +47,7 @@ def trusted_provider_names() -> set[str]:
 # Recovery baseline matches production d054dd7. These are search-state flags only.
 # Provider suitability will be re-audited after recovery under the owner's
 # clarified "aggressive redirect/tab storm only" policy.
-_SEARCH_DISABLED_PROVIDERS = {"tube8", "thumbzilla", "xhamster", "spankbang", "sunporno"}
+_SEARCH_DISABLED_PROVIDERS = {"tube8", "xhamster", "sunporno"}
 
 
 def is_searchable_provider(name: str) -> bool:

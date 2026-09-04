@@ -16,9 +16,9 @@ class SourcePolicyTests(unittest.TestCase):
         self.assertEqual(trusted_provider_names(), expected)
 
     def test_d054_disabled_set_is_not_searchable(self):
-        for name in ("tube8","thumbzilla","xhamster","spankbang","sunporno"):
+        for name in ("tube8","xhamster","sunporno"):
             self.assertFalse(is_searchable_provider(name))
-        for name in ("beeg","xnxx","youjizz","pornone","hqporner","eporner","tnaflix","xvideos","pornhub"):
+        for name in ("beeg","xnxx","youjizz","pornone","hqporner","eporner","tnaflix","xvideos","pornhub","spankbang","thumbzilla"):
             self.assertTrue(is_searchable_provider(name))
 
     def test_searchable_names_exclude_disabled(self):

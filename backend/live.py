@@ -1218,6 +1218,8 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     HQPornerLiveAdapter(),
     EpornerLiveAdapter(),
     TNAFlixLiveAdapter(),
+    SpankBangLiveAdapter(),
+    ThumbzillaLiveAdapter(),
 ]
 
 
