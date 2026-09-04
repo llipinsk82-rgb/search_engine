@@ -113,3 +113,15 @@ No provider was auto-enabled in this pass.
 - SpankBang remains technically ready but not auto-enabled until browser-behavior acceptance under the clarified aggressive-spam-only policy.
 - XHamster live metadata works; server-side target may receive Cloudflare 520, so keep disabled pending browser acceptance.
 - Current suite after proxy/candidate work: 99 passed, 2 FastAPI deprecation warnings.
+
+## Production update 2026-09-04 — SpankBang + Thumbzilla enabled
+- Commit `7badcd2659b6` enables SpankBang and Thumbzilla as searchable live providers after the technical re-audit.
+- Full suite before release: 101 passed, 2 FastAPI deprecation warnings.
+- GitHub push PASS and helper check PASS.
+- Production deploy PASS with backup `/opt/search_engine-backups/20260904T085019Z-7badcd2659b6`.
+- Production acceptance reports build `7badcd2659b6`, service/sync/backfill timers active, indexed_items 293505.
+- Local production API `/api/providers` exposes both providers.
+- Live refresh acceptance: SpankBang 3/3 with thumbnail+preview+duration+HD; Thumbzilla 3/3 with thumbnail+preview+duration.
+- Thumbzilla strict thumbnail proxy live check PASS (200 image/avif).
+- Public endpoint from the bridge host returns 401 at the external auth layer; this is not an app health failure because helper/local acceptance passed.
+- Still disabled/pending: XHamster (Cloudflare target instability/browser check), SunPorno (candidate config ready; browser behavior check), Tube8 (login/source UX), XGroovy (Cloudflare 403; no bypass).
