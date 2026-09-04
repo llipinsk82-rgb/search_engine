@@ -1,0 +1,12 @@
+[Unit]
+Description=Gradually backfill Search Engine provider catalogs
+
+[Timer]
+OnBootSec=10min
+OnUnitInactiveSec=5min
+RandomizedDelaySec=1min
+Persistent=true
+Unit=search-engine-backfill.service
+
+[Install]
+WantedBy=timers.target

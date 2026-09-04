@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from collections import defaultdict
 
-from backend.index import count_items, indexed_providers, search_items
+from backend.index import count_search_items, indexed_providers, search_items
 from backend.models import SearchItem, SourceVariant
-from backend.providers import PROVIDERS
-from backend.providers.base import SearchProvider
 
 _space_re = re.compile(r"\s+")
 _punct_re = re.compile(r"[^\w\s]", re.UNICODE)
@@ -55,87 +52,45 @@ def _slice_page(
     return items[offset:end], len(items) > end
 
 
-async def _live_search(
-    query: str,
-    *,
-    provider: str | None,
-    quality: str | None,
-    min_duration: int | None,
-    max_duration: int | None,
-    offset: int,
-    limit: int,
-) -> tuple[list[SearchItem], list[str], bool]:
-    selected: list[SearchProvider] = [
-        item for item in PROVIDERS if provider is None or item.name == provider
-    ]
-
-    target = offset + limit + 1
-    provider_limit = max(target * 2, limit)
-
-    batches = await asyncio.gather(
-        *(item.search(query, limit=provider_limit) for item in selected),
-        return_exceptions=True,
-    )
-
-    flat: list[SearchItem] = []
-    used_providers: list[str] = []
-    for source, batch in zip(selected, batches):
-        if isinstance(batch, Exception):
-            continue
-        used_providers.append(source.name)
-        for item in batch:
-            if quality and (item.quality or "").lower() != quality.lower():
-                continue
-            if min_duration is not None and (item.duration_seconds or 0) < min_duration:
-                continue
-            if max_duration is not None and item.duration_seconds is not None and item.duration_seconds > max_duration:
-                continue
-            flat.append(item)
-
-    collapsed = _collapse(flat, target)
-    page, has_more = _slice_page(collapsed, offset=offset, limit=limit)
-    return page, used_providers, has_more
-
-
 async def search_all(
     query: str,
     *,
     provider: str | None = None,
     quality: str | None = None,
+    age_check: str | None = None,
     min_duration: int | None = None,
     max_duration: int | None = None,
     offset: int = 0,
     limit: int = 40,
-) -> tuple[list[SearchItem], list[str], bool]:
-    indexed_names = indexed_providers() if count_items() > 0 else []
-    can_use_index = bool(indexed_names) and (
-        provider is None or provider in indexed_names
-    )
+    allowed_providers: set[str] | None = None,
+    exclude_ids: set[str] | None = None,
+) -> tuple[list[SearchItem], list[str], bool, int]:
+    indexed = set(indexed_providers())
+    allowed = indexed if allowed_providers is None else indexed & allowed_providers
+    if provider is not None:
+        allowed &= {provider}
 
-    if can_use_index:
-        target = offset + limit + 1
-        indexed = search_items(
-            query,
-            provider=provider,
-            quality=quality,
-            min_duration=min_duration,
-            max_duration=max_duration,
-            limit=max(target * 2, limit),
-        )
-        collapsed = _collapse(indexed, target)
-        page, has_more = _slice_page(collapsed, offset=offset, limit=limit)
-
-        providers = indexed_names
-        if provider:
-            providers = [name for name in providers if name == provider]
-        return page, providers, has_more
-
-    return await _live_search(
+    total = count_search_items(
         query,
         provider=provider,
         quality=quality,
+        age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
+        allowed_providers=allowed,
+    )
+    items = search_items(
+        query,
+        provider=provider,
+        quality=quality,
+        age_check=age_check,
+        min_duration=min_duration,
+        max_duration=max_duration,
+        allowed_providers=allowed,
+        exclude_ids=exclude_ids,
         offset=offset,
         limit=limit,
     )
+    used = sorted(allowed)
+    has_more = total > offset + len(items)
+    return items, used, has_more, total

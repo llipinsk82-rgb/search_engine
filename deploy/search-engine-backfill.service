@@ -1,0 +1,29 @@
+[Unit]
+Description=Bounded Search Engine catalog backfill
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/search_engine
+Environment=PYTHONUNBUFFERED=1
+Environment=SEARCH_DB_PATH=/var/lib/search_engine/search.db
+Environment=SEARCH_BACKFILL_BATCH_SIZE=500
+Environment=SEARCH_BACKFILL_BATCHES_PER_PROVIDER=1
+Environment=SEARCH_BACKFILL_MAX_SECONDS=180
+EnvironmentFile=-/etc/search_engine.env
+StateDirectory=search_engine
+StateDirectoryMode=0750
+RuntimeDirectory=search_engine
+RuntimeDirectoryMode=0750
+ExecStart=/bin/sh -c '/opt/search_engine/deploy/run-maintenance.sh /run/search_engine/maintenance.lock 15 /opt/search_engine/.venv/bin/python -m backend.cli backfill-all --batch-size "$SEARCH_BACKFILL_BATCH_SIZE" --batches-per-provider "$SEARCH_BACKFILL_BATCHES_PER_PROVIDER" --max-seconds "$SEARCH_BACKFILL_MAX_SECONDS"'
+TimeoutStartSec=6min
+Nice=10
+CPUWeight=20
+IOWeight=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true

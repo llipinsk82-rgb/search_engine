@@ -27,7 +27,7 @@ button, input, select { font: inherit; }
   border: 0; border-radius: 12px; padding: 0 22px; background: #f4f4f5; color: #111;
   font-weight: 800; cursor: pointer;
 }
-.filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .statusbar { display: flex; justify-content: space-between; align-items: center; min-height: 48px; color: #a1a1aa; }
 .ghost { border: 0; background: none; color: #a1a1aa; cursor: pointer; }
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
@@ -36,14 +36,27 @@ button, input, select { font: inherit; }
   display: block; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; position: relative;
   text-decoration: none; background: #1b1b1f; border: 1px solid #25252a;
 }
-.preview { width: 100%; height: 100%; object-fit: cover; display: block; }
-.preview[hidden] { display: none; }
+.preview, .motion-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.preview[hidden], .motion-preview[hidden] { display: none; }
 .placeholder { height: 100%; display: grid; place-items: center; color: #52525b; font-weight: 800; }
 .placeholder[hidden] { display: none; }
-.duration {
-  position: absolute; right: 7px; bottom: 7px; padding: 3px 6px; border-radius: 5px;
-  background: rgba(0,0,0,.78); color: #fff; font-size: 12px;
+.duration, .quality {
+  position: absolute; bottom: 7px; padding: 3px 6px; border-radius: 5px;
+  background: rgba(0,0,0,.82); color: #fff; font-size: 12px; font-weight: 800;
+  line-height: 1.1; backdrop-filter: blur(3px); z-index: 2;
 }
+.duration { right: 7px; }
+.quality { left: 7px; }
+.duration:empty, .quality:empty { display: none; }
+.preview-toggle {
+  position: absolute; top: 9px; right: 9px; width: 36px; height: 36px;
+  border: 1px solid rgba(255,255,255,.36); border-radius: 999px;
+  background: rgba(0,0,0,.72); color: #fff; cursor: pointer;
+  display: grid; place-items: center; padding: 0; line-height: 1; font-size: 17px;
+  z-index: 3; backdrop-filter: blur(3px);
+}
+.preview-toggle[hidden] { display: none; }
+.preview-toggle:active { transform: scale(.96); }
 .meta { padding: 9px 2px 0; }
 .title {
   color: #f4f4f5; text-decoration: none; font-weight: 700; display: -webkit-box;
@@ -60,12 +73,29 @@ button, input, select { font: inherit; }
 .more[hidden] { display: none; }
 @media (max-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 680px) {
-  .shell { padding-top: 14px; }
-  .hero { padding-top: 24px; }
-  .filters { grid-template-columns: 1fr; }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+  .topbar { height: 50px; padding: 0 10px; }
+  .shell { padding: 8px 6px 40px; }
+  .hero { padding: 10px 0 10px; }
+  .hero h1 { display: none; }
+  .searchbox { gap: 6px; }
+  .searchbox input { min-height: 44px; padding: 11px 12px; border-radius: 9px; }
+  .searchbox button { border-radius: 9px; padding: 0 15px; }
+  .filters { display: flex; gap: 6px; overflow-x: auto; margin-top: 7px; scrollbar-width: none; padding-bottom: 2px; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters select { flex: 0 0 auto; width: auto; min-width: 128px; padding: 9px 10px; border-radius: 9px; font-size: 12px; }
+  .statusbar { min-height: 38px; font-size: 12px; padding: 0 2px; }
+  .grid { grid-template-columns: 1fr; gap: 16px; }
+  .card { width: 100%; }
+  .thumb { border-radius: 8px; width: 100%; aspect-ratio: 16 / 9; }
+  .meta { padding: 7px 3px 0; }
+  .title { font-size: 15px; line-height: 1.28; font-weight: 700; -webkit-line-clamp: 2; }
+  .subline { gap: 6px; margin-top: 5px; font-size: 11px; }
+  .duration, .quality { bottom: 5px; padding: 3px 5px; font-size: 10px; }
+  .duration { right: 5px; }
+  .quality { left: 5px; }
+  .preview-toggle { top: 7px; right: 7px; width: 40px; height: 40px; font-size: 19px; }
 }
 @media (max-width: 420px) {
-  .searchbox { grid-template-columns: 1fr; }
-  .searchbox button { padding: 13px 20px; }
+  .searchbox { grid-template-columns: 1fr auto; }
+  .searchbox button { padding: 0 13px; }
 }

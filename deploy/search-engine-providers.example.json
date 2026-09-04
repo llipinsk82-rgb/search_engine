@@ -1,0 +1,47 @@
+[
+  {
+    "name": "xvideos",
+    "sitemap_url": "https://www.xvideos.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 15,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap_new_videos(?:_[0-9]+)?\\.xml$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 4,
+    "backfill_batch_size": 100,
+    "backfill_priority": 20,
+    "backfill_max_records": 50000
+  },
+  {
+    "name": "xnxx",
+    "sitemap_url": "https://www.xnxx.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 15,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap_uploads_new(?:_[0-9]+)?\\.xml$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 4,
+    "backfill_batch_size": 100,
+    "backfill_priority": 30,
+    "backfill_max_records": 50000
+  },
+  {
+    "name": "tube8",
+    "sitemap_url": "https://www.tube8.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 15,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap-video-[0-9]+\\.xml$",
+    "sitemap_child_order": "reverse",
+    "fetch_concurrency": 1,
+    "backfill_batch_size": 500,
+    "backfill_priority": 10,
+    "backfill_max_records": 250000
+  }
+]

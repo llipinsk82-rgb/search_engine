@@ -1,11 +1,37 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query, Request
+import logging
+import sqlite3
 
-from backend.index import count_items, indexed_providers, initialize, provider_counts
-from backend.models import SearchRequest, SearchResponse
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
+
+from backend.index import (
+    count_items,
+    get_item,
+    indexed_providers,
+    initialize,
+    provider_counts,
+    update_item_thumbnail,
+)
+from backend.live import LIVE_ADAPTERS, cache_live_provider_results, refresh_live_search
+from backend.models import (
+    LiveProviderStatus,
+    LiveRefreshRequest,
+    LiveRefreshResponse,
+    SearchRequest,
+    SearchResponse,
+)
 from backend.providers import PROVIDERS
 from backend.search import search_all
+from backend.settings import get_build_id
+from backend.source_policy import (
+    is_searchable_provider,
+    provider_policy_rows,
+    trusted_provider_names,
+)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Search Engine API",
@@ -30,28 +56,72 @@ async def startup() -> None:
     initialize()
 
 
+def _provider_observability() -> dict[str, object]:
+    indexed = sorted(set(indexed_providers()))
+    configured_index = sorted({provider.name for provider in PROVIDERS})
+    live = [adapter.name for adapter in LIVE_ADAPTERS]
+    trusted = sorted(trusted_provider_names())
+    searchable = {
+        name for name in trusted_provider_names() if is_searchable_provider(name)
+    }
+    available = sorted((set(indexed) | set(configured_index) | set(live)) & searchable)
+    return {
+        "indexed_provider_count": len(indexed),
+        "indexed_providers": indexed,
+        "configured_index_provider_count": len(configured_index),
+        "configured_index_providers": configured_index,
+        "live_provider_count": len(live),
+        "live_providers": live,
+        "trusted_provider_count": len(trusted),
+        "trusted_providers": trusted,
+        "available_provider_count": len(available),
+        "available_providers": available,
+    }
+
+
 @app.get("/api/health")
 async def health() -> dict[str, object]:
+    try:
+        indexed_items = count_items()
+        provider_observability = _provider_observability()
+    except sqlite3.OperationalError as exc:
+        logger.warning("index database unavailable during health check: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="index database temporarily unavailable",
+        ) from exc
     return {
         "status": "ok",
         "version": app.version,
-        "providers": len(PROVIDERS),
-        "indexed_items": count_items(),
+        "build": get_build_id(),
+        "indexed_items": indexed_items,
+        **provider_observability,
     }
 
 
 @app.get("/api/providers")
-async def providers() -> dict[str, list[str]]:
-    names = sorted({provider.name for provider in PROVIDERS} | set(indexed_providers()))
-    return {"providers": names}
+async def providers() -> dict[str, object]:
+    available = (
+        {provider.name for provider in PROVIDERS}
+        | {adapter.name for adapter in LIVE_ADAPTERS}
+        | set(indexed_providers())
+    )
+    searchable = {
+        name for name in trusted_provider_names() if is_searchable_provider(name)
+    }
+    names = sorted(available & searchable)
+    return {
+        "providers": names,
+        "policies": provider_policy_rows(set(names)),
+    }
 
 
 @app.get("/api/stats")
 async def stats() -> dict[str, object]:
     return {
         "indexed_items": count_items(),
-        "indexed_providers": indexed_providers(),
         "provider_counts": provider_counts(),
+        **_provider_observability(),
     }
 
 
@@ -60,30 +130,44 @@ async def _search_response(
     q: str,
     provider: str | None,
     quality: str | None,
+    age_check: str | None,
     min_duration: int | None,
     max_duration: int | None,
     offset: int,
     limit: int,
+    exclude_ids: set[str] | None = None,
 ) -> SearchResponse:
-    if min_duration is not None and max_duration is not None and min_duration > max_duration:
-        raise HTTPException(status_code=400, detail="min_duration cannot exceed max_duration")
+    if (
+        min_duration is not None
+        and max_duration is not None
+        and min_duration > max_duration
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="min_duration cannot exceed max_duration",
+        )
 
-    known = {item.name for item in PROVIDERS} | set(indexed_providers())
+    known = {
+        name for name in trusted_provider_names() if is_searchable_provider(name)
+    }
     if provider is not None and provider not in known:
         raise HTTPException(status_code=400, detail="unknown provider")
 
-    items, used, has_more = await search_all(
+    items, used, has_more, total = await search_all(
         q,
         provider=provider,
         quality=quality,
+        age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
         offset=offset,
         limit=limit,
+        allowed_providers=known,
+        exclude_ids=exclude_ids,
     )
     return SearchResponse(
         query=q,
-        total=len(items),
+        total=total,
         offset=offset,
         limit=limit,
         has_more=has_more,
@@ -92,11 +176,116 @@ async def _search_response(
     )
 
 
+@app.get("/thumb/{item_id}", include_in_schema=False)
+async def thumbnail_redirect(
+    item_id: str,
+    refresh: bool = False,
+) -> RedirectResponse:
+    item = get_item(item_id)
+    if item is None or item.thumbnail is None:
+        raise HTTPException(status_code=404, detail="thumbnail not found")
+
+    provider = next(
+        (candidate for candidate in PROVIDERS if candidate.name == item.provider),
+        None,
+    )
+    resolved = str(item.thumbnail)
+    if provider is not None:
+        try:
+            candidate = await provider.resolve_thumbnail(item, force=refresh)
+        except Exception:
+            logger.warning(
+                "thumbnail resolution failed for %s/%s; using indexed thumbnail",
+                item.provider,
+                item.id,
+                exc_info=True,
+            )
+            candidate = None
+        if candidate:
+            resolved = candidate
+            if resolved != str(item.thumbnail):
+                try:
+                    update_item_thumbnail(item.id, resolved)
+                except Exception:
+                    logger.warning(
+                        "thumbnail cache update failed for %s/%s",
+                        item.provider,
+                        item.id,
+                        exc_info=True,
+                    )
+
+    return RedirectResponse(
+        url=resolved,
+        status_code=302,
+        headers={
+            "Cache-Control": "private, max-age=21600",
+            "X-Robots-Tag": "noindex, nofollow",
+        },
+    )
+
+
+@app.post("/api/live-refresh", response_model=LiveRefreshResponse)
+async def live_refresh(
+    payload: LiveRefreshRequest,
+    background_tasks: BackgroundTasks,
+) -> LiveRefreshResponse:
+    result = await refresh_live_search(
+        payload.q,
+        page=payload.page,
+        limit_per_provider=payload.limit_per_provider,
+        deadline_seconds=4.0,
+        provider=payload.provider,
+        quality=payload.quality,
+        age_check=payload.age_check,
+        min_duration=payload.min_duration,
+        max_duration=payload.max_duration,
+    )
+
+    # Cache only after the response path has been prepared. The cache function
+    # itself has a non-blocking lock and skips instead of queueing.
+    background_tasks.add_task(cache_live_provider_results, result.providers)
+
+    fresh_items = []
+    max_rows = max((len(item.items) for item in result.providers), default=0)
+    seen_live_ids: set[str] = set()
+    for position in range(max_rows):
+        for provider_result in result.providers:
+            if position >= len(provider_result.items):
+                continue
+            item = provider_result.items[position]
+            if item.id in seen_live_ids:
+                continue
+            seen_live_ids.add(item.id)
+            fresh_items.append(item)
+
+    return LiveRefreshResponse(
+        query=payload.q,
+        cached_items=0,
+        indexed_items=count_items(),
+        providers=[
+            LiveProviderStatus(
+                provider=item.provider,
+                fetched=len(item.items),
+                total=item.total,
+                page=item.page,
+                elapsed_ms=item.elapsed_ms,
+                error=item.error,
+            )
+            for item in result.providers
+        ],
+        items=fresh_items,
+    )
+
+
 @app.get("/api/search", response_model=SearchResponse)
 async def search_get(
     q: str = Query(default="", max_length=200),
     provider: str | None = None,
     quality: str | None = None,
+    age_check: str | None = Query(
+        default=None,
+        pattern="^(required|not_required|unknown)$",
+    ),
     min_duration: int | None = Query(default=None, ge=0),
     max_duration: int | None = Query(default=None, ge=0),
     offset: int = Query(default=0, ge=0, le=5000),
@@ -106,6 +295,7 @@ async def search_get(
         q=q,
         provider=provider,
         quality=quality,
+        age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
         offset=offset,
@@ -119,8 +309,10 @@ async def search_post(payload: SearchRequest) -> SearchResponse:
         q=payload.q,
         provider=payload.provider,
         quality=payload.quality,
+        age_check=payload.age_check,
         min_duration=payload.min_duration,
         max_duration=payload.max_duration,
         offset=payload.offset,
         limit=payload.limit,
+        exclude_ids=set(payload.exclude_ids),
     )
