@@ -92,3 +92,12 @@ User works in CTO mode:
 GO means proceed autonomously.
 STOP or HOLD means stop risky work.
 Do not repeatedly ask for confirmation for normal safe development.
+
+## Re-audit update 2026-09-04
+Fresh technical re-audit is in `docs/PROVIDER_REAUDIT_2026-09-04.md`.
+- SpankBang: technically ready; browser behavior check pending.
+- XHamster: technically ready; target/browser check pending (server-side target probe saw Cloudflare 520, media works).
+- Thumbzilla: parser fixed for current article markup; thumbnail requires Thumbzilla Referer, so proxy/referrer handling is needed before enable.
+- XGroovy: Cloudflare 403 from server; do not bypass.
+- SunPorno: generic sitemap probe is GENERIC_READY; no custom provider code required; browser behavior check pending.
+No provider was auto-enabled in this pass.

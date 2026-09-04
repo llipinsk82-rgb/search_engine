@@ -164,7 +164,7 @@ _HQ_DURATION_RE = re.compile(
 )
 
 _THUMBZILLA_CARD_RE = re.compile(
-    r'<a\b(?P<attrs>[^>]*aria-label=["\'][^"\']+["\'][^>]*)>(?P<body>.*?)</a>',
+    r'<article\b(?P<attrs>[^>]*class=["\'][^"\']*\bvideo-box\b[^"\']*["\'][^>]*)>(?P<body>.*?)</article>',
     re.IGNORECASE | re.DOTALL,
 )
 _THUMBZILLA_URL_RE = re.compile(r'\bhref=["\'](?P<url>/watch/[0-9]+/)["\']', re.IGNORECASE)
