@@ -27,6 +27,15 @@ class DeployArtifactTests(unittest.TestCase):
         self.assertIn('SEARCH_WARMUP_SYNC_WAIT_SECONDS',t)
         self.assertIn('systemctl start --no-block "$SERVICE"',t)
         self.assertLess(t.index('systemctl start --no-block "$SYNC_SERVICE"'), t.index('systemctl start --no-block "$SERVICE"'))
+
+    def test_deploy_releases_lock_before_warmup(self):
+        t=(ROOT/'deploy'/'deploy-production.sh').read_text()
+        acceptance=t.index('SEARCH_EXPECT_BUILD=')
+        unlock=t.index('flock -u 9')
+        warmup=t.index('post-deploy-warmup.sh', unlock)
+        self.assertLess(acceptance, unlock)
+        self.assertLess(unlock, warmup)
+
     def test_warmup_failure_does_not_trigger_release_rollback(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text(); a=t.index('post-deploy-warmup.sh'); b=t.rindex('SEARCH_DEPLOY=PASS'); tail=t[a:b]; self.assertNotIn('rollback "warmup',tail); self.assertIn('SEARCH_DEPLOY_WARMUP=DEGRADED',tail)
     def test_nginx_csp_is_rollback_managed(self):

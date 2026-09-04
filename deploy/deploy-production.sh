@@ -223,6 +223,11 @@ if ! SEARCH_EXPECT_BUILD="$BUILD_ID" SEARCH_ACCEPT_REQUIRE_BACKFILL_TIMER=1 "$TA
     exit 23
 fi
 
+# Active release/configuration changes are complete and accepted. Release the
+# shared maintenance lock before warmup so sync/backfill can acquire it through
+# their normal run-maintenance guard instead of self-blocking behind deploy.
+flock -u 9
+
 if ! "$TARGET/deploy/post-deploy-warmup.sh"; then
     echo "SEARCH_DEPLOY_WARMUP=DEGRADED reason=warmup-check-failed" >&2
 fi
