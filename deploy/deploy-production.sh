@@ -207,10 +207,16 @@ rollback() {
 if ! systemctl enable --now search-engine-sync.timer search-engine-backfill.timer; then rollback timer-enable; exit 21; fi
 if ! systemctl restart search-engine.service; then rollback api-restart; exit 22; fi
 
-for _ in $(seq 1 20); do
-    if curl -fsS --max-time 2 http://127.0.0.1:8775/api/health >/dev/null 2>&1; then break; fi
+ready=0
+for _ in $(seq 1 40); do
+    if curl -fsS --max-time 2 http://127.0.0.1:8775/api/health >/dev/null 2>&1; then ready=1; break; fi
     sleep 0.5
 done
+if [ "$ready" != 1 ]; then
+    echo "SEARCH_DEPLOY_STARTUP_TIMEOUT build=$BUILD_ID" >&2
+    rollback startup-timeout
+    exit 23
+fi
 
 if ! SEARCH_EXPECT_BUILD="$BUILD_ID" SEARCH_ACCEPT_REQUIRE_BACKFILL_TIMER=1 "$TARGET/deploy/acceptance.sh"; then
     rollback acceptance
