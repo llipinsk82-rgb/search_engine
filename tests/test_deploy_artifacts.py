@@ -18,6 +18,8 @@ class DeployArtifactTests(unittest.TestCase):
     def test_sync_service_uses_bounded_refresh_batch(self):
         t=(ROOT/'deploy'/'search-engine-sync.service').read_text()
         self.assertIn('Environment=SEARCH_SYNC_LIMIT=100',t)
+        env=(ROOT/'deploy'/'search-engine.env.example').read_text()
+        self.assertIn('SEARCH_SYNC_LIMIT=100',env)
 
     def test_service_and_acceptance_use_production_port(self):
         self.assertIn('--port 8775',(ROOT/'deploy'/'search-engine.service').read_text()); self.assertIn('127.0.0.1:8775',(ROOT/'deploy'/'acceptance.sh').read_text())
