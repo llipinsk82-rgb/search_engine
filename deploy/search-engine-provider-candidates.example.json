@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "name": "porndoe",
+    "sitemap_url": "https://porndoe.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 15,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap_videos\\.xml$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 80,
+    "backfill_max_records": 50000
+  },
+  {
+    "name": "porndig",
+    "sitemap_url": "https://www.porndig.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemaps/videos_chunk_[0-9]+\\.xml\\.gz$",
+    "sitemap_child_order": "reverse",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 85,
+    "backfill_max_records": 50000
+  }
+]

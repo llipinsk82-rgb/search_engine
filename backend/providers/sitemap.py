@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import gzip
 import json
 import re
 import time
@@ -412,7 +413,10 @@ class SitemapProvider(SearchProvider):
         timeout = self.timeout_seconds if timeout_seconds is None else max(1.0, float(timeout_seconds))
         with urlopen(request, timeout=timeout) as response:
             charset = response.headers.get_content_charset() or "utf-8"
-            return response.read().decode(charset, errors="replace")
+            body = response.read()
+            if urlparse(response.geturl()).path.lower().endswith(".gz") or body[:2] == b"\x1f\x8b":
+                body = gzip.decompress(body)
+            return body.decode(charset, errors="replace")
 
     def _robots_for(self, page_url: str) -> urllib.robotparser.RobotFileParser | None:
         parsed = urlparse(page_url)

@@ -16,9 +16,10 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("sunporno", trusted_provider_names())
         self.assertTrue(is_searchable_provider("sunporno"))
 
-    def test_candidate_catalog_is_empty_after_txxx_promotion(self):
+    def test_candidate_catalog_tracks_discovery_without_production_enablement(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
-        self.assertEqual(rows, [])
+        self.assertEqual({row["name"] for row in rows}, {"porndoe", "porndig"})
+        self.assertTrue(all(row["sync_mode"] == "incremental" for row in rows))
 
     def test_txxx_is_promoted_to_production_catalog(self):
         production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())

@@ -109,5 +109,25 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(items[0].title, "Crawler Integration Sample")
 
 
+    def test_fetch_text_decompresses_gzip_sitemap(self):
+        import gzip
+        from unittest.mock import patch
+
+        provider = SitemapProvider(name="gziptest", sitemap_url="https://example.com/sitemap.xml")
+        payload = gzip.compress(b"<urlset><url><loc>https://example.com/v/1</loc></url></urlset>")
+
+        class Headers:
+            def get_content_charset(self): return None
+        class Response:
+            headers = Headers()
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def geturl(self): return "https://example.com/videos.xml.gz"
+            def read(self): return payload
+
+        with patch("backend.providers.sitemap.urlopen", return_value=Response()):
+            text = provider._fetch_text("https://example.com/videos.xml.gz")
+        self.assertIn("https://example.com/v/1", text)
+
 if __name__ == "__main__":
     unittest.main()

@@ -47,3 +47,11 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - Porn00: reachable but no sitemap at `/sitemap.xml`; not promoted in this pass.
 - TXXX: reachable, robots allows normal crawling, sitemap index exposes video shards. The index currently advertises several not-yet-published 404 child shards. Generic crawler hardened to skip only missing child sitemap 404s while preserving fatal behavior for root/other HTTP failures.
 - TXXX candidate discovered with 2072 video sitemap shards. Candidate filter corrected to match `/sitemap_vids_<n>.xml`; post-fix probe must pass before promotion.
+
+
+## Discovery continuation — evening pass
+- RedTube and YouPorn: reachable, but `/sitemap.xml` returns ordinary HTML rather than a sitemap; no generic promotion.
+- DrTuber and FapVid: reachable, but no sitemap at the conventional endpoint; custom/live adapter work would be required.
+- 4Tube: server-side home/sitemap HTTP 403; no bypass attempted.
+- PornDoe: robots explicitly advertises sitemap; video sitemap contains rich video metadata. Initial 20-item generic probe: 20/20 unique + thumbnail, but only 7/20 duration/tags in the first mixed sample, so status CUSTOM_REQUIRED pending a better bounded strategy. Added candidate-only, not searchable.
+- PornDig: robots permits normal video pages and sitemap index exposes three gzip video chunks. Generic crawler gained transparent gzip sitemap decoding. Fresh probe after support: GENERIC_READY, 20/20 unique + thumbnail + duration. Added candidate-only pending release/promotion decision.
