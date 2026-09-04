@@ -30,21 +30,6 @@
     "backfill_max_records": 50000
   },
   {
-    "name": "tube8",
-    "sitemap_url": "https://www.tube8.com/sitemap.xml",
-    "max_pages": 100000,
-    "delay_seconds": 0.25,
-    "timeout_seconds": 15,
-    "obey_robots": true,
-    "sync_mode": "incremental",
-    "sitemap_include_pattern": "/sitemap-video-[0-9]+\\.xml$",
-    "sitemap_child_order": "reverse",
-    "fetch_concurrency": 1,
-    "backfill_batch_size": 500,
-    "backfill_priority": 10,
-    "backfill_max_records": 250000
-  },
-  {
     "name": "sunporno",
     "sitemap_url": "https://www.sunporno.com/sitemap.xml",
     "max_pages": 100000,
