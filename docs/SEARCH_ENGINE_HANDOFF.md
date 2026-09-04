@@ -172,3 +172,10 @@ No provider was auto-enabled in this pass.
 - Tube8 homepage/search are directly reachable HTTP 200. Presence of login UI is not itself a blocker under the clarified source policy.
 - Commit `71ac764ae70c` enables Tube8 as searchable + live. Full suite 112 PASS, helper CHECK PASS.
 - First deploy attempt was safely blocked by an active maintenance lock before any production changes. Retry after the healthy maintenance job exits; do not kill it.
+
+## Thumbzilla thumbnail client-cache fix 2026-09-04
+- User reported: Thumbzilla preview video works but static thumbnail is missing and only the Preview placeholder is visible.
+- Backend proxy itself is healthy on fresh Thumbzilla URLs (production `/thumb-proxy` returns HTTP 200 image/avif with strict referer/host rules), so the issue was consistent with clients still running the old frontend shell that predates the proxy URL rewrite.
+- Frontend shell bumped from v18 to v19 (`app.js`, `styles.css`, manifest and `search-shell-v19`) so existing service-worker clients are forced onto the proxy-aware card renderer.
+- Commit `91fd174240ba` deployed PASS; backup `/opt/search_engine-backups/20260904T153110Z-91fd174240ba`. Production build matches, service/sync/backfill timers active. Fresh production proxy acceptance PASS: HTTP 200 image/avif and preview available.
+- External nginx layer returns 401 from the bridge host, so visual authenticated-browser rendering cannot be independently inspected from the sandbox. User-side reload after service-worker update is the final visual confirmation.
