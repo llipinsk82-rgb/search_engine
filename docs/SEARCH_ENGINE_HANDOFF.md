@@ -139,3 +139,14 @@ No provider was auto-enabled in this pass.
 - Production search acceptance: total=250; first 5/5 results have thumbnail + duration + tags.
 - Current production build `c4b755ffb1ee`; service, sync timer and backfill timer active.
 - Remaining provider work: XHamster browser/target stability, Tube8 login/source UX, XGroovy Cloudflare 403 (no bypass), then continue provider discovery/expansion.
+
+## Production update 2026-09-04 — XHamster enabled + deploy startup hardening
+- Fresh XHamster re-audit sampled 3 queries x 3 pages: every sample returned 7/7 thumbnail+preview+duration; sampled targets returned HTTP 200 and media HTTP 206.
+- Commit `88cf05e5b7da` enabled XHamster live search; full suite 103 PASS.
+- First release attempt correctly rolled back when API readiness missed the old 10s window. Production stayed healthy.
+- Deploy readiness gate was hardened in `27e136d94e3a`: explicit 20s readiness timeout + rollback instead of falling through to acceptance.
+- Startup investigation found repeated DB startup migration/index work; `dcd78a4577de` records the Beeg URL migration once, and `2d6a836dd480` records schema indexes once and serializes API startup to one uvicorn worker to avoid SQLite startup contention. Full suite now 104 PASS.
+- A later deploy attempt was safely blocked by the maintenance lock before changes; retry encountered a transient `.venv` copy race while the prior production tree was moving. Despite that helper output, helper status now reports production build `2d6a836dd480`, service/sync/backfill active.
+- Independent production XHamster live-refresh acceptance PASS: 5/5 items with thumbnail+preview+duration, no provider error.
+- Do not chase the old 520 finding: current repeated target probes are HTTP 200.
+- Next: audit Tube8 as a separate login/source-UX case, then broaden provider discovery. XGroovy remains Cloudflare 403 and no bypass should be added.
