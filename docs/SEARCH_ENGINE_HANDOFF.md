@@ -179,3 +179,13 @@ No provider was auto-enabled in this pass.
 - Frontend shell bumped from v18 to v19 (`app.js`, `styles.css`, manifest and `search-shell-v19`) so existing service-worker clients are forced onto the proxy-aware card renderer.
 - Commit `91fd174240ba` deployed PASS; backup `/opt/search_engine-backups/20260904T153110Z-91fd174240ba`. Production build matches, service/sync/backfill timers active. Fresh production proxy acceptance PASS: HTTP 200 image/avif and preview available.
 - External nginx layer returns 401 from the bridge host, so visual authenticated-browser rendering cannot be independently inspected from the sandbox. User-side reload after service-worker update is the final visual confirmation.
+
+## Production update 2026-09-04 — PornDig promoted
+- PornDig passed an expanded 100-item generic sitemap probe: 100/100 unique URLs, thumbnails and durations.
+- Its advertised `videoassets.porndig.com/.../320x180/...` sitemap thumbnails are stale (HTTP 404), while the corresponding current `image-cdn.porndig.com/.../400x225/...` paths return HTTP 206 image/jpeg. The generic sitemap parser now normalizes that PornDig thumbnail shape; 10/10 live HTTP thumbnail checks passed after normalization.
+- Generic sitemap fetch gained transparent gzip sitemap support in the preceding discovery commit; PornDig uses three `.xml.gz` video chunks.
+- Release commits: `9c97aa1` provider promotion + `b5a75cf` deploy catalog admission.
+- Full suite: 115 PASS, 2 existing FastAPI deprecation warnings. GitHub push + helper CHECK PASS.
+- Production deploy PASS build `b5a75cf01dc2`, backup `/opt/search_engine-backups/20260904T210428Z-b5a75cf01dc2`.
+- Independent health acceptance: 337587 indexed items, 17 indexed/trusted/available providers, 6 configured index providers, 12 live providers. Production PornDig search sample returned results with duration and live thumbnail HTTP 206 image/jpeg.
+- PornDoe remains candidate-only: its sitemap mixes rich video entries with stale/incomplete watch URLs that resolve to generic home-page metadata; do not promote until those records are filtered or otherwise handled cleanly.
