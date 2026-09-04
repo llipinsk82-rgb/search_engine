@@ -8,6 +8,7 @@ class DeployArtifactTests(unittest.TestCase):
     def test_production_deploy_has_backup_and_rollback_guards(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text()
         for x in ('SEARCH_DEPLOY_ROLLBACK=START','SEARCH_DEPLOY=PASS','maintenance.lock','nginx -t','SEARCH_EXPECT_BUILD','requirements.txt changed','NGINX_SITE'): self.assertIn(x,t)
+        self.assertIn("required = {'xvideos', 'xnxx', 'tube8', 'sunporno'}", t)
     def test_maintenance_lock_precedes_active_configuration_writes(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text(); lock=t.index('flock -w 30 9')
         for x in ('install -m 0644 "$SOURCE/deploy/search-engine-providers.example.json"','install -m 0600 "$SOURCE/deploy/search-engine.env.example"','install -m 0644 "$SOURCE/deploy/$unit"','SEARCH_PROVIDER_CONFIG_FILE=/etc/search_engine-providers.json'): self.assertLess(lock,t.index(x))
