@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v18_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v19_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=18" in html
-    assert "/app.js?v=18" in html
-    assert 'register("/sw.js?v=18", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=19" in html
+    assert "/app.js?v=19" in html
+    assert 'register("/sw.js?v=19", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v18";' in sw
+    assert 'const CACHE = "search-shell-v19";' in sw
     assert 'cache: "no-store"' in sw
 
 
