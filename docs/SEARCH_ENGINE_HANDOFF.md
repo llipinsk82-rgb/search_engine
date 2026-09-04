@@ -165,3 +165,10 @@ No provider was auto-enabled in this pass.
 - Legacy production `SEARCH_SYNC_LIMIT=500` caused a healthy sync cycle to run for roughly 9 minutes and block the maintenance lock. Commit `ed702e121291` migrates only that exact legacy shipped default to 100 while preserving custom operator values. During deploy the sync command was observed using `--limit 100`.
 - Release `ed702e121291`: 113 tests PASS, helper CHECK PASS, deploy PASS, backup `/opt/search_engine-backups/20260904T141413Z-ed702e121291`. Independent acceptance: health build matches, Thumbzilla proxy returns 200 image/avif, 5749 bytes, preview remains available. Service, sync timer and backfill timer active.
 - Do not kill healthy maintenance jobs; backfill after release was observed running normally with its existing 180-second cap.
+
+## Tube8 re-audit 2026-09-04
+- Fresh adapter audit: 3 queries x pages 1-2, every sample returned 10/10 thumbnail + preview + duration; no adapter errors. Quality metadata remains absent.
+- Fresh target/media sample: all 3 target pages HTTP 200; signed CDN media is mixed because individual signed URLs can expire (sample included working 200/206 and expired/denied 410/403). This does not invalidate live metadata because fresh adapter results consistently expose current media URLs.
+- Tube8 homepage/search are directly reachable HTTP 200. Presence of login UI is not itself a blocker under the clarified source policy.
+- Commit `71ac764ae70c` enables Tube8 as searchable + live. Full suite 112 PASS, helper CHECK PASS.
+- First deploy attempt was safely blocked by an active maintenance lock before any production changes. Retry after the healthy maintenance job exits; do not kill it.
