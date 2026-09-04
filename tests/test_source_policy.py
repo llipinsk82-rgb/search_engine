@@ -12,13 +12,13 @@ from backend.source_policy import (
 
 class SourcePolicyTests(unittest.TestCase):
     def test_expected_trusted_catalog(self):
-        expected={"xvideos","xnxx","xhamster","thumbzilla","hqporner","pornone","youjizz","tube8","eporner","pornhub","spankbang","beeg","tnaflix","sunporno","xgroovy"}
+        expected={"xvideos","xnxx","xhamster","thumbzilla","hqporner","pornone","youjizz","tube8","eporner","pornhub","spankbang","beeg","tnaflix","sunporno","xgroovy","txxx"}
         self.assertEqual(trusted_provider_names(), expected)
 
     def test_d054_disabled_set_is_not_searchable(self):
         for name in ("tube8",):
             self.assertFalse(is_searchable_provider(name))
-        for name in ("beeg","xnxx","youjizz","pornone","hqporner","eporner","tnaflix","xvideos","pornhub","spankbang","thumbzilla","sunporno","xhamster","xgroovy"):
+        for name in ("beeg","xnxx","youjizz","pornone","hqporner","eporner","tnaflix","xvideos","pornhub","spankbang","thumbzilla","sunporno","xhamster","xgroovy","txxx"):
             self.assertTrue(is_searchable_provider(name))
 
     def test_searchable_names_exclude_disabled(self):
@@ -26,6 +26,7 @@ class SourcePolicyTests(unittest.TestCase):
         self.assertNotIn("tube8",names)
         self.assertIn("sunporno",names)
         self.assertIn("xgroovy",names)
+        self.assertIn("txxx",names)
         self.assertIn("beeg",names)
 
     def test_default_age_statuses(self):

@@ -16,18 +16,18 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("sunporno", trusted_provider_names())
         self.assertTrue(is_searchable_provider("sunporno"))
 
-    def test_candidate_catalog_contains_only_pending_sources(self):
+    def test_candidate_catalog_is_empty_after_txxx_promotion(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
-        self.assertEqual({row["name"] for row in rows}, {"txxx"})
+        self.assertEqual(rows, [])
 
-    def test_txxx_is_candidate_only(self):
-        candidates = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
+    def test_txxx_is_promoted_to_production_catalog(self):
         production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
-        row = next(item for item in candidates if item["name"] == "txxx")
+        row = next(item for item in production if item["name"] == "txxx")
         self.assertEqual(row["sitemap_url"], "https://txxx.com/sitemap.xml")
         self.assertEqual(row["sitemap_child_order"], "reverse")
-        self.assertRegex("https://txxx.com/sitemap_vids_2071.xml", re.compile(row["sitemap_include_pattern"]))
-        self.assertNotIn("txxx", {item["name"] for item in production})
+        self.assertIn("txxx", trusted_provider_names())
+        self.assertTrue(is_searchable_provider("txxx"))
+
 
 if __name__ == "__main__":
     unittest.main()
