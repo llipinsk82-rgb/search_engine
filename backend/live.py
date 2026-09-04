@@ -1222,6 +1222,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     ThumbzillaLiveAdapter(),
     XHamsterLiveAdapter(),
     PornhubLiveAdapter(),
+    Tube8LiveAdapter(),
 ]
 
 
