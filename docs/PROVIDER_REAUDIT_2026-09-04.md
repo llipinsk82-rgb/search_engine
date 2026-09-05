@@ -73,3 +73,12 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - Expanded 100-item gate PASS: XCafe 100/100 URL/thumb/duration/tags.
 - JustPorn/FPO catalog promotion corrected to also be trusted/searchable in source policy.
 - SexVid/PornID/MegaTube remain CUSTOM_REQUIRED because duration metadata is absent.
+
+
+## Loop batch 2026-09-05 C
+- Expanded 100-item gate PASS: MyPornHere 100/100 URL/thumb/duration.
+- Expanded 100-item gate PASS: PussySpace 100/100 URL/thumb/duration.
+- Expanded 100-item gate PASS: TubeV 100/100 URL/thumb/duration.
+- Expanded gate PASS: XXXBule 98/98 URL/thumb/duration, 73/98 tags.
+- Promoted all four to configured + trusted/searchable catalog.
+- BigFuck, BustyBus, CumLouder, HDSexVideo, HDTubeMovies, HQPorn, MILFPorn, PornSexVideo, ZZZTube remain CUSTOM_REQUIRED from generic probe.
