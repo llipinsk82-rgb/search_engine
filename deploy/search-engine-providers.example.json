@@ -88,5 +88,35 @@
     "backfill_batch_size": 250,
     "backfill_priority": 85,
     "backfill_max_records": 50000
+  },
+  {
+    "name": "justporn",
+    "sitemap_url": "https://www.justporn.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 90,
+    "backfill_max_records": 50000
+  },
+  {
+    "name": "fpo",
+    "sitemap_url": "https://www.fpo.xxx/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 95,
+    "backfill_max_records": 50000
   }
 ]

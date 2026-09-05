@@ -55,3 +55,11 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - 4Tube: server-side home/sitemap HTTP 403; no bypass attempted.
 - PornDoe: robots explicitly advertises sitemap; video sitemap contains rich video metadata. Initial 20-item generic probe: 20/20 unique + thumbnail, but only 7/20 duration/tags in the first mixed sample, so status CUSTOM_REQUIRED pending a better bounded strategy. Added candidate-only, not searchable.
 - PornDig: robots permits normal video pages and sitemap index exposes three gzip video chunks. Generic crawler gained transparent gzip sitemap decoding. Fresh probe after support: GENERIC_READY, 20/20 unique + thumbnail + duration. Added candidate-only pending release/promotion decision.
+
+
+## User candidate list continuation 2026-09-05
+- Thumbzilla mobile thumbnail path confirmed PASS by user after API proxy/Nginx fix.
+- Expanded 100-item gate: JustPorn GENERIC_READY 100/100 URL, thumbnail, duration, tags.
+- Expanded 100-item gate: FPO GENERIC_READY 100/100 URL, thumbnail, duration; tags absent but not required for generic readiness.
+- SexVid, PornID, MegaTube: 100/100 URL + thumbnail + tags, but 0/100 duration => CUSTOM_REQUIRED; not promoted.
+- JustPorn and FPO promoted to configured/searchable catalog pending release acceptance.
