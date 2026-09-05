@@ -227,3 +227,5 @@ No provider was auto-enabled in this pass.
 - Root cause risk reduced by moving the browser-facing thumbnail path under the already-established `/api/` reverse proxy contract.
 - Added API aliases `/api/thumb-proxy` and `/api/thumb/<id>` while preserving legacy routes. Frontend v22 uses only `/api/...` thumbnail routes.
 - This removes dependence on custom Nginx thumbnail locations and uses the same routing/auth path as all working API calls.
+
+- Follow-up: v22 browser uses `/api/thumb-proxy` and `/api/thumb/`; production Nginx now has more-specific auth-free proxy locations for those exact API thumbnail paths too, preventing Basic Auth from ever blocking `<img>` subrequests.

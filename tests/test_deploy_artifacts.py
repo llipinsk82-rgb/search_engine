@@ -57,6 +57,13 @@ class DeployArtifactTests(unittest.TestCase):
         self.assertIn("grep -Fq 'location /thumb-proxy'", deploy)
         self.assertIn('cannot safely patch nginx thumbnail routes', deploy)
         self.assertIn('cannot safely patch nginx auth for', deploy)
-        self.assertIn("('/thumb-proxy', '/thumb/')", deploy)
+        self.assertIn("('/thumb-proxy', '/thumb/', '/api/thumb-proxy', '/api/thumb/')", deploy)
 
 if __name__=='__main__': unittest.main()
+
+
+def test_api_thumbnail_nginx_routes_disable_auth():
+    nginx=(ROOT/'deploy'/'nginx-search-engine.conf').read_text()
+    assert 'location /api/thumb-proxy' in nginx
+    assert 'location /api/thumb/' in nginx
+    assert nginx.count('auth_basic off;') >= 4

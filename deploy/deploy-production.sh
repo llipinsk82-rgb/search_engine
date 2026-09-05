@@ -214,7 +214,7 @@ from pathlib import Path
 import re, sys
 p = Path(sys.argv[1])
 s = p.read_text()
-for location in ('/thumb-proxy', '/thumb/'):
+for location in ('/thumb-proxy', '/thumb/', '/api/thumb-proxy', '/api/thumb/'):
     pattern = re.compile(rf'(?ms)(^[ \t]*location[ \t]+{re.escape(location)}[ \t]*\{{)(.*?^\s*\}})')
     match = pattern.search(s)
     if match is None:
