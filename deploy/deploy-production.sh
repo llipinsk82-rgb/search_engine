@@ -66,7 +66,7 @@ import json, sys
 from pathlib import Path
 rows = json.loads(Path(sys.argv[1]).read_text())
 names = {row['name'] for row in rows}
-required = {'xvideos', 'xnxx', 'sunporno', 'xgroovy', 'txxx', 'porndig', 'justporn', 'fpo', 'bigassporn', 'brazzilmoms', 'sextubespot', 'xcafe', 'mypornhere', 'pussyspace', 'tubev', 'xxxbule', 'theyarehuge'}
+required = {'xvideos', 'xnxx', 'sunporno', 'xgroovy', 'txxx', 'porndig', 'justporn', 'fpo', 'bigassporn', 'brazzilmoms', 'sextubespot', 'xcafe', 'mypornhere', 'pussyspace', 'tubev', 'xxxbule', 'theyarehuge', 'sexvid', 'pornid', 'zbporn'}
 if names != required:
     raise SystemExit(f'provider catalog mismatch: expected {sorted(required)}, got {sorted(names)}')
 for row in rows:

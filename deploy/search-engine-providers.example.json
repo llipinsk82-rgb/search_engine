@@ -253,5 +253,53 @@
     "backfill_batch_size": 250,
     "backfill_priority": 120,
     "backfill_max_records": 50000
+  },
+  {
+    "name": "sexvid",
+    "sitemap_url": "https://www.sexvid.xxx/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.05,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 4,
+    "backfill_batch_size": 100,
+    "backfill_priority": 130,
+    "backfill_max_records": 10000,
+    "enrich_missing_core_metadata": true
+  },
+  {
+    "name": "pornid",
+    "sitemap_url": "https://www.pornid.xxx/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.05,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 4,
+    "backfill_batch_size": 100,
+    "backfill_priority": 131,
+    "backfill_max_records": 10000,
+    "enrich_missing_core_metadata": true
+  },
+  {
+    "name": "zbporn",
+    "sitemap_url": "https://zbporn.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.05,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 4,
+    "backfill_batch_size": 100,
+    "backfill_priority": 132,
+    "backfill_max_records": 10000,
+    "enrich_missing_core_metadata": true
   }
 ]

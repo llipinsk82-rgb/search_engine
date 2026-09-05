@@ -32,7 +32,7 @@ class ProviderCandidateTests(unittest.TestCase):
     def test_new_generic_ready_batch_is_promoted(self):
         production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
         names = {item["name"] for item in production}
-        for name in {"justporn", "fpo", "bigassporn", "brazzilmoms", "sextubespot", "xcafe", "mypornhere", "pussyspace", "tubev", "xxxbule", "theyarehuge"}:
+        for name in {"justporn", "fpo", "bigassporn", "brazzilmoms", "sextubespot", "xcafe", "mypornhere", "pussyspace", "tubev", "xxxbule", "theyarehuge", "sexvid", "pornid", "zbporn"}:
             self.assertIn(name, names)
             self.assertIn(name, trusted_provider_names())
             self.assertTrue(is_searchable_provider(name))

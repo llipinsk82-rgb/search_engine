@@ -87,3 +87,12 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 ## Loop batch 2026-09-05 D
 - TheyAreHuge expanded gate: GENERIC_READY 100/100 URL, thumbnail, duration, tags.
 - Promoted to configured + trusted/searchable production catalog.
+
+
+## Loop batch 2026-09-05 E
+- Added optional page enrichment for sitemap records missing core metadata; generic parser now also understands visible Duration: Nmin Nsec.
+- SexVid expanded enriched gate PASS 100/100 URL/thumb/duration/tags.
+- PornID expanded enriched gate PASS 100/100 URL/thumb/duration/tags.
+- ZBPorn expanded enriched gate PASS 100/100 URL/thumb/duration/tags.
+- MegaTube improved to 29/100 duration but remains CUSTOM_REQUIRED; not promoted.
+- Promoted SexVid, PornID, ZBPorn with bounded 10k backfill and enrichment enabled.
