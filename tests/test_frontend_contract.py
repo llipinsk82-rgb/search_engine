@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v19_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v20_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=19" in html
-    assert "/app.js?v=19" in html
-    assert 'register("/sw.js?v=19", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=20" in html
+    assert "/app.js?v=20" in html
+    assert 'register("/sw.js?v=20", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v19";' in sw
+    assert 'const CACHE = "search-shell-v20";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -70,6 +70,14 @@ def test_provider_media_bypasses_service_worker() -> None:
     assert 'referrerpolicy="no-referrer"' in html
     assert 'motion.referrerPolicy = "no-referrer"' in app
 
+
+
+def test_stale_thumbzilla_and_tube8_thumbnails_self_heal() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'item.provider === "thumbzilla" || item.provider === "tube8"' in app
+    assert '`/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`' in app
+    assert 'preview.dataset.healAttempt' in app
+    assert 'window.setTimeout(retry, 700)' in app
 
 def test_search_submit_runs_once() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")

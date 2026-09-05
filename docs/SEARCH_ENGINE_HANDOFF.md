@@ -189,3 +189,11 @@ No provider was auto-enabled in this pass.
 - Production deploy PASS build `b5a75cf01dc2`, backup `/opt/search_engine-backups/20260904T210428Z-b5a75cf01dc2`.
 - Independent health acceptance: 337587 indexed items, 17 indexed/trusted/available providers, 6 configured index providers, 12 live providers. Production PornDig search sample returned results with duration and live thumbnail HTTP 206 image/jpeg.
 - PornDoe remains candidate-only: its sitemap mixes rich video entries with stale/incomplete watch URLs that resolve to generic home-page metadata; do not promote until those records are filtered or otherwise handled cleanly.
+
+
+## Thumbnail self-healing 2026-09-05
+- User screenshots confirmed stale/missing thumbnails on both Thumbzilla and Tube8 while manual video preview still worked.
+- Frontend v20 retries failed thumbnails through same-origin `/thumb/<item_id>?refresh=true`; a second retry after 700 ms covers the live-cache write race, then falls back to the placeholder.
+- Backend refresh now supports live-only Thumbzilla and Tube8 by resolving current page metadata on their allowlisted HTTPS origin.
+- Thumbzilla refreshed thumbnails are returned through the existing restricted same-origin proxy because its CDN requires Referer; Tube8 refreshed thumbnails redirect to the fresh CDN URL.
+- Successful refresh updates the indexed thumbnail cache. Preview remains manual and autoplay behavior is unchanged.

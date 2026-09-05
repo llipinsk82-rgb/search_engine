@@ -154,6 +154,18 @@ function resultCard(item) {
     placeholder.hidden = true;
 
     preview.addEventListener("error", () => {
+      const selfHealingProvider = item.provider === "thumbzilla" || item.provider === "tube8";
+      const attempt = Number(preview.dataset.healAttempt || "0");
+      if (selfHealingProvider && attempt < 2) {
+        preview.dataset.healAttempt = String(attempt + 1);
+        const retry = () => {
+          preview.src = `/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`;
+          if (item.preview_url) motion.poster = preview.src;
+        };
+        if (attempt === 0) retry();
+        else window.setTimeout(retry, 700);
+        return;
+      }
       preview.hidden = true;
       placeholder.hidden = false;
     });
@@ -554,7 +566,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=19", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=20", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

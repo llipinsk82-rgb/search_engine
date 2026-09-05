@@ -26,6 +26,7 @@ from backend.models import (
     SearchResponse,
 )
 from backend.providers import PROVIDERS
+from backend.providers.sitemap import SitemapProvider
 from backend.search import search_all
 from backend.settings import get_build_id
 from backend.source_policy import (
@@ -249,7 +250,7 @@ async def thumbnail_proxy(provider: str, url: str) -> Response:
 async def thumbnail_redirect(
     item_id: str,
     refresh: bool = False,
-) -> RedirectResponse:
+) -> Response:
     item = get_item(item_id)
     if item is None or item.thumbnail is None:
         raise HTTPException(status_code=404, detail="thumbnail not found")
@@ -258,6 +259,15 @@ async def thumbnail_redirect(
         (candidate for candidate in PROVIDERS if candidate.name == item.provider),
         None,
     )
+    if provider is None and item.provider in {"thumbzilla", "tube8"}:
+        parsed_item = urlparse(str(item.url))
+        if parsed_item.scheme == "https" and parsed_item.hostname:
+            provider = SitemapProvider(
+                name=item.provider,
+                sitemap_url=f"https://{parsed_item.hostname}/",
+                obey_robots=False,
+                delay_seconds=0,
+            )
     resolved = str(item.thumbnail)
     if provider is not None:
         try:
@@ -282,6 +292,27 @@ async def thumbnail_redirect(
                         item.id,
                         exc_info=True,
                     )
+
+    if item.provider == "thumbzilla":
+        try:
+            body, content_type = await asyncio.to_thread(
+                _thumbnail_proxy_fetch, item.provider, resolved
+            )
+            return Response(
+                content=body,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "private, max-age=21600",
+                    "X-Robots-Tag": "noindex, nofollow",
+                },
+            )
+        except Exception:
+            logger.warning(
+                "refreshed thumbnail proxy failed for %s/%s",
+                item.provider,
+                item.id,
+                exc_info=True,
+            )
 
     return RedirectResponse(
         url=resolved,

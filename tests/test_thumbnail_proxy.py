@@ -1,8 +1,9 @@
 from __future__ import annotations
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import HTTPException
-from backend.app import _thumbnail_proxy_fetch, thumbnail_proxy
+from backend.app import _thumbnail_proxy_fetch, thumbnail_proxy, thumbnail_redirect
+from backend.models import SearchItem
 
 class ThumbnailProxyTests(unittest.IsolatedAsyncioTestCase):
     async def test_unknown_provider_is_rejected(self):
@@ -54,6 +55,35 @@ class ThumbnailProxyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.media_type, "image/jpeg")
         self.assertEqual(response.body, b"jpeg")
+
+    async def test_thumbzilla_refresh_returns_same_origin_image(self):
+        item = SearchItem(
+            id="tz1", provider="thumbzilla", title="X",
+            url="https://www.thumbzilla.com/watch/1/",
+            thumbnail="https://pix-cdn77.ypncdn.com/old.jpg", tags=[]
+        )
+        fresh = "https://pix-cdn77.ypncdn.com/fresh.jpg"
+        with patch("backend.app.get_item", return_value=item), \
+             patch("backend.app.SitemapProvider.resolve_thumbnail", new=AsyncMock(return_value=fresh)), \
+             patch("backend.app.update_item_thumbnail", return_value=True), \
+             patch("backend.app._thumbnail_proxy_fetch", return_value=(b"img", "image/jpeg")):
+            response = await thumbnail_redirect("tz1", refresh=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.body, b"img")
+
+    async def test_tube8_refresh_redirects_to_fresh_thumbnail(self):
+        item = SearchItem(
+            id="t81", provider="tube8", title="X",
+            url="https://www.tube8.com/porn-video/1/",
+            thumbnail="https://ei-ph.t8cdn.com/old.jpg", tags=[]
+        )
+        fresh = "https://ei-ph.t8cdn.com/fresh.jpg"
+        with patch("backend.app.get_item", return_value=item), \
+             patch("backend.app.SitemapProvider.resolve_thumbnail", new=AsyncMock(return_value=fresh)), \
+             patch("backend.app.update_item_thumbnail", return_value=True):
+            response = await thumbnail_redirect("t81", refresh=True)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["location"], fresh)
 
 if __name__ == "__main__":
     unittest.main()

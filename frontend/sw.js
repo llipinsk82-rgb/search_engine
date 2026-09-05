@@ -1,5 +1,5 @@
-const CACHE = "search-shell-v19";
-const SHELL = ["/", "/index.html", "/styles.css?v=19", "/app.js?v=19"];
+const CACHE = "search-shell-v20";
+const SHELL = ["/", "/index.html", "/styles.css?v=20", "/app.js?v=20"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
