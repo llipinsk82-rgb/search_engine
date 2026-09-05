@@ -229,3 +229,4 @@ No provider was auto-enabled in this pass.
 - This removes dependence on custom Nginx thumbnail locations and uses the same routing/auth path as all working API calls.
 
 - Follow-up: v22 browser uses `/api/thumb-proxy` and `/api/thumb/`; production Nginx now has more-specific auth-free proxy locations for those exact API thumbnail paths too, preventing Basic Auth from ever blocking `<img>` subrequests.
+- Deploy migration now creates missing `/api/thumb-proxy` and `/api/thumb/` locations in existing production Nginx before applying auth exemptions, so upgrade from older live configs is safe.

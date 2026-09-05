@@ -205,6 +205,42 @@ p.write_text(s[:match.start()] + block + s[match.start():])
 PY
 fi
 
+# Add API thumbnail routes to existing production Nginx before auth migration.
+if [ -e "$NGINX_SITE" ] && ! grep -Fq 'location /api/thumb-proxy' "$NGINX_SITE"; then
+    python3 - "$NGINX_SITE" <<'PYAPI'
+from pathlib import Path
+import re, sys
+p = Path(sys.argv[1])
+s = p.read_text()
+match = re.search(r'(?m)^(?P<indent>[ \t]*)location[ \t]+/api/[ \t]*\{', s)
+if match is None:
+    raise SystemExit('cannot safely patch nginx API thumbnail routes: location /api/ block missing')
+indent = match.group('indent')
+block = f"""{indent}location /api/thumb-proxy {{
+{indent}    auth_basic off;
+{indent}    proxy_pass http://127.0.0.1:8775;
+{indent}    proxy_http_version 1.1;
+{indent}    proxy_set_header Host $host;
+{indent}    proxy_set_header X-Forwarded-Proto $scheme;
+{indent}    proxy_connect_timeout 5s;
+{indent}    proxy_read_timeout 15s;
+{indent}}}
+
+{indent}location /api/thumb/ {{
+{indent}    auth_basic off;
+{indent}    proxy_pass http://127.0.0.1:8775;
+{indent}    proxy_http_version 1.1;
+{indent}    proxy_set_header Host $host;
+{indent}    proxy_set_header X-Forwarded-Proto $scheme;
+{indent}    proxy_connect_timeout 5s;
+{indent}    proxy_read_timeout 15s;
+{indent}}}
+
+"""
+p.write_text(s[:match.start()] + block + s[match.start():])
+PYAPI
+fi
+
 # Thumbnail images are safe to fetch without inheriting the site's Basic Auth.
 # Backend still validates provider/host and blocks redirects, so this avoids 401
 # on browser image subrequests without opening an arbitrary proxy.
