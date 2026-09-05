@@ -175,32 +175,33 @@ fi
 if [ -e "$NGINX_SITE" ] && ! grep -Fq 'location /thumb-proxy' "$NGINX_SITE"; then
     python3 - "$NGINX_SITE" <<'PY'
 from pathlib import Path
-import sys
+import re, sys
 p = Path(sys.argv[1])
 s = p.read_text()
-anchor = "    location / { try_files $uri $uri/ /index.html; }"
-if anchor not in s:
-    raise SystemExit('cannot safely patch nginx thumbnail routes: location / anchor missing')
-block = """    location /thumb-proxy {
-        proxy_pass http://127.0.0.1:8775;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 15s;
-    }
+match = re.search(r"(?m)^(?P<indent>[ \t]*)location[ \t]+/[ \t]*\{", s)
+if match is None:
+    raise SystemExit('cannot safely patch nginx thumbnail routes: location / block missing')
+indent = match.group('indent')
+block = f"""{indent}location /thumb-proxy {{
+{indent}    proxy_pass http://127.0.0.1:8775;
+{indent}    proxy_http_version 1.1;
+{indent}    proxy_set_header Host $host;
+{indent}    proxy_set_header X-Forwarded-Proto $scheme;
+{indent}    proxy_connect_timeout 5s;
+{indent}    proxy_read_timeout 15s;
+{indent}}}
 
-    location /thumb/ {
-        proxy_pass http://127.0.0.1:8775;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 15s;
-    }
+{indent}location /thumb/ {{
+{indent}    proxy_pass http://127.0.0.1:8775;
+{indent}    proxy_http_version 1.1;
+{indent}    proxy_set_header Host $host;
+{indent}    proxy_set_header X-Forwarded-Proto $scheme;
+{indent}    proxy_connect_timeout 5s;
+{indent}    proxy_read_timeout 15s;
+{indent}}}
 
 """
-p.write_text(s.replace(anchor, block + anchor, 1))
+p.write_text(s[:match.start()] + block + s[match.start():])
 PY
 fi
 
