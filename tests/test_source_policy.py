@@ -12,7 +12,7 @@ from backend.source_policy import (
 
 class SourcePolicyTests(unittest.TestCase):
     def test_expected_trusted_catalog(self):
-        expected={"xvideos","xnxx","xhamster","thumbzilla","hqporner","pornone","youjizz","tube8","eporner","pornhub","spankbang","beeg","tnaflix","sunporno","xgroovy","txxx","porndig","justporn","fpo","bigassporn","brazzilmoms","sextubespot","xcafe","mypornhere","pussyspace","tubev","xxxbule"}
+        expected={"xvideos","xnxx","xhamster","thumbzilla","hqporner","pornone","youjizz","tube8","eporner","pornhub","spankbang","beeg","tnaflix","sunporno","xgroovy","txxx","porndig","justporn","fpo","bigassporn","brazzilmoms","sextubespot","xcafe","mypornhere","pussyspace","tubev","xxxbule","theyarehuge"}
         self.assertEqual(trusted_provider_names(), expected)
 
     def test_reaudited_tube8_is_searchable(self):

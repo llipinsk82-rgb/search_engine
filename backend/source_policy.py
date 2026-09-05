@@ -50,6 +50,7 @@ TRUSTED_PROVIDER_POLICIES: dict[str, ProviderPolicy] = {
     "pussyspace": ProviderPolicy("pussyspace", "PussySpace", frozenset({"pussyspace.com", "www.pussyspace.com"})),
     "tubev": ProviderPolicy("tubev", "TubeV", frozenset({"tubev.sex", "www.tubev.sex"})),
     "xxxbule": ProviderPolicy("xxxbule", "XXXBule", frozenset({"xxxbule.com", "www.xxxbule.com"})),
+    "theyarehuge": ProviderPolicy("theyarehuge", "TheyAreHuge", frozenset({"theyarehuge.com", "www.theyarehuge.com"})),
 }
 
 

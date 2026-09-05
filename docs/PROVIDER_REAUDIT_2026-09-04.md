@@ -82,3 +82,8 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - Expanded gate PASS: XXXBule 98/98 URL/thumb/duration, 73/98 tags.
 - Promoted all four to configured + trusted/searchable catalog.
 - BigFuck, BustyBus, CumLouder, HDSexVideo, HDTubeMovies, HQPorn, MILFPorn, PornSexVideo, ZZZTube remain CUSTOM_REQUIRED from generic probe.
+
+
+## Loop batch 2026-09-05 D
+- TheyAreHuge expanded gate: GENERIC_READY 100/100 URL, thumbnail, duration, tags.
+- Promoted to configured + trusted/searchable production catalog.
