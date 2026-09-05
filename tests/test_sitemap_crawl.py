@@ -138,5 +138,35 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(item)
         self.assertEqual(str(item.thumbnail), "https://image-cdn.porndig.com/thumbs/2014/08/1/400x225/2.jpg")
 
+    async def test_enriches_missing_sitemap_duration_from_page_metadata(self) -> None:
+        provider = SitemapProvider(
+            name="local",
+            sitemap_url=f"http://127.0.0.1:{self.server.server_port}/sitemap.xml",
+            max_pages=10, delay_seconds=0, timeout_seconds=2, obey_robots=True,
+            enrich_missing_core_metadata=True,
+        )
+        original = provider._fetch_text
+        def fake_fetch(url: str, *, timeout_seconds=None):
+            if url.endswith("/sitemap.xml"):
+                origin = f"http://127.0.0.1:{self.server.server_port}"
+                return ('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+                        'xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">'
+                        f'<url><loc>{origin}/watch/1</loc><video:video><video:title>From sitemap</video:title>'
+                        f'<video:thumbnail_loc>{origin}/thumb.jpg</video:thumbnail_loc></video:video></url></urlset>')
+            return original(url, timeout_seconds=timeout_seconds)
+        provider._fetch_text = fake_fetch
+        items = await provider.collect(limit=10)
+        self.assertEqual(items[0].title, "From sitemap")
+        self.assertEqual(items[0].duration_seconds, 125)
+
+    def test_visible_duration_fallback(self) -> None:
+        from backend.providers.sitemap import parse_video_metadata
+        item = parse_video_metadata(
+            '<html><head><meta property="og:title" content="X"><meta property="og:image" content="https://example.com/x.jpg"></head><body><span>Duration: <em>15min 37sec</em></span></body></html>',
+            provider="local", page_url="https://example.com/v/1"
+        )
+        self.assertIsNotNone(item)
+        self.assertEqual(item.duration_seconds, 937)
+
 if __name__ == "__main__":
     unittest.main()

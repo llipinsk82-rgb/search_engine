@@ -216,6 +216,22 @@ def _quality_from_metadata(
     return None
 
 
+def _visible_duration_seconds(html: str) -> int | None:
+    patterns = [
+        r"Duration\s*:\s*(?:<[^>]+>\s*)*(?:(?P<h>\d{1,2})\s*h(?:ours?)?\s*)?(?P<m>\d{1,3})\s*min(?:utes?)?(?:\s*(?P<s>\d{1,2})\s*sec(?:onds?)?)?",
+        r"Duration\s*:\s*(?:<[^>]+>\s*)*(?P<m2>\d{1,3}):(?P<s2>\d{2})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.IGNORECASE)
+        if not match:
+            continue
+        groups = match.groupdict()
+        if groups.get("m2") is not None:
+            return int(groups["m2"]) * 60 + int(groups["s2"])
+        return int(groups.get("h") or 0) * 3600 + int(groups.get("m") or 0) * 60 + int(groups.get("s") or 0)
+    return None
+
+
 def parse_video_metadata(
     html: str,
     *,
@@ -263,6 +279,8 @@ def parse_video_metadata(
             or meta.get("og:video:duration")
             or meta.get("og:duration")
         )
+    if duration is None:
+        duration = _visible_duration_seconds(html)
 
     tags: list[str] = []
     if video:
@@ -370,6 +388,7 @@ class SitemapProvider(SearchProvider):
         backfill_batch_size: int | None = None,
         backfill_priority: int = 100,
         backfill_max_records: int | None = None,
+        enrich_missing_core_metadata: bool = False,
     ) -> None:
         self.name = name.strip()
         self.sitemap_url = sitemap_url.strip()
@@ -391,6 +410,7 @@ class SitemapProvider(SearchProvider):
             else None
         )
         self.backfill_priority = int(backfill_priority)
+        self.enrich_missing_core_metadata = bool(enrich_missing_core_metadata)
         self.backfill_max_records = (
             max(1, int(backfill_max_records))
             if backfill_max_records is not None
@@ -537,6 +557,22 @@ class SitemapProvider(SearchProvider):
             if self.delay_seconds:
                 time.sleep(self.delay_seconds)
 
+    @staticmethod
+    def _merge_enriched_item(base: SearchItem, fetched: SearchItem | None) -> SearchItem:
+        if fetched is None:
+            return base
+        return base.model_copy(update={
+            "thumbnail": base.thumbnail or fetched.thumbnail,
+            "duration_seconds": base.duration_seconds if base.duration_seconds is not None else fetched.duration_seconds,
+            "quality": base.quality or fetched.quality,
+            "tags": base.tags or fetched.tags,
+        })
+
+    def _needs_core_enrichment(self, item: SearchItem) -> bool:
+        return self.enrich_missing_core_metadata and (
+            item.thumbnail is None or item.duration_seconds is None
+        )
+
     def _materialize_records(
         self,
         records: list[tuple[str, SearchItem | None]],
@@ -549,6 +585,8 @@ class SitemapProvider(SearchProvider):
                 continue
             if sitemap_item is not None:
                 ordered[index] = sitemap_item
+                if self._needs_core_enrichment(sitemap_item):
+                    html_jobs.append((index, page_url))
             else:
                 html_jobs.append((index, page_url))
 
@@ -560,7 +598,10 @@ class SitemapProvider(SearchProvider):
                 with ThreadPoolExecutor(max_workers=self.fetch_concurrency) as executor:
                     fetched = list(executor.map(self._fetch_page_item, urls))
             for (index, _), item in zip(html_jobs, fetched):
-                ordered[index] = item
+                if ordered[index] is not None:
+                    ordered[index] = self._merge_enriched_item(ordered[index], item)
+                else:
+                    ordered[index] = item
 
         return [item for item in ordered if item is not None]
 
@@ -597,6 +638,8 @@ class SitemapProvider(SearchProvider):
                     continue
                 if sitemap_item is not None:
                     ordered[index] = sitemap_item
+                    if self._needs_core_enrichment(sitemap_item):
+                        html_jobs.append((index, page_url))
                 else:
                     html_jobs.append((index, page_url))
                 processed += 1
@@ -612,7 +655,10 @@ class SitemapProvider(SearchProvider):
                     with ThreadPoolExecutor(max_workers=min(self.fetch_concurrency, len(urls))) as executor:
                         fetched = list(executor.map(self._fetch_page_item, urls))
                 for (index, _), item in zip(html_jobs, fetched):
-                    ordered[index] = item
+                    if ordered[index] is not None:
+                        ordered[index] = self._merge_enriched_item(ordered[index], item)
+                    else:
+                        ordered[index] = item
 
             items.extend(item for item in ordered[:processed] if item is not None)
             consumed += processed

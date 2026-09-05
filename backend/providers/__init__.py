@@ -91,6 +91,7 @@ def _configured_sitemap_providers() -> list[SearchProvider]:
                         if row.get("backfill_max_records") is not None
                         else None
                     ),
+                    enrich_missing_core_metadata=bool(row.get("enrich_missing_core_metadata", False)),
                 )
             )
         except KeyError as exc:
