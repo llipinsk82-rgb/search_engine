@@ -47,4 +47,13 @@ class DeployArtifactTests(unittest.TestCase):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text(); a=t.index('post-deploy-warmup.sh'); b=t.rindex('SEARCH_DEPLOY=PASS'); tail=t[a:b]; self.assertNotIn('rollback "warmup',tail); self.assertIn('SEARCH_DEPLOY_WARMUP=DEGRADED',tail)
     def test_nginx_csp_is_rollback_managed(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text(); self.assertIn('backup_config "$NGINX_SITE" nginx-search-engine',t); self.assertIn('restore_config "$NGINX_SITE" nginx-search-engine',t); self.assertIn("media-src 'self' https:",t)
+    def test_nginx_proxies_thumbnail_routes_to_backend(self):
+        t=(ROOT/'deploy'/'nginx-search-engine.conf').read_text()
+        self.assertIn('location /thumb-proxy', t)
+        self.assertIn('location /thumb/', t)
+        self.assertGreaterEqual(t.count('proxy_pass http://127.0.0.1:8775;'), 3)
+        deploy=(ROOT/'deploy'/'deploy-production.sh').read_text()
+        self.assertIn("grep -Fq 'location /thumb-proxy'", deploy)
+        self.assertIn('cannot safely patch nginx thumbnail routes', deploy)
+
 if __name__=='__main__': unittest.main()

@@ -172,6 +172,38 @@ p.write_text(s.replace(needle, needle + " media-src 'self' https:;", 1))
 PY
 fi
 
+if [ -e "$NGINX_SITE" ] && ! grep -Fq 'location /thumb-proxy' "$NGINX_SITE"; then
+    python3 - "$NGINX_SITE" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+s = p.read_text()
+anchor = "    location / { try_files $uri $uri/ /index.html; }"
+if anchor not in s:
+    raise SystemExit('cannot safely patch nginx thumbnail routes: location / anchor missing')
+block = """    location /thumb-proxy {
+        proxy_pass http://127.0.0.1:8775;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+    }
+
+    location /thumb/ {
+        proxy_pass http://127.0.0.1:8775;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+    }
+
+"""
+p.write_text(s.replace(anchor, block + anchor, 1))
+PY
+fi
+
 pre_swap_fail() {
     local reason="$1"
     echo "SEARCH_DEPLOY_PRE_SWAP_RESTORE=START reason=$reason" >&2

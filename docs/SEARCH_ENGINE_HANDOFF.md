@@ -207,3 +207,10 @@ No provider was auto-enabled in this pass.
 - Production proxy itself returned 6/6 HTTP 200, but negotiated `image/avif`; this pointed to client/WebView rendering compatibility rather than provider availability.
 - Thumbzilla proxy now prefers JPEG first, with WebP/image fallback. Service worker explicitly bypasses `/thumb-proxy` and `/thumb/` so media repair requests are never handled by shell caching logic.
 - Frontend shell bumped to v21.
+
+
+## Root cause: thumbnail routes missing in active Nginx — 2026-09-05
+- Production API was on build `92356efd34f1` and frontend v21 was deployed, so the latest code was present.
+- Root cause found: Nginx proxied only `/api/` to Uvicorn. `/thumb-proxy` and `/thumb/` fell through to the static SPA route instead of reaching backend thumbnail handlers.
+- This explains why direct backend tests on port 8775 passed while Android still showed `Preview` placeholders.
+- Release adds explicit Nginx proxy locations for `/thumb-proxy` and `/thumb/`, plus a guarded migration of the active production site.
