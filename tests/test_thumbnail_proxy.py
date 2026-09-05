@@ -97,5 +97,11 @@ class ThumbnailProxyTests(unittest.IsolatedAsyncioTestCase):
             request = opened.call_args.args[0]
             self.assertTrue(request.headers["Accept"].startswith("image/jpeg"))
 
+    def test_api_aliases_are_registered(self):
+        from backend.app import app
+        paths = {route.path for route in app.routes}
+        self.assertIn("/api/thumb-proxy", paths)
+        self.assertIn("/api/thumb/{item_id}", paths)
+
 if __name__ == "__main__":
     unittest.main()

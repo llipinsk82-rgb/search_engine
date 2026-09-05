@@ -230,6 +230,7 @@ async def _search_response(
 
 
 @app.get("/thumb-proxy", include_in_schema=False)
+@app.get("/api/thumb-proxy", include_in_schema=False)
 async def thumbnail_proxy(provider: str, url: str) -> Response:
     try:
         body, content_type = await asyncio.to_thread(_thumbnail_proxy_fetch, provider, url)
@@ -249,6 +250,7 @@ async def thumbnail_proxy(provider: str, url: str) -> Response:
 
 
 @app.get("/thumb/{item_id}", include_in_schema=False)
+@app.get("/api/thumb/{item_id}", include_in_schema=False)
 async def thumbnail_redirect(
     item_id: str,
     refresh: bool = False,

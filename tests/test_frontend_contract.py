@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v21_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v22_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=21" in html
-    assert "/app.js?v=21" in html
-    assert 'register("/sw.js?v=21", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=22" in html
+    assert "/app.js?v=22" in html
+    assert 'register("/sw.js?v=22", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v21";' in sw
+    assert 'const CACHE = "search-shell-v22";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -77,7 +77,7 @@ def test_provider_media_bypasses_service_worker() -> None:
 def test_stale_thumbzilla_and_tube8_thumbnails_self_heal() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert 'item.provider === "thumbzilla" || item.provider === "tube8"' in app
-    assert '`/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`' in app
+    assert '`/api/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`' in app
     assert 'preview.dataset.healAttempt' in app
     assert 'window.setTimeout(retry, 700)' in app
 

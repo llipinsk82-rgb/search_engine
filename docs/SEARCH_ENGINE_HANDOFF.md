@@ -220,3 +220,10 @@ No provider was auto-enabled in this pass.
 - Public Nginx has server-level Basic Auth; observed public `/thumb-proxy` returned HTTP 401 while the page itself was already usable.
 - Thumbnail routes now explicitly use `auth_basic off;`; backend provider/host validation and no-redirect SSRF guard remain in force.
 - Deploy migration also patches existing `/thumb-proxy` and `/thumb/` locations, not only newly-created ones.
+
+
+## Thumbnail routing hardening v22 — 2026-09-05
+- Mobile Thumbzilla still showed placeholders after dedicated `/thumb-proxy` Nginx routing.
+- Root cause risk reduced by moving the browser-facing thumbnail path under the already-established `/api/` reverse proxy contract.
+- Added API aliases `/api/thumb-proxy` and `/api/thumb/<id>` while preserving legacy routes. Frontend v22 uses only `/api/...` thumbnail routes.
+- This removes dependence on custom Nginx thumbnail locations and uses the same routing/auth path as all working API calls.

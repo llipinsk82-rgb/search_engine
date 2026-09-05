@@ -147,7 +147,7 @@ function resultCard(item) {
 
   if (item.thumbnail) {
     const resolvedThumb = item.provider === "thumbzilla"
-      ? `/thumb-proxy?provider=thumbzilla&url=${encodeURIComponent(item.thumbnail)}`
+      ? `/api/thumb-proxy?provider=thumbzilla&url=${encodeURIComponent(item.thumbnail)}`
       : item.thumbnail;
     preview.src = resolvedThumb;
     preview.hidden = false;
@@ -159,7 +159,7 @@ function resultCard(item) {
       if (selfHealingProvider && attempt < 2) {
         preview.dataset.healAttempt = String(attempt + 1);
         const retry = () => {
-          preview.src = `/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`;
+          preview.src = `/api/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`;
           if (item.preview_url) motion.poster = preview.src;
         };
         if (attempt === 0) retry();
@@ -566,7 +566,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=21", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=22", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });
