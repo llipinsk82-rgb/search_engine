@@ -200,3 +200,10 @@ No provider was auto-enabled in this pass.
 
 - Production rollout PASS on build `d2a6d1665f83`; helper acceptance PASS, backup `/opt/search_engine-backups/20260905T104522Z-d2a6d1665f83`.
 - Independent production check: Thumbzilla search returned 5 sampled items and refreshed thumbnail endpoint returned HTTP 200 `image/avif`; Tube8 search returned 5 sampled items and refreshed thumbnail resolved to HTTP 200 `image/jpeg`. Services and both timers remained active.
+
+
+## Thumbzilla mobile rendering hardening 2026-09-05
+- User confirmed Tube8 only has isolated missing thumbnails while Thumbzilla is missing almost all thumbnails on Android.
+- Production proxy itself returned 6/6 HTTP 200, but negotiated `image/avif`; this pointed to client/WebView rendering compatibility rather than provider availability.
+- Thumbzilla proxy now prefers JPEG first, with WebP/image fallback. Service worker explicitly bypasses `/thumb-proxy` and `/thumb/` so media repair requests are never handled by shell caching logic.
+- Frontend shell bumped to v21.

@@ -566,7 +566,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=20", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=21", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v20_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v21_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=20" in html
-    assert "/app.js?v=20" in html
-    assert 'register("/sw.js?v=20", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=21" in html
+    assert "/app.js?v=21" in html
+    assert 'register("/sw.js?v=21", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v20";' in sw
+    assert 'const CACHE = "search-shell-v21";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -67,6 +67,8 @@ def test_provider_media_bypasses_service_worker() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert "url.origin !== self.location.origin" in sw
+    assert 'url.pathname.startsWith("/thumb-proxy")' in sw
+    assert 'url.pathname.startsWith("/thumb/")' in sw
     assert 'referrerpolicy="no-referrer"' in html
     assert 'motion.referrerPolicy = "no-referrer"' in app
 

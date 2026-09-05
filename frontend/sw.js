@@ -1,5 +1,5 @@
-const CACHE = "search-shell-v20";
-const SHELL = ["/", "/index.html", "/styles.css?v=20", "/app.js?v=20"];
+const CACHE = "search-shell-v21";
+const SHELL = ["/", "/index.html", "/styles.css?v=21", "/app.js?v=21"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -16,7 +16,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/thumb-proxy") || url.pathname.startsWith("/thumb/")) return;
   event.respondWith(
     fetch(new Request(event.request, { cache: "no-store" })).catch(() => caches.match(event.request))
   );

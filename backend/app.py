@@ -72,7 +72,9 @@ def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
         headers={
             "User-Agent": "SearchEngineLive/0.6",
             "Referer": referer,
-            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+            # Prefer JPEG for broad Android/WebView compatibility. Thumbzilla
+            # otherwise negotiates AVIF, which some embedded clients fail to render.
+            "Accept": "image/jpeg,image/webp,image/*;q=0.8,*/*;q=0.5",
         },
     )
     with _thumbnail_proxy_open(request) as response:
