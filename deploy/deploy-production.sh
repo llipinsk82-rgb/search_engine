@@ -205,6 +205,30 @@ p.write_text(s[:match.start()] + block + s[match.start():])
 PY
 fi
 
+# Thumbnail images are safe to fetch without inheriting the site's Basic Auth.
+# Backend still validates provider/host and blocks redirects, so this avoids 401
+# on browser image subrequests without opening an arbitrary proxy.
+if [ -e "$NGINX_SITE" ]; then
+    python3 - "$NGINX_SITE" <<'PYAUTH'
+from pathlib import Path
+import re, sys
+p = Path(sys.argv[1])
+s = p.read_text()
+for location in ('/thumb-proxy', '/thumb/'):
+    pattern = re.compile(rf'(?ms)(^[ \t]*location[ \t]+{re.escape(location)}[ \t]*\{{)(.*?^\s*\}})')
+    match = pattern.search(s)
+    if match is None:
+        raise SystemExit(f'cannot safely patch nginx auth for {location}')
+    body = match.group(2)
+    if re.search(r'(?m)^\s*auth_basic\s+off\s*;', body):
+        continue
+    indent = re.match(r'^[ \t]*', match.group(1)).group(0) + '    '
+    replacement = match.group(1) + '\n' + indent + 'auth_basic off;' + body
+    s = s[:match.start()] + replacement + s[match.end():]
+p.write_text(s)
+PYAUTH
+fi
+
 pre_swap_fail() {
     local reason="$1"
     echo "SEARCH_DEPLOY_PRE_SWAP_RESTORE=START reason=$reason" >&2

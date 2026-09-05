@@ -51,9 +51,12 @@ class DeployArtifactTests(unittest.TestCase):
         t=(ROOT/'deploy'/'nginx-search-engine.conf').read_text()
         self.assertIn('location /thumb-proxy', t)
         self.assertIn('location /thumb/', t)
+        self.assertGreaterEqual(t.count('auth_basic off;'), 2)
         self.assertGreaterEqual(t.count('proxy_pass http://127.0.0.1:8775;'), 3)
         deploy=(ROOT/'deploy'/'deploy-production.sh').read_text()
         self.assertIn("grep -Fq 'location /thumb-proxy'", deploy)
         self.assertIn('cannot safely patch nginx thumbnail routes', deploy)
+        self.assertIn('cannot safely patch nginx auth for', deploy)
+        self.assertIn("('/thumb-proxy', '/thumb/')", deploy)
 
 if __name__=='__main__': unittest.main()

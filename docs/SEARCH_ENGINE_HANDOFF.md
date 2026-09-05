@@ -214,3 +214,9 @@ No provider was auto-enabled in this pass.
 - Root cause found: Nginx proxied only `/api/` to Uvicorn. `/thumb-proxy` and `/thumb/` fell through to the static SPA route instead of reaching backend thumbnail handlers.
 - This explains why direct backend tests on port 8775 passed while Android still showed `Preview` placeholders.
 - Release adds explicit Nginx proxy locations for `/thumb-proxy` and `/thumb/`, plus a guarded migration of the active production site.
+
+
+## Thumbzilla auth root cause 2026-09-05
+- Public Nginx has server-level Basic Auth; observed public `/thumb-proxy` returned HTTP 401 while the page itself was already usable.
+- Thumbnail routes now explicitly use `auth_basic off;`; backend provider/host validation and no-redirect SSRF guard remain in force.
+- Deploy migration also patches existing `/thumb-proxy` and `/thumb/` locations, not only newly-created ones.
