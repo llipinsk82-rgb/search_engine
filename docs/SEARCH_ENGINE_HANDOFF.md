@@ -197,3 +197,6 @@ No provider was auto-enabled in this pass.
 - Backend refresh now supports live-only Thumbzilla and Tube8 by resolving current page metadata on their allowlisted HTTPS origin.
 - Thumbzilla refreshed thumbnails are returned through the existing restricted same-origin proxy because its CDN requires Referer; Tube8 refreshed thumbnails redirect to the fresh CDN URL.
 - Successful refresh updates the indexed thumbnail cache. Preview remains manual and autoplay behavior is unchanged.
+
+- Production rollout PASS on build `d2a6d1665f83`; helper acceptance PASS, backup `/opt/search_engine-backups/20260905T104522Z-d2a6d1665f83`.
+- Independent production check: Thumbzilla search returned 5 sampled items and refreshed thumbnail endpoint returned HTTP 200 `image/avif`; Tube8 search returned 5 sampled items and refreshed thumbnail resolved to HTTP 200 `image/jpeg`. Services and both timers remained active.
