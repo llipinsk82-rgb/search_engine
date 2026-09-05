@@ -8,12 +8,12 @@ class DeployArtifactTests(unittest.TestCase):
     def test_production_deploy_has_backup_and_rollback_guards(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text()
         for x in ('SEARCH_DEPLOY_ROLLBACK=START','SEARCH_DEPLOY=PASS','maintenance.lock','nginx -t','SEARCH_EXPECT_BUILD','requirements.txt changed','NGINX_SITE'): self.assertIn(x,t)
-        self.assertIn("required = {'xvideos', 'xnxx', 'sunporno', 'xgroovy', 'txxx', 'porndig', 'justporn', 'fpo'}", t)
+        self.assertIn("required = {'xvideos', 'xnxx', 'sunporno', 'xgroovy', 'txxx', 'porndig', 'justporn', 'fpo', 'bigassporn', 'brazzilmoms', 'sextubespot', 'xcafe'}", t)
     def test_maintenance_lock_precedes_active_configuration_writes(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text(); lock=t.index('flock -w 30 9')
         for x in ('install -m 0644 "$SOURCE/deploy/search-engine-providers.example.json"','install -m 0600 "$SOURCE/deploy/search-engine.env.example"','install -m 0644 "$SOURCE/deploy/$unit"','SEARCH_PROVIDER_CONFIG_FILE=/etc/search_engine-providers.json'): self.assertLess(lock,t.index(x))
     def test_shipped_provider_catalog_is_incremental(self):
-        rows=json.loads((ROOT/'deploy'/'search-engine-providers.example.json').read_text()); self.assertEqual({r['name'] for r in rows},{'xvideos','xnxx','sunporno','xgroovy','txxx','porndig','justporn','fpo'}); self.assertTrue(all(r['sync_mode']=='incremental' for r in rows))
+        rows=json.loads((ROOT/'deploy'/'search-engine-providers.example.json').read_text()); self.assertEqual({r['name'] for r in rows},{'xvideos','xnxx','sunporno','xgroovy','txxx','porndig','justporn','fpo','bigassporn','brazzilmoms','sextubespot','xcafe'}); self.assertTrue(all(r['sync_mode']=='incremental' for r in rows))
 
     def test_sync_service_uses_bounded_refresh_batch(self):
         t=(ROOT/'deploy'/'search-engine-sync.service').read_text()

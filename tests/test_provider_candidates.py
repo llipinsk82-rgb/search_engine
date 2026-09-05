@@ -29,6 +29,14 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("txxx", trusted_provider_names())
         self.assertTrue(is_searchable_provider("txxx"))
 
+    def test_new_generic_ready_batch_is_promoted(self):
+        production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
+        names = {item["name"] for item in production}
+        for name in {"justporn", "fpo", "bigassporn", "brazzilmoms", "sextubespot", "xcafe"}:
+            self.assertIn(name, names)
+            self.assertIn(name, trusted_provider_names())
+            self.assertTrue(is_searchable_provider(name))
+
     def test_porndig_is_promoted_to_production_catalog(self):
         production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
         row = next(item for item in production if item["name"] == "porndig")

@@ -63,3 +63,13 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - Expanded 100-item gate: FPO GENERIC_READY 100/100 URL, thumbnail, duration; tags absent but not required for generic readiness.
 - SexVid, PornID, MegaTube: 100/100 URL + thumbnail + tags, but 0/100 duration => CUSTOM_REQUIRED; not promoted.
 - JustPorn and FPO promoted to configured/searchable catalog pending release acceptance.
+
+
+## Loop batch 2026-09-05 B
+- Confirmed Thumbzilla mobile thumbnail fix PASS from user.
+- Expanded 100-item gate PASS: BigAssPorn 100/100 URL/thumb/duration/tags.
+- Expanded 100-item gate PASS: BrazzilMoms 100/100 URL/thumb/duration/tags.
+- Expanded 100-item gate PASS: SexTubeSpot 100/100 URL/thumb/duration, 97/100 tags.
+- Expanded 100-item gate PASS: XCafe 100/100 URL/thumb/duration/tags.
+- JustPorn/FPO catalog promotion corrected to also be trusted/searchable in source policy.
+- SexVid/PornID/MegaTube remain CUSTOM_REQUIRED because duration metadata is absent.
