@@ -96,3 +96,11 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - ZBPorn expanded enriched gate PASS 100/100 URL/thumb/duration/tags.
 - MegaTube improved to 29/100 duration but remains CUSTOM_REQUIRED; not promoted.
 - Promoted SexVid, PornID, ZBPorn with bounded 10k backfill and enrichment enabled.
+
+
+## Loop batch 2026-09-06 F
+- Re-ran remaining CUSTOM_REQUIRED candidates with bounded page enrichment.
+- MegaTube expanded enriched gate: GENERIC_READY 100/100 URL/thumb/tags and 61/100 duration, above readiness threshold.
+- Promoted MegaTube with enrichment enabled and bounded 10k backfill.
+- CumLouder and PornSexVideo remain CUSTOM_REQUIRED despite 100/100 thumbnails because duration stays 0/100.
+- BustyBus, HQPorn, BigFuck and ZZZTube remain CUSTOM_REQUIRED due missing thumbnails/core metadata.

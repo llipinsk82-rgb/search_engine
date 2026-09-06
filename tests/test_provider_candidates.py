@@ -48,3 +48,8 @@ class ProviderCandidateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_megatube_is_promoted_after_enriched_gate():
+    assert "megatube" in trusted_provider_names()
+    assert is_searchable_provider("megatube")

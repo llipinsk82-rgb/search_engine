@@ -301,5 +301,21 @@
     "backfill_priority": 132,
     "backfill_max_records": 10000,
     "enrich_missing_core_metadata": true
+  },
+  {
+    "name": "megatube",
+    "sitemap_url": "https://www.megatube.xxx/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "[?&]type=videos(?:&|&amp;)from_links_videos=[0-9]+$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 100,
+    "backfill_priority": 96,
+    "backfill_max_records": 10000,
+    "enrich_missing_core_metadata": true
   }
 ]
