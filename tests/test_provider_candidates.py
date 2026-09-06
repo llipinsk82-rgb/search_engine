@@ -58,3 +58,9 @@ def test_megatube_is_promoted_after_enriched_gate():
 def test_freeporn_is_promoted_after_full_gate():
     assert "freeporn" in trusted_provider_names()
     assert is_searchable_provider("freeporn")
+
+
+def test_enriched_clock_providers_are_promoted():
+    for name in ("pornsexvideo", "lexotic"):
+        assert name in trusted_provider_names()
+        assert is_searchable_provider(name)

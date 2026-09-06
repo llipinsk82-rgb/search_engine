@@ -332,5 +332,37 @@
     "backfill_batch_size": 250,
     "backfill_priority": 98,
     "backfill_max_records": 50000
+  },
+  {
+    "name": "pornsexvideo",
+    "sitemap_url": "https://pornsexvideo.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap-[0-9]+\\.xml$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 100,
+    "backfill_priority": 98,
+    "backfill_max_records": 10000,
+    "enrich_missing_core_metadata": true
+  },
+  {
+    "name": "lexotic",
+    "sitemap_url": "https://lexotic.com/sitemap.xml",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap_[0-9]+\\.xml$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 100,
+    "backfill_priority": 98,
+    "backfill_max_records": 10000,
+    "enrich_missing_core_metadata": true
   }
 ]

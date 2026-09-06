@@ -217,6 +217,18 @@ def _quality_from_metadata(
 
 
 def _visible_duration_seconds(html: str) -> int | None:
+    clock = re.search(
+        r'class=["\'][^"\']*(?:duration|runtime)[^"\']*["\'][^>]*>\s*(?:(?P<hh>\d{1,2}):)?(?P<mm>\d{1,2}):(?P<ss>\d{2})\s*<',
+        html,
+        re.IGNORECASE,
+    )
+    if clock:
+        return (
+            int(clock.group("hh") or 0) * 3600
+            + int(clock.group("mm")) * 60
+            + int(clock.group("ss"))
+        )
+
     patterns = [
         r"Duration\s*:\s*(?:<[^>]+>\s*)*(?:(?P<h>\d{1,2})\s*h(?:ours?)?\s*)?(?P<m>\d{1,3})\s*min(?:utes?)?(?:\s*(?P<s>\d{1,2})\s*sec(?:onds?)?)?",
         r"Duration\s*:\s*(?:<[^>]+>\s*)*(?P<m2>\d{1,3}):(?P<s2>\d{2})",

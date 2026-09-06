@@ -112,3 +112,10 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - PornTube enriched gate remains CUSTOM_REQUIRED: 0/100 thumbnails and 0/100 duration.
 - IXXX, DinoTube, ForHerTube, Tiava, AssOAss, TubePornstars, LobsterTube, MetaPorn, SuperPorn and Fuq are currently server-side 403; no bypass attempted.
 - VIPWank and MyXVideos are reachable but expose no conventional sitemap at the advertised/default path.
+
+
+## Loop batch 2026-09-06 H
+- Generic page enrichment learned duration clock markup from elements whose class names contain duration/runtime (e.g. MM:SS or HH:MM:SS); regression covered.
+- PornSexVideo expanded enriched gate PASS: 100/100 URL/thumb/tags, 94/100 duration. Promoted with bounded 10k backfill.
+- Lexotic expanded enriched gate PASS: 100/100 URL/thumb, 93/100 duration. Promoted with bounded 10k backfill.
+- CumLouder retry hit upstream HTTP 522 during enriched probe; left unpromoted pending a later retry, no bypass.

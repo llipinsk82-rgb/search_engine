@@ -4,7 +4,7 @@ import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from backend.providers.sitemap import SitemapProvider
+from backend.providers.sitemap import SitemapProvider, parse_video_metadata
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -128,6 +128,15 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         with patch("backend.providers.sitemap.urlopen", return_value=Response()):
             text = provider._fetch_text("https://example.com/videos.xml.gz")
         self.assertIn("https://example.com/v/1", text)
+
+    def test_duration_class_clock_fallback(self) -> None:
+        item = parse_video_metadata(
+            '<html><head><meta property="og:title" content="X"><meta property="og:image" content="https://example.com/x.jpg"></head><body><span class="vc-duration">22:12</span></body></html>',
+            provider="example",
+            page_url="https://example.com/video/x",
+        )
+        self.assertIsNotNone(item)
+        self.assertEqual(item.duration_seconds, 1332)
 
     def test_porndig_sitemap_thumbnail_uses_live_cdn_shape(self):
         import xml.etree.ElementTree as ET
