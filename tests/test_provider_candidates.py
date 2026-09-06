@@ -53,3 +53,8 @@ if __name__ == "__main__":
 def test_megatube_is_promoted_after_enriched_gate():
     assert "megatube" in trusted_provider_names()
     assert is_searchable_provider("megatube")
+
+
+def test_freeporn_is_promoted_after_full_gate():
+    assert "freeporn" in trusted_provider_names()
+    assert is_searchable_provider("freeporn")

@@ -104,3 +104,11 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - Promoted MegaTube with enrichment enabled and bounded 10k backfill.
 - CumLouder and PornSexVideo remain CUSTOM_REQUIRED despite 100/100 thumbnails because duration stays 0/100.
 - BustyBus, HQPorn, BigFuck and ZZZTube remain CUSTOM_REQUIRED due missing thumbnails/core metadata.
+
+
+## Loop batch 2026-09-06 G
+- FreePorn expanded generic gate PASS: 100/100 URL, thumbnail and duration; 90/100 tags. Promoted to configured + trusted/searchable catalog.
+- Lexotic enriched gate remains CUSTOM_REQUIRED: 100/100 thumbnails but 0/100 duration.
+- PornTube enriched gate remains CUSTOM_REQUIRED: 0/100 thumbnails and 0/100 duration.
+- IXXX, DinoTube, ForHerTube, Tiava, AssOAss, TubePornstars, LobsterTube, MetaPorn, SuperPorn and Fuq are currently server-side 403; no bypass attempted.
+- VIPWank and MyXVideos are reachable but expose no conventional sitemap at the advertised/default path.
