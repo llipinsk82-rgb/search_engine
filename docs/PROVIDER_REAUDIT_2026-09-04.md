@@ -119,3 +119,9 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - PornSexVideo expanded enriched gate PASS: 100/100 URL/thumb/tags, 94/100 duration. Promoted with bounded 10k backfill.
 - Lexotic expanded enriched gate PASS: 100/100 URL/thumb, 93/100 duration. Promoted with bounded 10k backfill.
 - CumLouder retry hit upstream HTTP 522 during enriched probe; left unpromoted pending a later retry, no bypass.
+
+
+## Loop batch 2026-09-08 I
+- PornDoe re-probed with bounded page enrichment: GENERIC_READY, 100/100 URLs + thumbnails, 71/100 duration and tags.
+- Promoted PornDoe from candidate-only to configured + trusted/searchable production catalog with bounded 10k backfill.
+- CumLouder, BustyBus, HQPorn, BigFuck, ZZZTube and PornTube remain CUSTOM_REQUIRED after enriched retry; no bypass logic added.

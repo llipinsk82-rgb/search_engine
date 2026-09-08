@@ -18,7 +18,7 @@ class ProviderCandidateTests(unittest.TestCase):
 
     def test_candidate_catalog_tracks_discovery_without_production_enablement(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
-        self.assertEqual({row["name"] for row in rows}, {"porndoe"})
+        self.assertEqual(rows, [])
         self.assertTrue(all(row["sync_mode"] == "incremental" for row in rows))
 
     def test_txxx_is_promoted_to_production_catalog(self):
@@ -64,3 +64,8 @@ def test_enriched_clock_providers_are_promoted():
     for name in ("pornsexvideo", "lexotic"):
         assert name in trusted_provider_names()
         assert is_searchable_provider(name)
+
+
+def test_porndoe_is_promoted_after_enriched_gate():
+    assert "porndoe" in trusted_provider_names()
+    assert is_searchable_provider("porndoe")
