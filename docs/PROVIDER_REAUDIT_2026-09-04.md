@@ -125,3 +125,12 @@ The sandbox host currently has no Chromium/Chrome/Firefox binary and no Playwrig
 - PornDoe re-probed with bounded page enrichment: GENERIC_READY, 100/100 URLs + thumbnails, 71/100 duration and tags.
 - Promoted PornDoe from candidate-only to configured + trusted/searchable production catalog with bounded 10k backfill.
 - CumLouder, BustyBus, HQPorn, BigFuck, ZZZTube and PornTube remain CUSTOM_REQUIRED after enriched retry; no bypass logic added.
+
+## Loop batch 2026-09-08 J
+- Re-audited HDSexVideo and HDTubeMovies: current root sitemaps expose language-specific main/category navigation maps rather than usable video catalog shards; direct English sitemap probe yields only four navigation URLs. Left unpromoted.
+- Re-audited MILFPorn: current sitemap is reachable but the primary shard is dominated by home/category URLs and enriched 100-item probe has 0/100 thumbnails and duration. Left CUSTOM_REQUIRED.
+- MyXVideos is a directory linking to third-party tube sites rather than an independent video source; not added as a provider.
+- DrTuber is reachable without bypass and exposes stable search pages at `/search/videos/<query>` with pagination.
+- Added dedicated DrTuber live parser/adapter for canonical video URL, thumbnail, MP4 preview, duration clock and HD marker.
+- Live gate PASS on query `step`: page 1 24/24 URL + thumbnail + preview + duration, page 2 24/24 URL + thumbnail + preview + duration, unique URLs on both pages.
+- Added DrTuber to trusted/searchable source policy and live adapter registry.

@@ -220,6 +220,20 @@ _TNA_QUALITY_RE = re.compile(
     re.IGNORECASE,
 )
 
+_DRTUBER_CARD_RE = re.compile(
+    r'<a\b(?P<attrs>[^>]*class="[^"]*\bch-video\b[^"]*"[^>]*)>(?P<body>.*?)</a>',
+    re.IGNORECASE | re.DOTALL,
+)
+_DRTUBER_URL_RE = re.compile(r'\bhref="(?P<url>/video/[0-9]+/[^"]+)"', re.IGNORECASE)
+_DRTUBER_IMG_RE = re.compile(r'<img\b(?P<attrs>[^>]*)>', re.IGNORECASE | re.DOTALL)
+_DRTUBER_SRC_RE = re.compile(r'\bsrc="(?P<thumb>https?://[^"]+)"', re.IGNORECASE)
+_DRTUBER_PREVIEW_RE = re.compile(r'\bdata-webm="(?P<preview>https?://[^"]+)"', re.IGNORECASE)
+_DRTUBER_ALT_RE = re.compile(r'\balt="(?P<title>[^"]+)"', re.IGNORECASE)
+_DRTUBER_DURATION_RE = re.compile(
+    r'class="time_thumb"[^>]*>.*?<em>\s*(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)\s*</em>',
+    re.IGNORECASE | re.DOTALL,
+)
+
 
 @dataclass(slots=True)
 class LiveProviderResult:
@@ -652,6 +666,47 @@ def parse_tube8_total(raw_html: str) -> int | None:
     return int(match.group("total")) if match else None
 
 
+def parse_drtuber_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://www.drtuber.com/"
+    for match in _DRTUBER_CARD_RE.finditer(raw_html):
+        attrs = match.group("attrs")
+        body = match.group("body")
+        href = _DRTUBER_URL_RE.search(attrs)
+        image = _DRTUBER_IMG_RE.search(body)
+        duration = _DRTUBER_DURATION_RE.search(body)
+        if href is None or image is None or duration is None:
+            continue
+        image_attrs = image.group("attrs")
+        thumb = _DRTUBER_SRC_RE.search(image_attrs)
+        title = _DRTUBER_ALT_RE.search(image_attrs)
+        if thumb is None or title is None:
+            continue
+        page_url = urljoin(base_url, html.unescape(href.group("url")))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        preview = _DRTUBER_PREVIEW_RE.search(image_attrs)
+        items.append(
+            SearchItem(
+                id=_item_id("drtuber", page_url),
+                provider="drtuber",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=html.unescape(thumb.group("thumb")),
+                preview_url=html.unescape(preview.group("preview")) if preview else None,
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality="HD" if "ico_hd" in body else None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_tnaflix_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -915,6 +970,27 @@ class Tube8LiveAdapter(_HttpLiveAdapter):
         items = parsed[8:8 + limit] if page > 1 and len(parsed) > 8 else parsed[:limit]
         return LiveProviderResult(
             self.name, items, parse_tube8_total(raw), page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(self._search_sync, query, page=max(1, page), limit=max(1, limit))
+
+
+class DrTuberLiveAdapter(_HttpLiveAdapter):
+    name = "drtuber"
+    base_url = "https://www.drtuber.com/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        encoded = quote_plus(query.strip(), safe="")
+        url = self.base_url if not encoded else f"{self.base_url}search/videos/{encoded}"
+        if page > 1:
+            url = f"{url.rstrip('/')}/{page}"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_drtuber_listing(raw, limit=limit), None, page,
             round((time.monotonic() - started) * 1000),
         )
 
@@ -1217,6 +1293,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     PornOneLiveAdapter(),
     HQPornerLiveAdapter(),
     EpornerLiveAdapter(),
+    DrTuberLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
     ThumbzillaLiveAdapter(),
