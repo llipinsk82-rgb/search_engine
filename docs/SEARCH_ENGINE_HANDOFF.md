@@ -417,3 +417,15 @@ No provider was auto-enabled in this pass.
 - Feature commit: `d55b6ee feat: add hqporn live provider`; pushed to `feature/provider-registry-probe`.
 - Official deploy: `SEARCH_DEPLOY=PASS build=d55b6ee21678`, backup `/opt/search_engine-backups/20260919T142454Z-d55b6ee21678`.
 - Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete HQPorn rows with preview, error=None, overlap 0; cache round-trip returned 5/5 complete rows with preview. Production health: 24 live / 53 trusted / 53 available providers.
+
+## Production update 2026-09-19 — MILFPorn live release
+- Historical CUSTOM_REQUIRED label was traced to the active host `www.milfporn.tv`; fresh direct verification confirmed robots allows normal search and the public frontend normalizes search terms to lowercase hyphenated slugs under `/search/<query>/` with `/search/<query>/<page>/` pagination.
+- Search pages expose 200 thumbnail cards. Page 1 contained 168 local `/videos/...` cards and page 2 contained 146 local cards; all local cards had thumbnail + duration and the local page sets had overlap 0. Third-party syndicated cards were intentionally excluded rather than trusted as MILFPorn results.
+- MILFPorn result cards do not expose a separate title field; the live parser derives a readable title only from the canonical local video slug and does not fabricate preview metadata.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN after a missing `urlparse` import was diagnosed and corrected; enablement RED was exactly the missing source-policy/registry entries, then 15/15 GREEN.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete local items; source policy accepted 48/48; overlap 0; canonical host `www.milfporn.tv`, thumbnail host `cdn.milfporn.tv`; elapsed ~1.18 s and ~0.96 s.
+- An unrelated pre-existing PornFlip worktree diff was detected before commit. It was preserved outside the repo, removed from test discovery only for the isolated MILFPorn verification/commit, then restored byte-for-byte afterward; it was not included in the MILFPorn commit.
+- Isolated full suite before release: 162 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `81c2935 feat: add milfporn live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=81c29357479e`, backup `/opt/search_engine-backups/20260919T155557Z-81c29357479e`.
+- Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete MILFPorn rows, error=None, preview absent by design, overlap 0; cache without text filter returned 10/10 complete rows (`provider_count=10`). A text-filtered `q=step` cache query returned 4 rows because FTS filters by derived title, not because cache rows were missing. Production health: 25 live / 54 trusted / 54 available providers.
