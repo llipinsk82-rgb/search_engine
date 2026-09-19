@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.content_class import classify_content
 from backend.models import SearchItem, SortMode
 from backend.settings import DB_PATH
 
@@ -57,6 +58,8 @@ def initialize(path: Path = DB_PATH) -> None:
                     rating_percent REAL,
                     rating_count INTEGER,
                     quality TEXT,
+                    content_class TEXT NOT NULL DEFAULT 'unknown',
+                    studio TEXT,
                     age_check_status TEXT NOT NULL DEFAULT 'unknown',
                     tags_json TEXT NOT NULL DEFAULT '[]',
                     indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -95,6 +98,8 @@ def initialize(path: Path = DB_PATH) -> None:
                 "views": "INTEGER",
                 "rating_percent": "REAL",
                 "rating_count": "INTEGER",
+                "content_class": "TEXT NOT NULL DEFAULT 'unknown'",
+                "studio": "TEXT",
             }
             for name, ddl in additions.items():
                 if name in columns:
@@ -138,6 +143,18 @@ def initialize(path: Path = DB_PATH) -> None:
                     ("__system__", metadata_index_key),
                 )
 
+            content_class_index_key = "migration:content_class_index_v1"
+            content_class_index_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", content_class_index_key),
+            ).fetchone()
+            if content_class_index_done is None:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_items_content_class ON items(content_class)")
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", content_class_index_key),
+                )
+
             # Older indexed Beeg rows used /-0/<id>, while the accepted public
             # route is /-0<id>. Run the data migration once instead of scanning
             # the full production index on every API worker startup.
@@ -172,13 +189,18 @@ def _upsert_item_row(
     source_order: int = 0,
 ) -> None:
     tags_json = json.dumps(item.tags, ensure_ascii=False)
+    content_class = (
+        item.content_class
+        if item.content_class != "unknown"
+        else classify_content(tags=item.tags, studio=item.studio)
+    )
     conn.execute(
         """
         INSERT INTO items (
             id, provider, title, url, thumbnail, preview_url, duration_seconds,
             published_at, views, rating_percent, rating_count, quality,
-            age_check_status, tags_json, indexed_at, source_order, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
+            content_class, studio, age_check_status, tags_json, indexed_at, source_order, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
         ON CONFLICT(id) DO UPDATE SET
             provider=excluded.provider,
             title=excluded.title,
@@ -191,6 +213,8 @@ def _upsert_item_row(
             rating_percent=excluded.rating_percent,
             rating_count=excluded.rating_count,
             quality=excluded.quality,
+            content_class=excluded.content_class,
+            studio=excluded.studio,
             age_check_status=CASE
                 WHEN excluded.age_check_status = 'unknown'
                     THEN items.age_check_status
@@ -214,6 +238,8 @@ def _upsert_item_row(
             item.rating_percent,
             item.rating_count,
             item.quality,
+            content_class,
+            item.studio,
             item.age_check_status,
             tags_json,
             max(0, int(source_order)),
@@ -528,7 +554,7 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
             """
             SELECT id, provider, title, url, thumbnail, preview_url,
                    duration_seconds, published_at, views, rating_percent, rating_count,
-                   quality, age_check_status, tags_json
+                   quality, content_class, studio, age_check_status, tags_json
             FROM items WHERE id = ? AND active = 1
             """,
             (item_id,),
@@ -549,6 +575,8 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         rating_count=row["rating_count"],
         quality=row["quality"],
         tags=json.loads(row["tags_json"] or "[]"),
+        content_class=row["content_class"],
+        studio=row["studio"],
         age_check_status=row["age_check_status"],
         score=0.0,
     )
@@ -615,7 +643,7 @@ def search_items(
         SELECT
             i.id, i.provider, i.title, i.url, i.thumbnail, i.preview_url,
             i.duration_seconds, i.published_at, i.views, i.rating_percent, i.rating_count,
-            i.quality, i.age_check_status, i.tags_json,
+            i.quality, i.content_class, i.studio, i.age_check_status, i.tags_json,
             {rank_select}
         FROM items i
         {joins}
@@ -650,6 +678,8 @@ def search_items(
                 rating_count=row["rating_count"],
                 quality=row["quality"],
                 tags=json.loads(row["tags_json"] or "[]"),
+                content_class=row["content_class"],
+                studio=row["studio"],
                 age_check_status=row["age_check_status"],
                 score=score,
             )

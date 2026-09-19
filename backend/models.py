@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
+from backend.content_class import ContentClass
+
 
 SortMode = Literal["relevance", "newest", "views", "rating", "longest", "shortest"]
 
@@ -23,6 +25,8 @@ class SearchItem(BaseModel):
     rating_count: int | None = Field(default=None, ge=0)
     quality: str | None = None
     tags: list[str] = Field(default_factory=list)
+    content_class: ContentClass = "unknown"
+    studio: str | None = None
     age_check_status: Literal["required", "not_required", "unknown"] = "unknown"
     score: float = 0.0
     alternate_sources: list["SourceVariant"] = Field(default_factory=list)
