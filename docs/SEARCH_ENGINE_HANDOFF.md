@@ -269,3 +269,13 @@ No provider was auto-enabled in this pass.
 - Production health after deploy: 16 live providers, 40 trusted/available providers.
 - Production `/api/live-refresh` acceptance: page 1 and page 2 each 5/5 complete, error=None, overlap 0, ~153-158 ms.
 - Live cache acceptance: `provider=pornhat&q=` returns 5 cached items with preview and duration. `q=step` returning 0 is expected token filtering because the sampled live titles do not contain the literal token `step`.
+
+## AnyPorn live release and candidate triage 2026-09-19
+- AnyPorn promoted as a trusted live provider using the explicit `/search/<query>/` page-one contract. The site's later pages are private AJAX blocks, so the adapter is intentionally page-one-only rather than guessing an unsupported pagination URL.
+- Pre-release gate: source page exposed 40/40 unique cards with URL, title, thumbnail, preview MP4 and duration; 38/40 carried HD metadata. Real adapter gate: 24/24 complete, policy accepted 24/24; page 2 returns an explicit empty result without a network request.
+- Full suite before release: 141 passed, 2 existing FastAPI deprecation warnings.
+- Official deploy PASS: build `cbfa08e50234`, backup `/opt/search_engine-backups/20260919T104719Z-cbfa08e50234`. The wrapper command's final rc=22 came only from an extra operator-side probe to the obsolete `/health` path; the deploy helper itself emitted `SEARCH_DEPLOY=PASS`. Canonical health endpoint is `/api/health`.
+- Production acceptance: `/api/health` status ok, 17 live providers, 41 trusted/available providers. AnyPorn `/api/live-refresh` page 1 returned 5/5 complete in ~181 ms; page 2 returned the expected empty result; cache round-trip returned 5/5 complete rows.
+- PornHits re-audit: all tested PornHits URLs redirect to `https://www.pornhub.com/`, canonical is Pornhub and video links are Pornhub `view_video.php` URLs. Treat as duplicate/alias of existing Pornhub provider; do not add a separate provider.
+- Xozilla re-audit: explicit search is reachable and page 1 exposes 100/100 URL + thumbnail + preview, but real DOM has 0/100 duration. Pagination is private AJAX block state. Leave CUSTOM_REQUIRED; do not reverse-engineer the private pagination contract or promote without core duration metadata.
+- PornTrex now resolves DNS but home/robots/sitemap are HTTP 403; no bypass attempted. Porn00 remains reachable without sitemap or a visible search contract. TubeGalore and PornHD robots explicitly disallow search and server-side home requests return 403; do not add live adapters.
