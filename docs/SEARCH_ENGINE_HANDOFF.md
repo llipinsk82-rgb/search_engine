@@ -333,3 +333,15 @@ No provider was auto-enabled in this pass.
 - Fresh legacy re-audit: IXXX, DinoTube, ForHerTube, Tiava, AssOAss, TubePornstars, LobsterTube, MetaPorn and SuperPorn remain HTTP 403 and/or robots-disallow search; no bypass attempted.
 - VIPWank is reachable and its public search works, but result cards link through `/to/<encoded external URL>` to third-party tube sites and identify those third-party sources. Treat it as an aggregator/directory rather than an independent provider, matching the earlier MyXVideos decision; do not add it as a separate source.
 - Independent-source batch from those cards: YourLust generic probe remains CUSTOM_REQUIRED (0/100 thumbnail and duration); PornDr has duration but 0/100 thumbnail; VXXX root traversal returned NO_RESULTS without a video filter; SexPlex was the only immediate generic-ready promotion from that batch.
+
+## Production update 2026-09-19 — PornZog live release
+- Fresh live-search audit used the public GET search form `https://pornzog.com/search/?s=<query>` with `&page=N` pagination; no private AJAX endpoint or protection bypass was used.
+- Pre-code live gate: 60/60 cards on page 1 and 60/60 on page 2 had canonical URL, thumbnail, duration, title and tags; page overlap was 0. HD marker coverage was 40/60 and 36/60. No preview URL was exposed, so preview remains empty rather than fabricated.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN; enablement RED was exactly the missing source-policy/registry entries, then 17/17 GREEN.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete items; source policy passed 48/48; overlap 0; elapsed ~315 ms and ~233 ms; preview 0 by design.
+- Full suite before release: 146 passed, 2 existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `abb76d8 feat: add pornzog live provider`; pushed to `feature/provider-registry-probe`.
+- First deploy attempt was safely rejected before active changes because the maintenance lock became busy (`SEARCH_IPC_EXIT=10`). The bounded backfill was allowed to finish naturally; no process was killed.
+- Retry deploy: `SEARCH_DEPLOY=PASS build=abb76d86a274`, backup `/opt/search_engine-backups/20260919T115351Z-abb76d86a274`.
+- Post-deploy health: 18 live / 45 trusted / 45 available providers.
+- Final production live acceptance used the correct top-level `/api/live-refresh.items` payload: page 1 and page 2 each returned 5/5 complete PornZog items, provider status error=None, overlap 0, canonical host `pornzog.com`, thumbnails `tn1.pornzog.com`; cache round-trip returned 5/5 complete PornZog rows.
