@@ -16,6 +16,14 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("sunporno", trusted_provider_names())
         self.assertTrue(is_searchable_provider("sunporno"))
 
+    def test_brazzilmoms_current_video_shards_match_filter(self):
+        production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
+        row = next(item for item in production if item["name"] == "brazzilmoms")
+        pattern = re.compile(row["sitemap_include_pattern"])
+        self.assertIsNotNone(pattern.search("https://brazzilmoms.com/sitemap/videos-1.xml"))
+        self.assertIsNotNone(pattern.search("https://brazzilmoms.com/sitemap/videos-14.xml"))
+        self.assertIsNone(pattern.search("https://brazzilmoms.com/sitemap/tags.xml"))
+
     def test_candidate_catalog_tracks_discovery_without_production_enablement(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
         self.assertEqual(rows, [])
