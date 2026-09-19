@@ -254,6 +254,29 @@ _ZZZTUBE_DURATION_RE = re.compile(
 )
 
 
+_BIGFUCK_CARD_RE = re.compile(
+    r'<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb-item\b[^"]*"[^>]*>'
+    r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb-item\b|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+_BIGFUCK_ANCHOR_RE = re.compile(
+    r'<a\b(?P<attrs>[^>]*class="[^"]*\bjs-gallery-link\b[^"]*"[^>]*)>',
+    re.IGNORECASE | re.DOTALL,
+)
+_BIGFUCK_URL_RE = re.compile(r'\bhref="(?P<url>/video/[0-9]+/[^"]+/)"', re.IGNORECASE)
+_BIGFUCK_PREVIEW_RE = re.compile(r'\bdata-preview="(?P<preview>https?://[^"]+\.mp4)"', re.IGNORECASE)
+_BIGFUCK_THUMB_RE = re.compile(r'<img\b[^>]*\bsrc="(?P<thumb>https?://[^"]+)"', re.IGNORECASE | re.DOTALL)
+_BIGFUCK_TITLE_RE = re.compile(
+    r'<h3\b[^>]*class="[^"]*\bb-thumb-item__title\b[^"]*"[^>]*>(?P<title>.*?)</h3>',
+    re.IGNORECASE | re.DOTALL,
+)
+_BIGFUCK_DURATION_RE = re.compile(
+    r'<div\b[^>]*class="[^"]*\bthumb-badge\b[^"]*"[^>]*>(?P<body>.*?)</div>',
+    re.IGNORECASE | re.DOTALL,
+)
+_BIGFUCK_CLOCK_RE = re.compile(r'(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)')
+
+
 _BUSTYBUS_CARD_RE = re.compile(
     r'<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb\b[^"]*"[^>]*>'
     r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb\b|\Z)',
@@ -1153,6 +1176,47 @@ def parse_zzztube_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
             break
     return items
 
+def parse_bigfuck_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://bigfuck.tv/"
+    for match in _BIGFUCK_CARD_RE.finditer(raw_html):
+        block = match.group("body")
+        anchor = _BIGFUCK_ANCHOR_RE.search(block)
+        if anchor is None:
+            continue
+        attrs = anchor.group("attrs")
+        href = _BIGFUCK_URL_RE.search(attrs)
+        preview = _BIGFUCK_PREVIEW_RE.search(attrs)
+        thumb = _BIGFUCK_THUMB_RE.search(block)
+        title = _BIGFUCK_TITLE_RE.search(block)
+        duration_box = _BIGFUCK_DURATION_RE.search(block)
+        duration = _BIGFUCK_CLOCK_RE.search(duration_box.group("body")) if duration_box else None
+        if href is None or preview is None or thumb is None or title is None or duration is None:
+            continue
+        page_url = urljoin(base_url, html.unescape(href.group("url")))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        items.append(
+            SearchItem(
+                id=_item_id("bigfuck", page_url),
+                provider="bigfuck",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=_https_media_url(thumb.group("thumb")),
+                preview_url=_https_media_url(preview.group("preview")),
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality="HD" if "b-thumb-item__hd" in block.lower() else None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_bustybus_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1690,6 +1754,29 @@ class ZZZTubeLiveAdapter(_HttpLiveAdapter):
             self._search_sync, query, page=max(1, page), limit=max(1, limit)
         )
 
+class BigFuckLiveAdapter(_HttpLiveAdapter):
+    name = "bigfuck"
+    base_url = "https://bigfuck.tv/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        encoded = quote(query.strip(), safe="")
+        url = f"{self.base_url}s/{encoded}/"
+        if page > 1:
+            url = f"{self.base_url}s/{encoded}/{page}/"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_bigfuck_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class BustyBusLiveAdapter(_HttpLiveAdapter):
     name = "bustybus"
     base_url = "https://bustybus.com/"
@@ -2058,6 +2145,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     YourLustLiveAdapter(),
     PornobaeLiveAdapter(),
     BustyBusLiveAdapter(),
+    BigFuckLiveAdapter(),
     AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),

@@ -4,7 +4,7 @@ from backend.source_policy import is_searchable_provider
 
 def test_reaudited_live_providers_are_enabled():
     names={adapter.name for adapter in LIVE_ADAPTERS}
-    for name in ("spankbang", "thumbzilla", "xhamster", "pornhub", "tube8", "drtuber", "redtube", "zzztube", "pornhat", "anyporn", "pornzog", "porndr", "yourlust", "pornobae", "bustybus"):
+    for name in ("spankbang", "thumbzilla", "xhamster", "pornhub", "tube8", "drtuber", "redtube", "zzztube", "pornhat", "anyporn", "pornzog", "porndr", "yourlust", "pornobae", "bustybus", "bigfuck"):
         assert name in names
         assert is_searchable_provider(name)
 
