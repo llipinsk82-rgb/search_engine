@@ -85,6 +85,16 @@ class ThumbnailProxyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers["location"], fresh)
 
+    def test_proxy_validation_delegates_to_media_policy(self):
+        with patch("backend.app.media_url_allowed", return_value=False) as allowed:
+            with self.assertRaises(ValueError):
+                _thumbnail_proxy_fetch(
+                    "thumbzilla", "https://pix-cdn77.ypncdn.com/example.jpg"
+                )
+        allowed.assert_called_once_with(
+            "thumbzilla", "thumbnail", "https://pix-cdn77.ypncdn.com/example.jpg"
+        )
+
     def test_proxy_prefers_jpeg_for_mobile_compatibility(self):
         with patch("backend.app._thumbnail_proxy_open") as opened:
             response = MagicMock()

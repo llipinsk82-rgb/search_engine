@@ -18,6 +18,7 @@ from backend.index import (
     update_item_thumbnail,
 )
 from backend.live import LIVE_ADAPTERS, cache_live_provider_results, refresh_live_search
+from backend.media_policy import media_policy_rows, media_url_allowed, provider_media_policy
 from backend.models import (
     LiveProviderStatus,
     LiveRefreshRequest,
@@ -37,9 +38,6 @@ from backend.source_policy import (
 
 logger = logging.getLogger(__name__)
 
-_THUMBNAIL_PROXY_RULES: dict[str, tuple[str, str]] = {
-    "thumbzilla": (".ypncdn.com", "https://www.thumbzilla.com/"),
-}
 _THUMBNAIL_PROXY_MAX_BYTES = 2 * 1024 * 1024
 
 
@@ -53,30 +51,18 @@ def _thumbnail_proxy_open(request: UrlRequest):
 
 
 def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
-    rule = _THUMBNAIL_PROXY_RULES.get(provider)
-    if rule is None:
+    policy = provider_media_policy(provider)
+    if policy.thumbnail_mode != "proxy":
         raise ValueError("thumbnail proxy is not enabled for provider")
-    allowed_suffix, referer = rule
-    parsed = urlparse(url)
-    host = (parsed.hostname or "").lower()
-    if (
-        parsed.scheme != "https"
-        or not host.endswith(allowed_suffix)
-        or parsed.username is not None
-        or parsed.password is not None
-        or parsed.port not in (None, 443)
-    ):
+    if not media_url_allowed(provider, "thumbnail", url):
         raise ValueError("thumbnail host is not allowed")
-    request = UrlRequest(
-        url,
-        headers={
-            "User-Agent": "SearchEngineLive/0.6",
-            "Referer": referer,
-            # Prefer JPEG for broad Android/WebView compatibility. Thumbzilla
-            # otherwise negotiates AVIF, which some embedded clients fail to render.
-            "Accept": "image/jpeg,image/webp,image/*;q=0.8,*/*;q=0.5",
-        },
-    )
+    headers = {
+        "User-Agent": "SearchEngineLive/0.6",
+        "Accept": "image/jpeg,image/webp,image/*;q=0.8,*/*;q=0.5",
+    }
+    if policy.thumbnail_referer:
+        headers["Referer"] = policy.thumbnail_referer
+    request = UrlRequest(url, headers=headers)
     with _thumbnail_proxy_open(request) as response:
         content_type = response.headers.get_content_type()
         if not content_type.startswith("image/"):
@@ -85,6 +71,7 @@ def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
         if len(body) > _THUMBNAIL_PROXY_MAX_BYTES:
             raise ValueError("thumbnail exceeds proxy size limit")
         return body, content_type
+
 
 app = FastAPI(
     title="Search Engine API",
@@ -166,6 +153,7 @@ async def providers() -> dict[str, object]:
     return {
         "providers": names,
         "policies": provider_policy_rows(set(names)),
+        "media_policies": media_policy_rows(set(names)),
     }
 
 
