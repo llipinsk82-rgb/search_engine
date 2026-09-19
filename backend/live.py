@@ -277,6 +277,26 @@ _BIGFUCK_DURATION_RE = re.compile(
 _BIGFUCK_CLOCK_RE = re.compile(r'(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)')
 
 
+
+_HQPORN_CARD_RE = re.compile(
+    r'<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb-item\b[^"]*"[^>]*>'
+    r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb-item\b|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+_HQPORN_ANCHOR_RE = re.compile(
+    r'<a\b(?P<attrs>[^>]*class="[^"]*\bjs-gallery-link\b[^"]*"[^>]*)>',
+    re.IGNORECASE | re.DOTALL,
+)
+_HQPORN_URL_RE = re.compile(r'\bhref="(?P<url>/[^"]+\.html)"', re.IGNORECASE)
+_HQPORN_TITLE_RE = re.compile(r'\btitle="(?P<title>[^"]+)"', re.IGNORECASE)
+_HQPORN_PREVIEW_RE = re.compile(r'\bdata-preview="(?P<preview>https?://[^"]+\.mp4)"', re.IGNORECASE)
+_HQPORN_THUMB_RE = re.compile(r'\bdata-src="(?P<thumb>(?:https?:)?//[^"]+)"', re.IGNORECASE)
+_HQPORN_DURATION_RE = re.compile(
+    r'class="[^"]*\bb-thumb-item__duration\b[^"]*"[^>]*>.*?'
+    r'<span>\s*(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)\s*</span>',
+    re.IGNORECASE | re.DOTALL,
+)
+
 _BUSTYBUS_CARD_RE = re.compile(
     r'<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb\b[^"]*"[^>]*>'
     r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb\b|\Z)',
@@ -1217,6 +1237,47 @@ def parse_bigfuck_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     return items
 
 
+
+def parse_hqporn_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://hqporn.xxx/"
+    for match in _HQPORN_CARD_RE.finditer(raw_html):
+        block = match.group("body")
+        anchor = _HQPORN_ANCHOR_RE.search(block)
+        if anchor is None:
+            continue
+        attrs = anchor.group("attrs")
+        href = _HQPORN_URL_RE.search(attrs)
+        title = _HQPORN_TITLE_RE.search(attrs)
+        preview = _HQPORN_PREVIEW_RE.search(attrs)
+        thumb = _HQPORN_THUMB_RE.search(block)
+        duration = _HQPORN_DURATION_RE.search(block)
+        if href is None or title is None or preview is None or thumb is None or duration is None:
+            continue
+        page_url = urljoin(base_url, html.unescape(href.group("url")))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        items.append(
+            SearchItem(
+                id=_item_id("hqporn", page_url),
+                provider="hqporn",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=_https_media_url(thumb.group("thumb")),
+                preview_url=_https_media_url(preview.group("preview")),
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality="HD" if "icon-hd" in block.lower() else None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_bustybus_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1777,6 +1838,30 @@ class BigFuckLiveAdapter(_HttpLiveAdapter):
         )
 
 
+
+class HQPornLiveAdapter(_HttpLiveAdapter):
+    name = "hqporn"
+    base_url = "https://hqporn.xxx/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        encoded = quote(query.strip(), safe="")
+        url = f"{self.base_url}search/{encoded}/"
+        if page > 1:
+            url = f"{self.base_url}search/{encoded}/{page}/"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_hqporn_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class BustyBusLiveAdapter(_HttpLiveAdapter):
     name = "bustybus"
     base_url = "https://bustybus.com/"
@@ -2146,6 +2231,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     PornobaeLiveAdapter(),
     BustyBusLiveAdapter(),
     BigFuckLiveAdapter(),
+    HQPornLiveAdapter(),
     AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
