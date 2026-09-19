@@ -6,6 +6,7 @@ const durationSelect = document.querySelector("#duration");
 const ageCheckSelect = document.querySelector("#age-check");
 const resultsEl = document.querySelector("#results");
 const statusEl = document.querySelector("#status");
+const liveDetailEl = document.querySelector("#live-detail");
 const clearBtn = document.querySelector("#clear");
 const moreBtn = document.querySelector("#more");
 const template = document.querySelector("#card-template");
@@ -21,6 +22,15 @@ let localHasMore = false;
 let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
+
+function setPrimaryStatus(text) {
+  statusEl.textContent = text;
+}
+
+function setLiveDetail(text) {
+  if (!liveDetailEl) return;
+  liveDetailEl.textContent = text || "";
+}
 const providerMediaPolicies = new Map();
 const failedPreviewIds = new Set();
 const FAILED_PREVIEW_STORAGE_KEY = "search.failedPreviewIds.v1";
@@ -355,6 +365,7 @@ function applyLiveState(live, page, requestedLimit = 24) {
   livePage = page;
   liveHasMore = upstreamHasMore(live, requestedLimit);
   liveStatusText = liveSummary(live.providers);
+  setLiveDetail(liveStatusText);
 }
 
 async function requestLive(payload, generation, page, { commit = true } = {}) {
@@ -485,9 +496,8 @@ async function refreshLive(payload, generation) {
     moreBtn.hidden = !(localHasMore || liveHasMore);
     moreBtn.disabled = false;
     const total = Number.isFinite(data.total) ? data.total : nextOffset;
-    statusEl.textContent = liveStatusText
-      ? `${nextOffset} shown · ${total} cached matches · live: ${liveStatusText}`
-      : `${nextOffset} shown · ${total} cached matches`;
+    setPrimaryStatus(`${nextOffset} shown · ${total} cached matches`);
+    setLiveDetail(liveStatusText);
     if (!prefetchedPage && !prefetchPromise) startPrefetch(payload, generation);
   } catch (_) {
     if (generation !== searchGeneration) return;
@@ -508,7 +518,7 @@ async function loadMore() {
 
   moreBtn.disabled = true;
   moreBtn.textContent = prefetchedPage ? "Showing…" : "Loading…";
-  statusEl.textContent = prefetchedPage ? "Showing prepared results…" : "Finishing next page…";
+  setPrimaryStatus(prefetchedPage ? "Showing prepared results…" : "Finishing next page…");
 
   try {
     let page = prefetchedPage;
@@ -531,15 +541,14 @@ async function loadMore() {
     moreBtn.hidden = !(localHasMore || liveHasMore);
     moreBtn.disabled = false;
     moreBtn.textContent = "Show more";
-    statusEl.textContent = liveStatusText
-      ? `${nextOffset} shown · live: ${liveStatusText}`
-      : `${nextOffset} shown`;
+    setPrimaryStatus(`${nextOffset} shown`);
+    setLiveDetail(liveStatusText);
 
     startPrefetch(payload, generation);
   } catch (error) {
     moreBtn.disabled = false;
     moreBtn.textContent = "Show more";
-    statusEl.textContent = error.message || "Loading more failed";
+    setPrimaryStatus(error.message || "Loading more failed");
   }
 }
 
@@ -562,12 +571,13 @@ async function search({ persist = true, append = false } = {}) {
   livePage = 0;
   liveHasMore = false;
   liveStatusText = "";
+  setLiveDetail("");
   localHasMore = false;
   prefetchedPage = null;
   prefetchPromise = null;
   moreBtn.hidden = true;
   moreBtn.disabled = true;
-  statusEl.textContent = "Searching…";
+  setPrimaryStatus("Searching…");
 
   try {
     const data = await fetchLocal(payload);
@@ -580,9 +590,13 @@ async function search({ persist = true, append = false } = {}) {
     const shouldRefreshLive = Boolean(payload.q);
     moreBtn.hidden = !localHasMore;
     moreBtn.disabled = shouldRefreshLive;
-    statusEl.textContent = shouldRefreshLive
-      ? `${nextOffset} shown · ${total} cached matches · refreshing live…`
-      : `${nextOffset} shown · ${total} matches · ${data.providers.join(", ") || "no provider"}`;
+    if (shouldRefreshLive) {
+      setPrimaryStatus(`${nextOffset} shown · ${total} cached matches`);
+      setLiveDetail("Refreshing live sources…");
+    } else {
+      setPrimaryStatus(`${nextOffset} shown · ${total} matches`);
+      setLiveDetail(data.providers.length ? `Sources: ${data.providers.join(", ")}` : "");
+    }
 
     if (shouldRefreshLive) {
       await refreshLive(payload, generation);
@@ -596,7 +610,8 @@ async function search({ persist = true, append = false } = {}) {
     nextOffset = 0;
     moreBtn.hidden = true;
     moreBtn.disabled = false;
-    statusEl.textContent = error.message || "Search failed";
+    setPrimaryStatus(error.message || "Search failed");
+    setLiveDetail("");
   }
 }
 
@@ -632,11 +647,12 @@ clearBtn.addEventListener("click", () => {
   livePage = 0;
   liveHasMore = false;
   liveStatusText = "";
+  setLiveDetail("");
   localHasMore = false;
   prefetchedPage = null;
   prefetchPromise = null;
   moreBtn.hidden = true;
-  statusEl.textContent = "Ready";
+  setPrimaryStatus("Ready");
   persistState(new URLSearchParams());
   queryInput.focus();
 });
@@ -660,7 +676,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=23", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=24", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v22_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v24_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=23" in html
-    assert "/app.js?v=23" in html
-    assert 'register("/sw.js?v=23", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=24" in html
+    assert "/app.js?v=24" in html
+    assert 'register("/sw.js?v=24", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v23";' in sw
+    assert 'const CACHE = "search-shell-v24";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -144,3 +144,13 @@ def test_cards_ui_v2_mobile_feed_contract() -> None:
     assert "min-height: 44px" in mobile
     assert "-webkit-line-clamp: 2" in mobile
     assert "min-width: 0" in mobile
+
+
+def test_cards_ui_v2_separates_primary_and_live_status() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const liveDetailEl = document.querySelector("#live-detail");' in app
+    assert 'function setPrimaryStatus(text)' in app
+    assert 'function setLiveDetail(text)' in app
+    assert 'liveDetailEl.textContent = text || "";' in app
+    assert 'statusEl.textContent = liveStatusText' not in app
+    assert 'cached matches · live:' not in app
