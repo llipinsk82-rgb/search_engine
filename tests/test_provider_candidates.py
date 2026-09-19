@@ -24,6 +24,16 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIsNotNone(pattern.search("https://brazzilmoms.com/sitemap/videos-14.xml"))
         self.assertIsNone(pattern.search("https://brazzilmoms.com/sitemap/tags.xml"))
 
+
+    def test_voyeurhit_is_promoted_to_production_catalog(self):
+        production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
+        row = next(item for item in production if item["name"] == "voyeurhit")
+        self.assertEqual(row["sitemap_url"], "https://voyeurhit.com/sitemap/")
+        self.assertEqual(row["sitemap_include_pattern"], r"/sitemap_vids_[0-9]+/?$")
+        self.assertEqual(row["sync_mode"], "incremental")
+        self.assertIn("voyeurhit", trusted_provider_names())
+        self.assertTrue(is_searchable_provider("voyeurhit"))
+
     def test_candidate_catalog_tracks_discovery_without_production_enablement(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
         self.assertEqual(rows, [])

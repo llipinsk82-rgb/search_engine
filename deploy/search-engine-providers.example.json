@@ -380,5 +380,20 @@
     "backfill_priority": 99,
     "backfill_max_records": 10000,
     "enrich_missing_core_metadata": true
+  },
+  {
+    "name": "voyeurhit",
+    "sitemap_url": "https://voyeurhit.com/sitemap/",
+    "max_pages": 100000,
+    "delay_seconds": 0.25,
+    "timeout_seconds": 20,
+    "obey_robots": true,
+    "sync_mode": "incremental",
+    "sitemap_include_pattern": "/sitemap_vids_[0-9]+/?$",
+    "sitemap_child_order": "listed",
+    "fetch_concurrency": 2,
+    "backfill_batch_size": 250,
+    "backfill_priority": 100,
+    "backfill_max_records": 50000
   }
 ]
