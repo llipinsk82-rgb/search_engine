@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from backend.live import RedTubeLiveAdapter, parse_redtube_video
 
 
@@ -10,6 +12,10 @@ def _fixture_video():
             "thumb": "https://ei-ph.rdtcdn.com/videos/example.jpg",
             "default_thumb": "https://ei-ph.rdtcdn.com/videos/example.jpg",
             "duration": "38:44",
+            "publish_date": "2026-02-18 15:45:44",
+            "views": 787499,
+            "rating": "98.008",
+            "ratings": 251,
             "tags": [{"tag_name": "alpha"}, {"tag_name": "beta"}],
         }
     }
@@ -26,6 +32,10 @@ def test_parse_redtube_video_core_metadata():
     assert item.tags == ["alpha", "beta"]
     assert item.preview_url is None
     assert item.quality is None
+    assert item.published_at == datetime(2026, 2, 18, 15, 45, 44, tzinfo=timezone.utc)
+    assert item.views == 787499
+    assert item.rating_percent == 98.008
+    assert item.rating_count == 251
 
 
 def test_redtube_adapter_uses_api_pagination_and_count():
@@ -45,3 +55,19 @@ def test_redtube_adapter_uses_api_pagination_and_count():
     assert result.total == 42
     assert result.page == 2
     assert len(result.items) == 1
+
+
+def test_parse_redtube_video_malformed_sort_metadata_becomes_none():
+    row = _fixture_video()
+    row["video"]["publish_date"] = "not-a-date"
+    row["video"]["views"] = "n/a"
+    row["video"]["rating"] = None
+    row["video"]["ratings"] = -5
+
+    item = parse_redtube_video(row)
+
+    assert item is not None
+    assert item.published_at is None
+    assert item.views is None
+    assert item.rating_percent is None
+    assert item.rating_count is None

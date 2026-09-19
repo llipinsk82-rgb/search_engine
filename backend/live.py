@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import hashlib
 import html
 import json
@@ -1377,6 +1378,33 @@ def parse_redtube_video(row: object) -> SearchItem | None:
     duration_raw = str(video.get("duration") or "").strip()
     duration = _duration_clock(duration_raw) if duration_raw else None
 
+    published_at = None
+    publish_date = str(video.get("publish_date") or "").strip()
+    if publish_date:
+        try:
+            published_at = datetime.strptime(publish_date, "%Y-%m-%d %H:%M:%S").replace(
+                tzinfo=timezone.utc
+            )
+        except ValueError:
+            pass
+
+    def nonnegative_int(value: object) -> int | None:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed >= 0 else None
+
+    views = nonnegative_int(video.get("views"))
+    rating_count = nonnegative_int(video.get("ratings"))
+    rating_percent = None
+    try:
+        parsed_rating = float(video.get("rating"))
+        if 0.0 <= parsed_rating <= 100.0:
+            rating_percent = parsed_rating
+    except (TypeError, ValueError):
+        pass
+
     tags: list[str] = []
     raw_tags = video.get("tags")
     if isinstance(raw_tags, list):
@@ -1394,6 +1422,10 @@ def parse_redtube_video(row: object) -> SearchItem | None:
         url=page_url,
         thumbnail=thumbnail,
         duration_seconds=duration,
+        published_at=published_at,
+        views=views,
+        rating_percent=rating_percent,
+        rating_count=rating_count,
         quality=None,
         tags=tags[:80],
         score=1.0,
