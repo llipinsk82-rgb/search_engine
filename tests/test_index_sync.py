@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from backend.index import (
@@ -10,6 +12,7 @@ from backend.index import (
     merge_provider_items,
     replace_provider_items,
     search_items,
+    upsert_items,
 )
 from backend.models import SearchItem
 
@@ -121,6 +124,29 @@ class ProviderSnapshotTests(unittest.TestCase):
             [row.id for row in rows[:3]],
             ["newest", "middle", "oldest"],
         )
+
+    def test_batch_upsert_deletes_fts_rows_once_per_batch(self) -> None:
+        # Initialize first so the traced connection below records only the write path.
+        upsert_items([item("seed", "Seed")], path=self.db)
+        statements: list[str] = []
+
+        def traced_connect(path: Path):
+            conn = sqlite3.connect(path, timeout=15.0)
+            conn.row_factory = sqlite3.Row
+            conn.set_trace_callback(statements.append)
+            return conn
+
+        with patch("backend.index._connect", side_effect=traced_connect):
+            upsert_items(
+                [item("a", "Alpha"), item("b", "Beta"), item("c", "Gamma")],
+                path=self.db,
+            )
+
+        deletes = [
+            sql for sql in statements
+            if sql.lstrip().upper().startswith("DELETE FROM ITEMS_FTS")
+        ]
+        self.assertEqual(len(deletes), 1)
 
     def test_provider_mismatch_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

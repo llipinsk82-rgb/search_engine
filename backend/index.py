@@ -142,7 +142,7 @@ def initialize(path: Path = DB_PATH) -> None:
         _initialized_paths.add(key)
 
 
-def _write_item(
+def _upsert_item_row(
     conn: sqlite3.Connection,
     item: SearchItem,
     *,
@@ -187,18 +187,51 @@ def _write_item(
             max(0, int(source_order)),
         ),
     )
-    conn.execute("DELETE FROM items_fts WHERE id = ?", (item.id,))
-    conn.execute(
+
+
+def _refresh_fts_items(conn: sqlite3.Connection, items: list[SearchItem]) -> None:
+    # FTS5 cannot use a normal B-tree index for the UNINDEXED id column. Deleting
+    # each id separately therefore scans the virtual table once per item. Collapse
+    # the refresh into bounded IN() batches so a provider sync scans FTS once per
+    # chunk instead of once per record. Last duplicate id wins, matching UPSERT.
+    latest = {item.id: item for item in items}
+    if not latest:
+        return
+    ids = list(latest)
+    chunk_size = 500
+    for offset in range(0, len(ids), chunk_size):
+        chunk = ids[offset : offset + chunk_size]
+        placeholders = ",".join("?" for _ in chunk)
+        conn.execute(
+            f"DELETE FROM items_fts WHERE id IN ({placeholders})",
+            chunk,
+        )
+    conn.executemany(
         "INSERT INTO items_fts (id, title, tags, provider) VALUES (?, ?, ?, ?)",
-        (item.id, item.title, " ".join(item.tags), item.provider),
+        [
+            (item.id, item.title, " ".join(item.tags), item.provider)
+            for item in latest.values()
+        ],
     )
+
+
+def _write_items(
+    conn: sqlite3.Connection,
+    entries: list[tuple[SearchItem, int]],
+) -> None:
+    for item, source_order in entries:
+        _upsert_item_row(conn, item, source_order=source_order)
+    _refresh_fts_items(conn, [item for item, _ in entries])
+
 
 
 def upsert_items(items: list[SearchItem], path: Path = DB_PATH) -> int:
     initialize(path)
     with _connect(path) as conn:
-        for source_order, item in enumerate(items):
-            _write_item(conn, item, source_order=source_order)
+        _write_items(
+            conn,
+            [(item, source_order) for source_order, item in enumerate(items)],
+        )
     return len(items)
 
 
@@ -216,12 +249,14 @@ def merge_provider_batches(
     pairs = batches.items() if isinstance(batches, dict) else batches
     written = 0
     with _connect(path) as conn:
+        entries: list[tuple[SearchItem, int]] = []
         for provider, items in pairs:
             for source_order, item in enumerate(items):
                 if item.provider != provider:
                     continue
-                _write_item(conn, item, source_order=source_order)
+                entries.append((item, source_order))
                 written += 1
+        _write_items(conn, entries)
     return written
 
 
@@ -250,8 +285,10 @@ def merge_provider_items(
                 (provider,),
             ).fetchone()["n"]
         )
-        for source_order, item in enumerate(items):
-            _write_item(conn, item, source_order=source_order)
+        _write_items(
+            conn,
+            [(item, source_order) for source_order, item in enumerate(items)],
+        )
         active_after = int(
             conn.execute(
                 "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
@@ -288,8 +325,10 @@ def replace_provider_items(
         conn.execute(
             "UPDATE items SET active = 0 WHERE provider = ? AND active = 1", (provider,)
         )
-        for source_order, item in enumerate(items):
-            _write_item(conn, item, source_order=source_order)
+        _write_items(
+            conn,
+            [(item, source_order) for source_order, item in enumerate(items)],
+        )
         conn.execute(
             """
             DELETE FROM items_fts
