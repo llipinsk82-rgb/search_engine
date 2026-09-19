@@ -277,6 +277,22 @@ _ANYPORN_DURATION_RE = re.compile(
 
 
 
+
+_PORNOBAE_CARD_RE = re.compile(
+    r'<article\b[^>]*data-video-id="[^"]+"[^>]*>(?P<body>.*?)</article>',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNOBAE_URL_RE = re.compile(r'\bhref="(?P<url>https://pornobae\.com/[^"]+/)"', re.IGNORECASE)
+_PORNOBAE_TITLE_RE = re.compile(r'\btitle="(?P<title>[^"]+)"', re.IGNORECASE)
+_PORNOBAE_THUMB_RE = re.compile(
+    r'<img\b[^>]*class="[^"]*\bvideo-main-thumb\b[^"]*"[^>]*\bsrc="(?P<thumb>https://pornobae\.com/[^"]+)"',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNOBAE_DURATION_RE = re.compile(
+    r'<span\b[^>]*class="duration"[^>]*>.*?(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?).*?</span>',
+    re.IGNORECASE | re.DOTALL,
+)
+
 _YOURLUST_CARD_RE = re.compile(
     r'<div\b[^>]*class="item"[^>]*>(?P<body>.*?)(?=<div\b[^>]*class="item"|<div\b[^>]*class="pagination"|\Z)',
     re.IGNORECASE | re.DOTALL,
@@ -829,6 +845,41 @@ def parse_drtuber_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
 
 
 
+
+
+
+def parse_pornobae_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    for match in _PORNOBAE_CARD_RE.finditer(raw_html):
+        block = match.group("body")
+        href = _PORNOBAE_URL_RE.search(block)
+        title = _PORNOBAE_TITLE_RE.search(block)
+        thumb = _PORNOBAE_THUMB_RE.search(block)
+        duration = _PORNOBAE_DURATION_RE.search(block)
+        if href is None or title is None or thumb is None or duration is None:
+            continue
+        page_url = html.unescape(href.group("url"))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        items.append(
+            SearchItem(
+                id=_item_id("pornobae", page_url),
+                provider="pornobae",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=html.unescape(thumb.group("thumb")),
+                preview_url=None,
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality=None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
 
 
 def parse_yourlust_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
@@ -1414,6 +1465,30 @@ class DrTuberLiveAdapter(_HttpLiveAdapter):
 
 
 
+
+class PornobaeLiveAdapter(_HttpLiveAdapter):
+    name = "pornobae"
+    base_url = "https://pornobae.com/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        params = urlencode({"s": query.strip()})
+        url = f"{self.base_url}?{params}"
+        if page > 1:
+            url = f"{self.base_url}page/{page}/?{params}"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_pornobae_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class YourLustLiveAdapter(_HttpLiveAdapter):
     name = "yourlust"
     base_url = "https://yourlust.com/"
@@ -1898,6 +1973,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     PornZogLiveAdapter(),
     PornDrLiveAdapter(),
     YourLustLiveAdapter(),
+    PornobaeLiveAdapter(),
     AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
