@@ -407,3 +407,13 @@ No provider was auto-enabled in this pass.
 - Feature commit: `d698322 feat: add bigfuck live provider`; pushed to `feature/provider-registry-probe`.
 - Official deploy: `SEARCH_DEPLOY=PASS build=d6983220097d`, backup `/opt/search_engine-backups/20260919T140932Z-d6983220097d`.
 - Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete BigFuck rows with preview, error=None and overlap 0; cache round-trip returned 5/5 complete rows with preview. Production health: 23 live / 52 trusted / 52 available providers.
+
+## Production update 2026-09-19 — HQPorn live release
+- Fresh HQPorn audit: canonical host `hqporn.xxx`; `User-agent: *` has an empty `Disallow`; public GET search contract is `/search/<query>/` with normal `/search/<query>/<page>/` pagination.
+- Pre-code live gate: page 1 and page 2 each exposed 108/108 unique cards with canonical URL, thumbnail, duration, title and preview MP4; overlap 0.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN; enablement RED was exactly the missing source-policy/registry entries, then 17/17 GREEN.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete rows with preview; source policy accepted 48/48; overlap 0; canonical host `hqporn.xxx`, thumbnail/preview host `icdn05.hqporn.xxx`.
+- Full suite before release: 160 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `d55b6ee feat: add hqporn live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=d55b6ee21678`, backup `/opt/search_engine-backups/20260919T142454Z-d55b6ee21678`.
+- Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete HQPorn rows with preview, error=None, overlap 0; cache round-trip returned 5/5 complete rows with preview. Production health: 24 live / 53 trusted / 53 available providers.
