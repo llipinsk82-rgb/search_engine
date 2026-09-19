@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 
 from backend.index import count_search_items, indexed_providers, search_items
-from backend.models import SearchItem, SourceVariant
+from backend.models import SearchItem, SortMode, SourceVariant
 
 _space_re = re.compile(r"\s+")
 _punct_re = re.compile(r"[^\w\s]", re.UNICODE)
@@ -62,6 +62,7 @@ async def search_all(
     max_duration: int | None = None,
     offset: int = 0,
     limit: int = 40,
+    sort: SortMode = "relevance",
     allowed_providers: set[str] | None = None,
     exclude_ids: set[str] | None = None,
 ) -> tuple[list[SearchItem], list[str], bool, int]:
@@ -90,6 +91,7 @@ async def search_all(
         exclude_ids=exclude_ids,
         offset=offset,
         limit=limit,
+        sort=sort,
     )
     used = sorted(allowed)
     has_more = total > offset + len(items)

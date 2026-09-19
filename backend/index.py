@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from backend.models import SearchItem
+from backend.models import SearchItem, SortMode
 from backend.settings import DB_PATH
 
 _token_re = re.compile(r"\w+", re.UNICODE)
@@ -581,6 +581,7 @@ def search_items(
     exclude_ids: set[str] | None = None,
     offset: int = 0,
     limit: int = 40,
+    sort: SortMode = "relevance",
     path: Path = DB_PATH,
 ) -> list[SearchItem]:
     initialize(path)
@@ -595,11 +596,21 @@ def search_items(
         exclude_ids=exclude_ids,
     )
     tokens = _token_re.findall(query.lower())
-    order = (
-        "fts_rank ASC, i.indexed_at DESC, i.source_order ASC"
-        if tokens
-        else "i.indexed_at DESC, i.source_order ASC"
-    )
+    if sort == "relevance":
+        order = (
+            "fts_rank ASC, i.indexed_at DESC, i.source_order ASC"
+            if tokens
+            else "i.indexed_at DESC, i.source_order ASC"
+        )
+    else:
+        sort_orders: dict[SortMode, str] = {
+            "newest": "(i.published_at IS NULL) ASC, i.published_at DESC, i.indexed_at DESC, i.source_order ASC",
+            "views": "(i.views IS NULL) ASC, i.views DESC, i.indexed_at DESC, i.source_order ASC",
+            "rating": "(i.rating_percent IS NULL) ASC, i.rating_percent DESC, (i.rating_count IS NULL) ASC, i.rating_count DESC, i.indexed_at DESC, i.source_order ASC",
+            "longest": "(i.duration_seconds IS NULL) ASC, i.duration_seconds DESC, i.indexed_at DESC, i.source_order ASC",
+            "shortest": "(i.duration_seconds IS NULL) ASC, i.duration_seconds ASC, i.indexed_at DESC, i.source_order ASC",
+        }
+        order = sort_orders[sort]
     sql = f"""
         SELECT
             i.id, i.provider, i.title, i.url, i.thumbnail, i.preview_url,
