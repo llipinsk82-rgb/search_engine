@@ -620,3 +620,116 @@ NIE powtarzać Phase A ani implementacji Phase B.
 2. Jeżeli UI smoke PASS: dopisać production acceptance Phase B do tego handoffu. Nie redeployować tylko po to, żeby uzyskać marker, jeśli aktualny build jest zdrowy i smoke PASS.
 3. Następnie rozpocząć `docs/superpowers/plans/2026-09-19-search-metadata-sorting-v2.md` (Phase C) w nowym clean worktree z aktualnego `feature/provider-registry-probe`.
 4. PornFlip traktować osobno. Jeżeli ma być zachowany, pierwszą bezpieczną czynnością jest odzyskanie dwóch `/tmp` backupów do osobnego worktree i ponowne sprawdzenie SHA + testów. Nie mieszać PornFlip z Phase C.
+
+## 10. FINAL SESSION CHECKPOINT — 2026-09-19
+Ten wpis jest autorytatywnym stanem końcowym tej sesji i nadpisuje starsze sprzeczne wpisy historyczne.
+
+### Repo / branch / HEAD — VERIFIED
+- Repo: `llipinsk82-rgb/search_engine`
+- Branch: `feature/provider-registry-probe`
+- Lokalny HEAD: `b4ec3807b66ffb76d88416edd99b2bfb19f5a295`
+- `origin/feature/provider-registry-probe`: dokładnie `b4ec3807b66ffb76d88416edd99b2bfb19f5a295`
+- Working tree: CLEAN.
+
+Istotne ostatnie commity:
+- `b4ec380` — `docs: hand off cards ui v2 session`
+- `c4ba694` — `feat: ship cards ui v2`
+- `c194f5c` — `style: polish mobile result feed`
+- `2f1b06b` — `style: refine desktop result hierarchy`
+- `3a4250b` — `refactor: simplify search card markup`
+- `70d92b5` — `docs: record media reliability release`
+- `4296dc1` — Phase A releasable build / media reliability final code state.
+
+### Testy — VERIFIED
+Phase A final gate przed release:
+- `177 passed, 2 warnings`.
+
+Phase B task gates:
+- markup: `9 passed`;
+- desktop hierarchy: `10 passed`;
+- mobile feed: `11 passed`;
+- final UI/status/assets: `15 passed`.
+
+Phase B final full gate na clean worktree `c4ba694fdb35...`:
+- `181 passed, 2 warnings in 6.28s`;
+- `git diff --check`: PASS;
+- JS syntax: PASS.
+
+Znane warnings pozostają wyłącznie FastAPI `@app.on_event("startup")` deprecated.
+
+### Produkcja — FRESH VERIFIED AT SESSION CLOSE
+- `search-engine-deploy-client status`: `build=c4ba694fdb35 service=active sync_timer=active backfill_timer=active`.
+- `/api/health`: `status=ok`, `build=c4ba694fdb35`.
+- `indexed_items=930245`.
+- `configured_index_provider_count=31`.
+- `live_provider_count=25`.
+- `trusted_provider_count=55`.
+- `available_provider_count=55`.
+- Phase A backup: `/opt/search_engine-backups/20260919T174339Z-4296dc144989`.
+- Phase B backup widoczny w poprzednim zweryfikowanym checkpointcie: `/opt/search_engine-backups/20260919T181300Z-c4ba694fdb35`.
+
+Phase A production smoke jest VERIFIED i obejmował m.in. direct preview, Thumbzilla thumbnail/preview proxy, Tube8 refresh i disabled-preview policy.
+
+Phase B kod jest na origin i działa jako aktualny production build. Nie odzyskano formalnej tekstowej linii `SEARCH_DEPLOY=PASS build=c4ba694fdb35`, więc nie wolno twierdzić, że taki marker został odczytany. Production status/health i backup potwierdzają faktyczne wdrożenie builda.
+
+### Phase B — NOT_VERIFIED
+Nie wykonano końcowego authenticated visual smoke prawdziwego frontendu za Nginx Basic Auth. Bez obchodzenia auth nie potwierdzono wizualnie na produkcji:
+- desktop 4/3/2 grid;
+- mobile 1 card/row przy ~320–420 px;
+- long-title / missing-metadata layout;
+- Show more / prefetch w prawdziwej przeglądarce;
+- preview button UX na faktycznym production frontendzie;
+- asset shell v24 przez zalogowaną sesję browserową.
+
+Testy source-contract/full-suite są zielone, ale nie zastępują tego wizualnego acceptance.
+
+### PornFlip — RED FLAG / VERIFIED CURRENT STATE
+- Nie ma `tests/test_pornflip_live_parser.py` w bieżącym checkoutcie.
+- Bieżący checkout jest clean i nie zawiera PornFlip jako funkcji projektu.
+- Backup `/tmp/search_engine_phaseA_pornflip_live.py`: SHA256 `9fa362b91778270d4f3015dfbf67dd44107c85cec6cda4468fdeb0fe485e9c01`.
+- Backup `/tmp/search_engine_phaseA_test_pornflip.py`: SHA256 `f2ec782760890ee8a880eb9552ecf507a90a046c92286a1f8e5276e70e4a3e0f`.
+- `/tmp` jest tymczasowe. PornFlip nie jest release candidate i nie wolno go mieszać z Phase C.
+
+### Dokładny następny krok
+1. NIE powtarzać Phase A ani implementacji Phase B.
+2. Najpierw, jeśli dostępny jest autoryzowany frontend access, wykonać wyłącznie brakujący visual acceptance Phase B bez obchodzenia Basic Auth. Jeśli nie ma dostępu, zostawić ten punkt `NOT_VERIFIED` i nie blokować dalszego rozwoju.
+3. Rozpocząć Phase C z `docs/superpowers/plans/2026-09-19-search-metadata-sorting-v2.md` w NOWYM clean worktree utworzonym z aktualnego HEAD `b4ec3807b66f...`.
+4. Phase C cel: additive metadata (`published_at`, `views`, `rating_percent`, `rating_count`) + sortowanie `relevance/newest/views/rating/longest/shortest`, z brakującymi wartościami zawsze na końcu i bez wymyślania danych.
+5. Po Phase C dopiero Phase D: explicit `Amateur / Studio / Unknown`, bez heurystyk z tytułów.
+6. PornFlip osobno; jeśli ma być zachowany, odzyskać dwa `/tmp` backupy do osobnego worktree i ponownie przejść TDD/full gate.
+
+## 11. WIADOMOŚĆ STARTOWA DO NOWEGO CHATU
+
+```text
+BlackServ Search Engine — kontynuacja CTO.
+
+Przeczytaj najpierw kompletnie:
+1. /opt/bs-sandbox/search_engine/docs/SEARCH_ENGINE_HANDOFF.md
+2. /opt/bs-sandbox/search_engine/docs/superpowers/specs/2026-09-19-search-ui-preview-sort-design.md
+3. /opt/bs-sandbox/search_engine/docs/superpowers/plans/2026-09-19-search-product-v2-roadmap.md
+4. /opt/bs-sandbox/search_engine/docs/superpowers/plans/2026-09-19-search-metadata-sorting-v2.md
+
+Tryb pracy: /loop /cto /minimal.
+Nie zgaduj. Najpierw zweryfikuj aktualny git HEAD/origin/status i production health/status. Nie powtarzaj wykonanych Phase A ani Phase B.
+
+Stan końcowy poprzedniej sesji:
+- repo: llipinsk82-rgb/search_engine
+- branch: feature/provider-registry-probe
+- HEAD/origin: b4ec3807b66ffb76d88416edd99b2bfb19f5a295
+- working tree: CLEAN
+- production build: c4ba694fdb35
+- production health: ok
+- provider counts: 31 configured index / 25 live / 55 trusted / 55 available
+- Phase A Media Reliability: wdrożone i production-smoke PASS
+- Phase B Cards/UI v2: kod/testy PASS, na origin i aktualnie w produkcji; brakuje tylko authenticated visual browser smoke, więc ten punkt pozostaje NOT_VERIFIED
+- Phase C Metadata + Sorting: NIE rozpoczęta
+- Phase D Amateur/Studio: NIE rozpoczęta
+- PornFlip: NIE jest w checkoutcie; tylko dwa backupy /tmp opisane w handoffie — nie mieszać z Phase C
+
+Dokładny następny krok:
+- jeśli istnieje autoryzowany dostęp do frontend Nginx, zrób brakujący visual acceptance Phase B bez obchodzenia Basic Auth;
+- niezależnie od tego rozpocznij Phase C w nowym clean worktree z aktualnego HEAD, zgodnie z planem metadata/sorting;
+- TDD RED→GREEN, full pytest, git diff --check, commit/push, helper CHECK, natural maintenance gate, deploy, health/acceptance, handoff.
+- nie zabijaj zdrowych bounded sync/backfill jobs.
+- nie twierdź, że widziano formalny SEARCH_DEPLOY=PASS dla Phase B — tego markera nie odzyskano.
+```
