@@ -276,6 +276,22 @@ _ANYPORN_DURATION_RE = re.compile(
 
 
 
+_PORNDR_CARD_RE = re.compile(
+    r'<div\b[^>]*class="item\s*"[^>]*>(?P<body>.*?)(?=<div\b[^>]*class="item\s*"|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNDR_URL_RE = re.compile(
+    r'\bhref="(?P<url>https://www\.porndr\.com/videos/[^"]+/)"', re.IGNORECASE
+)
+_PORNDR_TITLE_RE = re.compile(r'\btitle="(?P<title>[^"]+)"', re.IGNORECASE)
+_PORNDR_THUMB_RE = re.compile(r'\bdata-original="(?P<thumb>https://www\.porndr\.com/[^"]+)"', re.IGNORECASE)
+_PORNDR_PREVIEW_RE = re.compile(r'\bdata-preview="(?P<preview>https://www\.porndr\.com/[^"]+)"', re.IGNORECASE)
+_PORNDR_DURATION_RE = re.compile(
+    r'<div\b[^>]*class="duration"[^>]*>\s*(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)\s*</div>',
+    re.IGNORECASE | re.DOTALL,
+)
+
+
 _PORNZOG_CARD_RE = re.compile(
     r'<div\b[^>]*class="thumb-video(?:\s[^"]*)?"[^>]*>(?P<body>.*?)(?=</li>\s*(?:<li>|</ul>)|\Z)',
     re.IGNORECASE | re.DOTALL,
@@ -798,6 +814,48 @@ def parse_drtuber_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
 
 
 
+def parse_porndr_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    marker = 'id="list_videos_videos_list_search_result_items"'
+    start = raw_html.find(marker)
+    scope = raw_html[start:] if start >= 0 else raw_html
+    if start >= 0:
+        end = scope.find('id="list_videos_videos_list_search_result_pagination"')
+        if end >= 0:
+            scope = scope[:end]
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    for match in _PORNDR_CARD_RE.finditer(scope):
+        block = match.group("body")
+        href = _PORNDR_URL_RE.search(block)
+        title = _PORNDR_TITLE_RE.search(block)
+        thumb = _PORNDR_THUMB_RE.search(block)
+        preview = _PORNDR_PREVIEW_RE.search(block)
+        duration = _PORNDR_DURATION_RE.search(block)
+        if href is None or title is None or thumb is None or preview is None or duration is None:
+            continue
+        page_url = html.unescape(href.group("url"))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        items.append(
+            SearchItem(
+                id=_item_id("porndr", page_url),
+                provider="porndr",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=html.unescape(thumb.group("thumb")),
+                preview_url=html.unescape(preview.group("preview")),
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality=None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_pornzog_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1300,6 +1358,31 @@ class DrTuberLiveAdapter(_HttpLiveAdapter):
 
 
 
+class PornDrLiveAdapter(_HttpLiveAdapter):
+    name = "porndr"
+    base_url = "https://www.porndr.com/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        if page > 1:
+            return LiveProviderResult(
+                self.name, [], None, page,
+                round((time.monotonic() - started) * 1000),
+            )
+        encoded = quote(query.strip(), safe="")
+        raw = self._fetch_text(f"{self.base_url}search/{encoded}/")
+        return LiveProviderResult(
+            self.name, parse_porndr_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class PornZogLiveAdapter(_HttpLiveAdapter):
     name = "pornzog"
     base_url = "https://pornzog.com/"
@@ -1734,6 +1817,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     ZZZTubeLiveAdapter(),
     PornHatLiveAdapter(),
     PornZogLiveAdapter(),
+    PornDrLiveAdapter(),
     AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),

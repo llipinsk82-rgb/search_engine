@@ -47,6 +47,7 @@ TRUSTED_PROVIDER_POLICIES: dict[str, ProviderPolicy] = {
     "sexplex": ProviderPolicy("sexplex", "SexPlex", frozenset({"sexplex.com", "www.sexplex.com"})),
     "vxxx": ProviderPolicy("vxxx", "VXXX", frozenset({"vxxx.com", "www.vxxx.com"})),
     "pornzog": ProviderPolicy("pornzog", "PornZog", frozenset({"pornzog.com", "www.pornzog.com"})),
+    "porndr": ProviderPolicy("porndr", "PornDr", frozenset({"porndr.com", "www.porndr.com"})),
     "sunporno": ProviderPolicy("sunporno", "SunPorno", frozenset({"sunporno.com", "www.sunporno.com"})),
     "xgroovy": ProviderPolicy("xgroovy", "XGroovy", frozenset({"xgroovy.com", "www.xgroovy.com"})),
     "txxx": ProviderPolicy("txxx", "TXXX", frozenset({"txxx.com", "www.txxx.com"})),
