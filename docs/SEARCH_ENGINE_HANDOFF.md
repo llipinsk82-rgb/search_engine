@@ -321,3 +321,16 @@ No provider was auto-enabled in this pass.
 - Official deploy: `SEARCH_DEPLOY=PASS build=abb76d86a274`, backup `/opt/search_engine-backups/20260919T115351Z-abb76d86a274`.
 - Production health after deploy: 18 live / 45 trusted / 45 available providers.
 - Production `/api/live-refresh` acceptance: page 1 and page 2 each fetched 5/5 complete PornZog items, no provider error, zero overlap, canonical host `pornzog.com`, thumbnail host `tn1.pornzog.com`; preview correctly absent. Cache round-trip returned 5/5 complete PornZog rows.
+
+## Production update 2026-09-19 — SexPlex generic sitemap release
+- Discovery from independent source hosts: SexPlex robots, home and root sitemap are reachable without bypass; root sitemap exposes 342 video child maps via `?type=videos&from_links_videos=N` plus non-video maps.
+- Shard ordering check: shard 1 contains higher/newer numeric content IDs (~1.595M) than shard 342 (~1.379M), while `lastmod` is dynamically current on both; production config therefore uses video-only filtering with `listed` child order.
+- Exact-config bounded probe: `GENERIC_READY`, 100/100 unique URLs, thumbnails and durations; 94/100 tags; canonical and thumbnail hosts remain `sexplex.com`; no enrichment required.
+- TDD promotion: expected RED on missing config/policy/deploy allowlist; targeted GREEN 37/37. Full suite: 147 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `7797de9 feat: add sexplex sitemap provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=7797de9af723`, backup `/opt/search_engine-backups/20260919T121613Z-7797de9af723`.
+- Post-deploy production acceptance: 100 SexPlex rows indexed; `/api/search?provider=sexplex` returned 10/10 complete rows; configured/available true; canonical and thumbnail hosts `sexplex.com`. Health: 45 indexed providers, 46 trusted / 46 available / 18 live providers.
+- Fresh legacy re-audit: IXXX, DinoTube, ForHerTube, Tiava, AssOAss, TubePornstars, LobsterTube, MetaPorn and SuperPorn remain HTTP 403 and/or robots-disallow search; no bypass attempted.
+- VIPWank is reachable and its public search works, but result cards link through `/to/<encoded external URL>` to third-party tube sites and identify those third-party sources. Treat it as an aggregator/directory rather than an independent provider, matching the earlier MyXVideos decision; do not add it as a separate source.
+- Independent-source batch from those cards: YourLust generic probe remains CUSTOM_REQUIRED (0/100 thumbnail and duration); PornDr has duration but 0/100 thumbnail; VXXX root traversal returned NO_RESULTS without a video filter; SexPlex was the only immediate generic-ready promotion from that batch.
+
