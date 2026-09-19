@@ -386,3 +386,14 @@ No provider was auto-enabled in this pass.
 - Feature commit: `e0d6b52 feat: add pornobae live provider`; pushed to `feature/provider-registry-probe`.
 - Official deploy: `SEARCH_DEPLOY=PASS build=e0d6b52f1797`, backup `/opt/search_engine-backups/20260919T132008Z-e0d6b52f1797`.
 - Production `/api/live-refresh` acceptance: page 1 and page 2 each returned 5/5 complete items, no provider error, overlap 0; cache contained 10 Pornobae rows and returned 5/5 complete rows. Production health: 21 live / 50 trusted / 50 available providers.
+
+## Production update 2026-09-19 — BustyBus live release
+- Fresh BustyBus audit: `User-agent: *` has an empty `Disallow`; public GET search contract is `/search/<query>/` with normal `/search/<query>/<page>/` pagination. No protection bypass was used.
+- Pre-code live gate: page 1 and page 2 each exposed 108/108 unique cards with canonical URL, thumbnail, duration and title; overlap 0. `data-preview` is empty, so preview remains absent rather than fabricated.
+- TDD: parser/adapter RED on missing implementation, parser GREEN 2/2; enablement RED was exactly the missing policy/registry entries, then targeted GREEN 17/17.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete rows; source policy accepted 48/48; overlap 0; elapsed ~136 ms and ~116 ms; preview 0 by design.
+- Full suite before release: 156 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `b08557b feat: add bustybus live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=b08557b4d17d`, backup `/opt/search_engine-backups/20260919T134725Z-b08557b4d17d`.
+- Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete BustyBus rows, error=None, overlap 0, canonical host `bustybus.com`, thumbnail host `icdn05.bustybus.com`; cache round-trip returned 5/5 complete rows. Health: 22 live / 51 trusted / 51 available providers.
+- PornTube re-audit: `User-agent: *` does not globally disallow search, but normal server-side requests to catalog/pornstar/studio pages redirect to `/tour/sfw`; the actual search UI/URL is session/age-gate state dependent. Do not synthesize consent cookies or bypass the gate. Leave PornTube unpromoted until a stable stateless public search contract is available.
