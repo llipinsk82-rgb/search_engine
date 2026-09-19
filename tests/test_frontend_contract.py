@@ -112,3 +112,20 @@ def test_cards_ui_v2_markup_hooks() -> None:
     ):
         assert existing in html
     assert 'id="sort"' not in html
+
+
+def test_cards_ui_v2_desktop_hierarchy_css() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert ".search-panel {" in css
+    panel = css[css.index(".search-panel {"):css.index("}", css.index(".search-panel {")) + 1]
+    assert "position: sticky" in panel
+    assert "top: 58px" in panel
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
+    medium = css[css.index("@media (max-width: 1000px)"):css.index("@media (max-width: 820px)")]
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in medium
+    intermediate = css[css.index("@media (max-width: 820px)"):css.index("@media (max-width: 680px)")]
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in intermediate
+    assert ".card-meta-secondary" in css
+    assert "color:" in css[css.index(".card-meta-secondary"):css.index("}", css.index(".card-meta-secondary")) + 1]
+    assert "aspect-ratio: 16/9" in css or "aspect-ratio: 16 / 9" in css
+    assert ".card { height:" not in css
