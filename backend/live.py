@@ -254,6 +254,30 @@ _ZZZTUBE_DURATION_RE = re.compile(
 )
 
 
+_PORNHAT_CARD_RE = re.compile(
+    r'<div\b[^>]*class="[^"]*\bthumb-bl-video\b[^"]*"[^>]*>'
+    r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bthumb-bl-video\b|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNHAT_LINK_RE = re.compile(
+    r'<a\b(?P<attrs>[^>]*\bdata-preview-custom="[^"]+"[^>]*)>',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNHAT_URL_RE = re.compile(r'\bhref="(?P<url>/video/[^"]+/)"', re.IGNORECASE)
+_PORNHAT_TITLE_RE = re.compile(r'\btitle="(?P<title>[^"]+)"', re.IGNORECASE)
+_PORNHAT_PREVIEW_RE = re.compile(
+    r'\bdata-preview-custom="(?P<preview>https?://[^"]+)"', re.IGNORECASE
+)
+_PORNHAT_THUMB_RE = re.compile(
+    r'\bdata-original="(?P<thumb>https?://[^"]+)"', re.IGNORECASE
+)
+_PORNHAT_DURATION_RE = re.compile(
+    r'<i\b[^>]*class="[^"]*fa-clock-o[^"]*"[^>]*></i>\s*'
+    r'<span>\s*(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)\s*</span>',
+    re.IGNORECASE | re.DOTALL,
+)
+
+
 @dataclass(slots=True)
 class LiveProviderResult:
     provider: str
@@ -727,6 +751,46 @@ def parse_drtuber_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
 
 
 
+
+def parse_pornhat_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://www.pornhat.one/"
+    for match in _PORNHAT_CARD_RE.finditer(raw_html):
+        block = match.group("body")
+        link = _PORNHAT_LINK_RE.search(block)
+        if link is None:
+            continue
+        attrs = link.group("attrs")
+        href = _PORNHAT_URL_RE.search(attrs)
+        title = _PORNHAT_TITLE_RE.search(attrs)
+        preview = _PORNHAT_PREVIEW_RE.search(attrs)
+        thumb = _PORNHAT_THUMB_RE.search(block)
+        duration = _PORNHAT_DURATION_RE.search(block)
+        if href is None or title is None or preview is None or thumb is None or duration is None:
+            continue
+        page_url = urljoin(base_url, html.unescape(href.group("url")))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        items.append(
+            SearchItem(
+                id=_item_id("pornhat", page_url),
+                provider="pornhat",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=html.unescape(thumb.group("thumb")),
+                preview_url=html.unescape(preview.group("preview")),
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality=None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
 def parse_zzztube_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1097,6 +1161,29 @@ class DrTuberLiveAdapter(_HttpLiveAdapter):
 
 
 
+
+class PornHatLiveAdapter(_HttpLiveAdapter):
+    name = "pornhat"
+    base_url = "https://www.pornhat.one/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        encoded = quote(query.strip(), safe="")
+        url = f"{self.base_url}search/{encoded}/"
+        if page > 1:
+            url = f"{url}{page}/"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_pornhat_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
 class ZZZTubeLiveAdapter(_HttpLiveAdapter):
     name = "zzztube"
     base_url = "https://zzztube.com/"
@@ -1458,6 +1545,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     DrTuberLiveAdapter(),
     RedTubeLiveAdapter(),
     ZZZTubeLiveAdapter(),
+    PornHatLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
     ThumbzillaLiveAdapter(),
