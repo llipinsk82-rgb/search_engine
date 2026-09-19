@@ -442,3 +442,26 @@ No provider was auto-enabled in this pass.
 - Production health after acceptance: 31 configured index providers, 55 trusted / 55 available / 25 live providers.
 - Independent PornFlip worktree changes were isolated before verification/deploy and restored byte-for-byte afterward; they were not included in the ServiPorno feature commit.
 - Same discovery pass: BigPorn rejected because search redirects to robots-disallowed `/search-*`; PornKai rejected because its public `/search?query=` contract currently returns HTTP 500; GotPorn search is robots-disallowed and host returns 403; PornKat remains CUSTOM_REQUIRED because listing and sampled target pages expose no duration; PornDroids generic root probe remains CUSTOM_REQUIRED.
+
+## Production update — 2026-09-19 — Media Reliability Phase A
+
+Released provider-aware thumbnail/preview handling from build `4296dc144989`.
+
+- Tests before release: `177 passed, 2 warnings`; `git diff --check` PASS.
+- Official helper CHECK: PASS.
+- Official deploy: `SEARCH_DEPLOY=PASS build=4296dc144989`.
+- Backup: `/opt/search_engine-backups/20260919T174339Z-4296dc144989`.
+- Production health after deploy: 55 trusted / 55 available / 25 live providers.
+- Media policy decisions from bounded 2026-09-19 audit:
+  - direct preview verified with `206 video/*`: Beeg, YouJizz, DrTuber, BigFuck, HQPorn, TNAFlix, SpankBang, XHamster, Pornhub, Tube8;
+  - PornHat, PornDr and AnyPorn preview disabled because their public preview URLs redirect outside the original provider allowlist;
+  - Thumbzilla preview uses strict provider-aware proxy because direct access returned 410 while the same public URL with the fixed public Thumbzilla Referer returned `206 video/mp4`.
+- Production smoke:
+  - BigFuck direct preview: `206 video/mp4`;
+  - Thumbzilla preview proxy: `206 video/mp4`;
+  - Thumbzilla thumbnail proxy: `200 image/webp`;
+  - Tube8 refresh endpoint: `302` to a freshly resolved thumbnail;
+  - MILFPorn sample has no preview and remains still-image only;
+  - media API reports Thumbzilla `thumbnail=proxy, preview=proxy`, Tube8 `thumbnail=refresh`, and PornHat/PornDr/AnyPorn `preview=disabled`.
+- Frontend assets were bumped to shell v23. Direct requests to Uvicorn `:8775` correctly return 404 for static assets; the production frontend is served by Nginx and protected by Basic Auth (local HTTPS probe returned 401 without credentials), so no credential bypass was attempted.
+- Preserved PornFlip dirty worktree was restored byte-for-byte after deploy; hashes remain `9fa362b9...` for `backend/live.py` and `f2ec7827...` for `tests/test_pornflip_live_parser.py`.
