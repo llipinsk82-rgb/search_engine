@@ -52,6 +52,15 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("hdzog", trusted_provider_names())
         self.assertTrue(is_searchable_provider("hdzog"))
 
+    def test_sexplex_is_promoted_to_production_catalog(self):
+        production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
+        row = next(item for item in production if item["name"] == "sexplex")
+        self.assertEqual(row["sitemap_url"], "https://sexplex.com/sitemap.xml")
+        self.assertEqual(row["sitemap_child_order"], "listed")
+        self.assertIn("type=videos", row["sitemap_include_pattern"])
+        self.assertIn("sexplex", trusted_provider_names())
+        self.assertTrue(is_searchable_provider("sexplex"))
+
     def test_candidate_catalog_tracks_discovery_without_production_enablement(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
         self.assertEqual(rows, [])
