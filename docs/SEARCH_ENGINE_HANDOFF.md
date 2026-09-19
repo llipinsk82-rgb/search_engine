@@ -366,3 +366,13 @@ No provider was auto-enabled in this pass.
 - Official deploy: `SEARCH_DEPLOY=PASS build=0c72f6515160`, backup `/opt/search_engine-backups/20260919T125151Z-0c72f6515160`.
 - Production acceptance: `/api/live-refresh` page 1 fetched 5/5 complete PornDr items with preview, error=None and canonical/thumbnail host `www.porndr.com`; page 2 returned the expected empty result; cache round-trip returned 5/5 complete rows with preview.
 - Post-deploy health: 19 live / 48 trusted / 48 available providers.
+
+## Production update 2026-09-19 — YourLust live release
+- Fresh live-search audit: robots allows normal crawling and the public GET search contract is `/search/?q=<query>` with explicit pagination links `/search/<page>/?q=<query>`.
+- Pre-code gate: page 1 and page 2 each exposed 80 unique cards with 80/80 canonical URLs, thumbnails, durations and titles; overlap was 0. No preview URL is exposed, so preview remains empty rather than fabricated.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN; enablement RED was exactly the missing source-policy/registry entries, then 15/15 GREEN.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete items; source policy passed 48/48; overlap 0; canonical host `yourlust.com`, thumbnail host `i.yourlust.com`; elapsed ~151 ms and ~138 ms.
+- Full suite before release: 152 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `0c057e1 feat: add yourlust live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=0c057e163c63`, backup `/opt/search_engine-backups/20260919T130745Z-0c057e163c63`.
+- Production `/api/live-refresh` acceptance: page 1 and page 2 each returned 5/5 complete items, no provider error, overlap 0, canonical host `yourlust.com`, thumbnail host `i.yourlust.com`; cache round-trip returned 5/5 complete rows. Production health: 20 live / 49 trusted / 49 available providers.
