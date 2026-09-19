@@ -465,3 +465,158 @@ Released provider-aware thumbnail/preview handling from build `4296dc144989`.
   - media API reports Thumbzilla `thumbnail=proxy, preview=proxy`, Tube8 `thumbnail=refresh`, and PornHat/PornDr/AnyPorn `preview=disabled`.
 - Frontend assets were bumped to shell v23. Direct requests to Uvicorn `:8775` correctly return 404 for static assets; the production frontend is served by Nginx and protected by Basic Auth (local HTTPS probe returned 401 without credentials), so no credential bypass was attempted.
 - Preserved PornFlip dirty worktree was restored byte-for-byte after deploy; hashes remain `9fa362b9...` for `backend/live.py` and `f2ec7827...` for `tests/test_pornflip_live_parser.py`.
+
+# SESSION HANDOFF — 2026-09-19 18:50 Europe/London
+
+## 1. Cel projektu
+BlackServ Search Engine jest agregatorem metadanych wyników z wielu publicznych providerów. Nie hostuje ani nie mirroruje wideo. Bieżący kierunek produktu po rozbudowie katalogu providerów: poprawa niezawodności miniaturek/preview, jakości kart i UX, a następnie uczciwe sortowanie na podstawie realnych metadanych oraz filtr Amateur/Studio bez heurystyk tytułowych.
+
+Zatwierdzona kolejność prac z `docs/superpowers/specs/2026-09-19-search-ui-preview-sort-design.md` i planów w `docs/superpowers/plans/`:
+1. Phase A — Media Reliability.
+2. Phase B — Cards/UI v2.
+3. Phase C — Metadata + Sorting.
+4. Phase D — Amateur/Studio.
+
+## 2. Repozytorium i bieżący stan Git — VERIFIED
+- Repo: `llipinsk82-rgb/search_engine`.
+- Sandbox: `/opt/bs-sandbox/search_engine`.
+- Branch główny pracy: `feature/provider-registry-probe`.
+- Aktualny lokalny HEAD: `c4ba694fdb3532f896e93ef690802ec4e4a24807`.
+- `origin/feature/provider-registry-probe`: ten sam SHA `c4ba694fdb3532f896e93ef690802ec4e4a24807`.
+- Główny sandbox przy końcu sesji: clean (`git status --short` bez wpisów).
+- Worktree Phase B: `/opt/bs-sandbox/search_engine-worktrees/cards-ui-v2`, branch `feature/cards-ui-v2`, HEAD ten sam `c4ba694fdb3532f896e93ef690802ec4e4a24807`, clean.
+- Worktree Phase A: `/opt/bs-sandbox/search_engine-worktrees/media-reliability-v2`, branch `feature/media-reliability-v2`, HEAD `4296dc14498957670bbb9be5abe9e6b678cfc0f2`.
+
+Istotne commity bieżącej fazy:
+- `3a4250b refactor: simplify search card markup`
+- `2f1b06b style: refine desktop result hierarchy`
+- `c194f5c style: polish mobile result feed`
+- `c4ba694 feat: ship cards ui v2`
+
+Poprzednia faza:
+- `424a32e feat: add provider media policy`
+- `28d7bb5 refactor: centralize provider media validation`
+- `83ec2af fix: gate previews by verified media capability`
+- `629eb5e fix: make card media policy driven`
+- `4296dc1 test: isolate provider media api index state`
+- `70d92b5 docs: record media reliability release`
+
+## 3. Phase A — Media Reliability — VERIFIED COMPLETE
+Wykonano provider-aware media policy, thumbnail handling, preview capability gating, session failure memory i strict preview proxy tylko tam, gdzie był potrzebny.
+
+### Zweryfikowany audit preview
+Bez bypassów i bez prywatnych endpointów. Bounded `Range` probe na publicznych preview URL-ach:
+- direct preview `206 video/*`: Beeg, YouJizz, DrTuber, BigFuck, HQPorn, TNAFlix, SpankBang, XHamster, Pornhub, Tube8;
+- PornHat, PornDr, AnyPorn: preview wyłączony, bo publiczne preview URL-e robiły redirect poza pierwotny provider allowlist;
+- Thumbzilla: plain request zwracał 410, ten sam publiczny URL z `Referer: https://www.thumbzilla.com/` zwracał `206 video/mp4`; wdrożony strict allowlisted preview proxy.
+
+### Testy Phase A
+- Finalny full suite przed release: `177 passed, 2 warnings in 6.21s`.
+- `git diff --check`: PASS.
+- Znane warnings: tylko FastAPI `@app.on_event("startup")` deprecated.
+
+### Produkcja Phase A
+- Formalny helper CHECK: PASS.
+- Formalny deploy: `SEARCH_DEPLOY=PASS build=4296dc144989`.
+- Backup: `/opt/search_engine-backups/20260919T174339Z-4296dc144989`.
+- Production smoke VERIFIED:
+  - BigFuck direct preview `206 video/mp4`;
+  - Thumbzilla preview proxy `206 video/mp4`;
+  - Thumbzilla thumbnail proxy `200 image/webp`;
+  - Tube8 `/api/thumb/<id>?refresh=true` -> `302` do świeżo rozwiązanej miniatury;
+  - MILFPorn sample bez preview, zgodnie z policy;
+  - media API: Thumbzilla `thumbnail=proxy, preview=proxy`; Tube8 `thumbnail=refresh`; PornHat/PornDr/AnyPorn `preview=disabled`.
+- Frontend shell po Phase A: v23.
+
+## 4. Phase B — Cards/UI v2 — IMPLEMENTED, TESTED, ON ORIGIN, CURRENTLY RUNNING IN PRODUCTION
+Zmiany nie modyfikują search API ani semantyki wyników. Dotyczą wyłącznie warstwy UI/statusu:
+- nowe hooki `.search-panel`, `.filter-strip`, `.result-summary`, `.media-badges`, `.card-meta-primary`, `.card-meta-secondary`;
+- zachowane istniejące media controls i Phase A preview logic;
+- desktop: sticky compact search panel, 4 -> 3 -> 2 kolumny, thumbnail-first hierarchy, secondary metadata muted;
+- mobile <=680px: jeden pełny card/row, 16:9, poziomy scroll filtrów, 44px controls, 40px preview target, zabezpieczenia na overflow/długie tytuły;
+- status rozdzielony na primary result state i secondary provider/live detail;
+- frontend cache/assets bump v23 -> v24;
+- prefetch/load-more logic nie była celowo zmieniana.
+
+### TDD / testy Phase B — VERIFIED
+Task-level:
+- markup contract: `9 passed`;
+- desktop hierarchy: `10 passed`;
+- mobile contract: `11 passed`;
+- final UI/status/assets contract: `15 passed`.
+
+Finalny full gate na clean worktree, HEAD `c4ba694fdb35...`:
+- `181 passed, 2 warnings in 6.28s`;
+- `git diff --check`: PASS;
+- JS syntax check: PASS;
+- po usunięciu lokalnego symlinka `.venv` worktree był clean.
+
+Dodatkowo przy zamykaniu sesji na głównym checkoutcie:
+- `tests/test_frontend_contract.py`: `12 passed in 0.06s`.
+
+### Produkcja Phase B — VERIFIED FACTS
+- `/api/health`: `status=ok`.
+- Production build: `c4ba694fdb35`.
+- `search-engine-deploy-client status`: `build=c4ba694fdb35 service=active sync_timer=active backfill_timer=active`.
+- Produkcja w chwili handoffu: `indexed_items=925027`, `configured_index_provider_count=31`, `live_provider_count=25`, `trusted_provider_count=55`, `available_provider_count=55`.
+- Nie było aktywnego `sync-all` ani `backfill-all` przy finalnym sprawdzeniu maintenance.
+- Istnieje backup deployu: `/opt/search_engine-backups/20260919T181300Z-c4ba694fdb35`.
+- `origin/feature/provider-registry-probe` i lokalny HEAD są dokładnie na tym samym SHA co production build.
+
+### Phase B — NOT_VERIFIED / UNKNOWN
+- Nie odzyskano z journald bezpośredniej linii `SEARCH_DEPLOY=PASS build=c4ba694fdb35`; journald search dla tego SHA był pusty. Produkcyjny build, aktywny service i backup potwierdzają, że build został wdrożony, ale formalnego tekstowego markera PASS nie należy dopisywać jako zweryfikowanego.
+- Nie wykonano końcowego wizualnego production smoke Phase B przez chroniony frontend. Local Nginx HTTPS bez credentials zwraca `401`; nie szukano ani nie obchodzono Basic Auth credentials.
+- Dlatego desktop/mobile rendering, long-title card, missing-metadata card, Show more/prefetch i preview button na faktycznym production frontendzie pozostają `NOT_VERIFIED`, mimo zielonych source-contract/full-suite testów.
+
+## 5. PornFlip — RED FLAG / PRESERVED BUT NOT IN CHECKOUT
+Wcześniej istniał niezależny, niecommitowany PornFlip adapter/test. Był zweryfikowany read-only przed Phase A:
+- live contract: page1 `21/21` complete, page2 `22/22` complete;
+- overlap 0;
+- thumbnail/duration/title kompletne;
+- preview 0.
+
+Aktualny stan przy końcu sesji:
+- główny checkout jest clean i `tests/test_pornflip_live_parser.py` jest nieobecny;
+- PornFlip NIE jest obecnie odtworzony w working tree;
+- dwa backupy nadal istnieją w `/tmp`:
+  - `/tmp/search_engine_phaseA_pornflip_live.py` SHA256 `9fa362b91778270d4f3015dfbf67dd44107c85cec6cda4468fdeb0fe485e9c01`;
+  - `/tmp/search_engine_phaseA_test_pornflip.py` SHA256 `f2ec782760890ee8a880eb9552ecf507a90a046c92286a1f8e5276e70e4a3e0f`.
+- `/tmp` jest storage tymczasowym. Nie traktować PornFlip jako bezpiecznie zapisanej funkcji projektu ani jako release candidate, dopóki pliki nie zostaną odzyskane do izolowanego worktree i ponownie przeprowadzone przez TDD/full gate.
+
+To jest bieżący fakt i nadpisuje starszy historyczny wpis mówiący, że PornFlip został odtworzony po Phase A.
+
+## 6. Aktualny provider/product state — VERIFIED
+- 31 configured index providers.
+- 25 live providers.
+- 55 trusted providers.
+- 55 available providers.
+- Provider expansion celowo wstrzymany na czas Product v2; po Phase A/B następna zaplanowana faza to metadata/sorting, nie dalsze dokładanie providerów.
+
+Ostatnie wydane providery przed Product v2 obejmują m.in. BigFuck, HQPorn, MILFPorn i ServiPorno; ich szczegółowe acceptance pozostają w wcześniejszych sekcjach tego handoffu.
+
+## 7. Znane problemy / RED FLAGS
+1. Phase B production UI nie ma jeszcze wizualnego authenticated smoke — `NOT_VERIFIED`.
+2. Formalny marker `SEARCH_DEPLOY=PASS` dla `c4ba694fdb35` nie został odzyskany — nie wolno twierdzić, że go widzieliśmy.
+3. PornFlip istnieje tylko jako dwa backupy w `/tmp`; obecny checkout jest clean i nie zawiera jego testu/zmiany.
+4. FastAPI nadal emituje 2 deprecation warnings dla `@app.on_event("startup")`; nie jest to blocker bieżących release'ów.
+5. Publiczny frontend jest za Nginx Basic Auth; nie obchodzić auth i nie wyciągać credentials tylko dla smoke.
+6. Standard deploy safety pozostaje obowiązkowy: clean sandbox -> full tests -> diff check -> push exact HEAD -> helper CHECK -> natural maintenance gate -> official deploy -> formal marker + health -> acceptance. Nie zabijać zdrowych bounded sync/backfill jobs.
+
+## 8. NOT_VERIFIED / UNKNOWN — nie zgadywać
+- Wizualny wygląd Phase B w prawdziwej authenticated przeglądarce produkcyjnej.
+- Formalny textual deploy PASS dla Phase B `c4ba694fdb35`.
+- Czy `/tmp` PornFlip backups przetrwają reboot/cleanup hosta.
+- PornFlip nie jest aktualnie commitowany ani wydany.
+- Phase C i D nie zostały rozpoczęte implementacyjnie.
+
+## 9. Dokładny następny krok
+NIE powtarzać Phase A ani implementacji Phase B.
+
+1. Najpierw zamknąć Phase B acceptance bez zmian kodu:
+   - sprawdzić production UI przez autoryzowany, istniejący sposób dostępu do frontend Nginx; nie szukać/obchodzić credentials;
+   - desktop smoke: search, filtry, 4/3/2 grid, preview button, primary/secondary status, Show more/prefetch;
+   - mobile smoke w ~320–420px: 1 card/row, brak horizontal card overflow, 16:9, scrollable filters, long title, brakujące quality/duration;
+   - potwierdzić asset shell v24.
+2. Jeżeli UI smoke PASS: dopisać production acceptance Phase B do tego handoffu. Nie redeployować tylko po to, żeby uzyskać marker, jeśli aktualny build jest zdrowy i smoke PASS.
+3. Następnie rozpocząć `docs/superpowers/plans/2026-09-19-search-metadata-sorting-v2.md` (Phase C) w nowym clean worktree z aktualnego `feature/provider-registry-probe`.
+4. PornFlip traktować osobno. Jeżeli ma być zachowany, pierwszą bezpieczną czynnością jest odzyskanie dwóch `/tmp` backupów do osobnego worktree i ponowne sprawdzenie SHA + testów. Nie mieszać PornFlip z Phase C.
