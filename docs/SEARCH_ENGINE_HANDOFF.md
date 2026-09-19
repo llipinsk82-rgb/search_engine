@@ -289,3 +289,14 @@ No provider was auto-enabled in this pass.
 - Production deploy: `SEARCH_DEPLOY=PASS build=e3abaf5ac308`, backup `/opt/search_engine-backups/20260919T110536Z-e3abaf5ac308`.
 - Post-deploy health: build `e3abaf5ac308`, 42 trusted / 42 available / 17 live providers.
 - Warmup indexed VoyeurHit successfully: provider count 100; production `/api/search?provider=voyeurhit` returned 10/10 complete rows, canonical host `voyeurhit.com`, thumbnail host `tn.voyeurhit.com`.
+
+## Production update 2026-09-19 — Porngo generic sitemap release
+- Fresh discovery: robots/home/sitemap reachable without bypass; root sitemap exposes 237 video child maps via `?type=videos&from_links_videos=N`.
+- Current newest video shard was `237` with `lastmod=2026-09-18`, so production config uses video-only include filtering and `reverse` child order.
+- Final bounded exact-config probe: 100/100 unique URLs, thumbnails, durations and tags; no detail-page enrichment; status `GENERIC_READY`.
+- TDD cycle: expected RED on missing config/policy/deploy allowlist, targeted GREEN 35/35, full suite 143 passed with the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `04e4360 feat: add porngo sitemap provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=04e4360c264a`, backup `/opt/search_engine-backups/20260919T111944Z-04e4360c264a`.
+- Post-deploy health: 43 trusted / 43 available / 17 live providers. Warmup indexed Porngo with 100 rows.
+- Production search acceptance: `/api/search?provider=porngo` returned 10/10 complete rows; canonical host `www.porngo.com`, thumbnail host `img.porngo.com`.
+- Same discovery batch: Pornobae generic probe was `CUSTOM_REQUIRED` (99/99 thumbnails, 0/99 duration); FullPorner robots-advertised sitemap endpoint returned 404; Upornia/Hotmovs exposed neither a sitemap nor a simple public search contract, so none were promoted.
