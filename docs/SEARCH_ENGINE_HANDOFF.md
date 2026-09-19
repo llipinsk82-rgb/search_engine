@@ -310,3 +310,14 @@ No provider was auto-enabled in this pass.
 - Production observability: 28 configured index providers, 43 indexed providers, 44 trusted / 44 available / 17 live providers. HDZog is present in configured and indexed provider sets with 100 indexed rows.
 - Production search acceptance: `/api/search?provider=hdzog` returned 10/10 complete rows; canonical host `hdzog.com`, thumbnail host `tn.hdzog.com`.
 - Same discovery batch: PornZog generic sitemap probe was `CUSTOM_REQUIRED` because thumbnails were 0/60 despite complete duration/tags. Its public search form remains a possible live-adapter candidate. FUQ returned 403 and robots disallows search; NoodleMagazine robots disallows query/video paths; PornFlip has no sitemap; none were promoted.
+
+## Production update 2026-09-19 — PornZog live release
+- Fresh live-search contract: public GET `/search/?s=<query>&page=N`; page 1 and page 2 expose 60 unique video cards each with zero overlap in the sampled query.
+- Card metadata gate before implementation: 60/60 URL, thumbnail, duration, title and tags on both sampled pages; HD markers were present on a subset; no preview URL is exposed, so preview remains empty.
+- TDD: parser/adapter RED on missing implementation, parser GREEN 2/2; enablement RED on policy/registry, GREEN 17/17. Real adapter gate: page 1 and page 2 each returned 24/24 complete rows with policy acceptance 48/48 and zero overlap.
+- Full suite before release: 146 passed, with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `abb76d8 feat: add pornzog live provider`; pushed to `feature/provider-registry-probe`.
+- First deploy attempt safely aborted before active changes because the shared maintenance lock was busy; no force action was used. Retry after natural backfill completion succeeded.
+- Official deploy: `SEARCH_DEPLOY=PASS build=abb76d86a274`, backup `/opt/search_engine-backups/20260919T115351Z-abb76d86a274`.
+- Production health after deploy: 18 live / 45 trusted / 45 available providers.
+- Production `/api/live-refresh` acceptance: page 1 and page 2 each fetched 5/5 complete PornZog items, no provider error, zero overlap, canonical host `pornzog.com`, thumbnail host `tn1.pornzog.com`; preview correctly absent. Cache round-trip returned 5/5 complete PornZog rows.
