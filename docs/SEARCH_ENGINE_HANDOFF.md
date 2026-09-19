@@ -300,3 +300,13 @@ No provider was auto-enabled in this pass.
 - Post-deploy health: 43 trusted / 43 available / 17 live providers. Warmup indexed Porngo with 100 rows.
 - Production search acceptance: `/api/search?provider=porngo` returned 10/10 complete rows; canonical host `www.porngo.com`, thumbnail host `img.porngo.com`.
 - Same discovery batch: Pornobae generic probe was `CUSTOM_REQUIRED` (99/99 thumbnails, 0/99 duration); FullPorner robots-advertised sitemap endpoint returned 404; Upornia/Hotmovs exposed neither a sitemap nor a simple public search contract, so none were promoted.
+
+## Production update 2026-09-19 — HDZog generic sitemap release
+- Fresh discovery: `https://hdzog.com/robots.txt`, home and root sitemap were reachable without bypass. Root sitemap exposes 581 video shards as `/sitemap_vids_N.xml` plus non-video maps.
+- Generic probe without video filtering initially returned `NO_RESULTS` because sitemap traversal started on page/model/member maps. Video-only filtering plus `reverse` child order produced `GENERIC_READY` with 100/100 unique URLs, thumbnails, durations and tags; canonical host `hdzog.com`, thumbnail host `tn.hdzog.com`.
+- TDD cycle: expected RED on missing config/policy/deploy catalog, targeted GREEN 36/36. Exact-config probe remained 100/100 core metadata. Full suite 144 passed with the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `d4ad5f5 feat: add hdzog sitemap provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=d4ad5f54a0e3`, backup `/opt/search_engine-backups/20260919T113611Z-d4ad5f54a0e3`.
+- Production observability: 28 configured index providers, 43 indexed providers, 44 trusted / 44 available / 17 live providers. HDZog is present in configured and indexed provider sets with 100 indexed rows.
+- Production search acceptance: `/api/search?provider=hdzog` returned 10/10 complete rows; canonical host `hdzog.com`, thumbnail host `tn.hdzog.com`.
+- Same discovery batch: PornZog generic sitemap probe was `CUSTOM_REQUIRED` because thumbnails were 0/60 despite complete duration/tags. Its public search form remains a possible live-adapter candidate. FUQ returned 403 and robots disallows search; NoodleMagazine robots disallows query/video paths; PornFlip has no sitemap; none were promoted.
