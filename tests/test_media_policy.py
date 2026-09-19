@@ -7,10 +7,10 @@ def test_unknown_provider_defaults_to_safe_media_modes():
     assert p.preview_mode == "disabled"
 
 
-def test_thumbzilla_policy_uses_proxy_thumbnail_and_direct_preview():
+def test_thumbzilla_policy_uses_proxy_thumbnail_and_preview():
     p = provider_media_policy("thumbzilla")
     assert p.thumbnail_mode == "proxy"
-    assert p.preview_mode == "direct"
+    assert p.preview_mode == "proxy"
     assert media_url_allowed("thumbzilla", "thumbnail", "https://pix-cdn77.ypncdn.com/a.jpg")
     assert not media_url_allowed("thumbzilla", "thumbnail", "https://evil.example/a.jpg")
 
@@ -32,3 +32,19 @@ def test_provider_rows_expose_modes_without_url_secrets():
     assert row["thumbnail_mode"] == "refresh"
     assert row["preview_mode"] == "direct"
     assert ".t8cdn.com" in row["preview_host_suffixes"]
+
+
+def test_redirecting_preview_providers_are_disabled():
+    for name in ("pornhat", "porndr", "anyporn"):
+        assert provider_media_policy(name).preview_mode == "disabled"
+
+
+def test_thumbzilla_preview_requires_strict_proxy():
+    p = provider_media_policy("thumbzilla")
+    assert p.preview_mode == "proxy"
+    assert p.preview_referer == "https://www.thumbzilla.com/"
+    assert media_url_allowed(
+        "thumbzilla",
+        "preview",
+        "https://ev-ph.ypncdn.com/videos/example.mp4?token=x",
+    )

@@ -50,10 +50,11 @@ def _build_policies() -> dict[str, ProviderMediaPolicy]:
     policies["thumbzilla"] = ProviderMediaPolicy(
         name="thumbzilla",
         thumbnail_mode="proxy",
-        preview_mode="direct",
+        preview_mode="proxy",
         thumbnail_host_suffixes=(".ypncdn.com",),
         preview_host_suffixes=_PREVIEW_SUFFIXES["thumbzilla"],
         thumbnail_referer="https://www.thumbzilla.com/",
+        preview_referer="https://www.thumbzilla.com/",
     )
     policies["tube8"] = ProviderMediaPolicy(
         name="tube8",
@@ -61,6 +62,12 @@ def _build_policies() -> dict[str, ProviderMediaPolicy]:
         preview_mode="direct",
         preview_host_suffixes=_PREVIEW_SUFFIXES["tube8"],
     )
+    for name in ("pornhat", "porndr", "anyporn"):
+        policies[name] = ProviderMediaPolicy(
+            name=name,
+            preview_mode="disabled",
+            preview_host_suffixes=_PREVIEW_SUFFIXES[name],
+        )
     return policies
 
 

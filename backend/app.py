@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import sqlite3
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request as UrlRequest, build_opener, urlopen
@@ -39,6 +40,8 @@ from backend.source_policy import (
 logger = logging.getLogger(__name__)
 
 _THUMBNAIL_PROXY_MAX_BYTES = 2 * 1024 * 1024
+_PREVIEW_PROXY_MAX_BYTES = 2 * 1024 * 1024
+_PREVIEW_PROXY_CHUNK_BYTES = 1024 * 1024
 
 
 class _ThumbnailProxyNoRedirect(HTTPRedirectHandler):
@@ -71,6 +74,57 @@ def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
         if len(body) > _THUMBNAIL_PROXY_MAX_BYTES:
             raise ValueError("thumbnail exceeds proxy size limit")
         return body, content_type
+
+
+def _bounded_preview_range(value: str | None) -> str:
+    if not value:
+        return f"bytes=0-{_PREVIEW_PROXY_CHUNK_BYTES - 1}"
+    match = re.fullmatch(r"bytes=(\d+)-(\d*)", value.strip())
+    if match is None:
+        raise ValueError("invalid preview range")
+    start = int(match.group(1))
+    raw_end = match.group(2)
+    if raw_end:
+        requested_end = int(raw_end)
+        if requested_end < start:
+            raise ValueError("invalid preview range")
+        end = min(requested_end, start + _PREVIEW_PROXY_MAX_BYTES - 1)
+    else:
+        end = start + _PREVIEW_PROXY_CHUNK_BYTES - 1
+    return f"bytes={start}-{end}"
+
+
+def _preview_proxy_fetch(
+    provider: str,
+    url: str,
+    range_header: str | None,
+) -> tuple[bytes, str, int, dict[str, str]]:
+    policy = provider_media_policy(provider)
+    if policy.preview_mode != "proxy":
+        raise ValueError("preview proxy is not enabled for provider")
+    if not media_url_allowed(provider, "preview", url):
+        raise ValueError("preview host is not allowed")
+    headers = {
+        "User-Agent": "SearchEngineLive/0.6",
+        "Accept": "video/*,*/*;q=0.5",
+        "Range": _bounded_preview_range(range_header),
+    }
+    if policy.preview_referer:
+        headers["Referer"] = policy.preview_referer
+    request = UrlRequest(url, headers=headers)
+    with _thumbnail_proxy_open(request) as response:
+        content_type = response.headers.get_content_type()
+        if not content_type.startswith("video/"):
+            raise ValueError("upstream did not return video content")
+        body = response.read(_PREVIEW_PROXY_MAX_BYTES + 1)
+        if len(body) > _PREVIEW_PROXY_MAX_BYTES:
+            raise ValueError("preview range exceeds proxy size limit")
+        upstream_headers: dict[str, str] = {}
+        for name in ("Content-Range", "Accept-Ranges"):
+            value = response.headers.get(name)
+            if value:
+                upstream_headers[name] = value
+        return body, content_type, int(getattr(response, "status", 200)), upstream_headers
 
 
 app = FastAPI(
@@ -214,6 +268,31 @@ async def _search_response(
         has_more=has_more,
         providers=used,
         items=items,
+    )
+
+
+@app.get("/preview-proxy", include_in_schema=False)
+@app.get("/api/preview-proxy", include_in_schema=False)
+async def preview_proxy(request: Request, provider: str, url: str) -> Response:
+    try:
+        body, content_type, status_code, upstream_headers = await asyncio.to_thread(
+            _preview_proxy_fetch, provider, url, request.headers.get("range")
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.warning("preview proxy upstream failure for %s", provider, exc_info=True)
+        raise HTTPException(status_code=502, detail="preview upstream unavailable") from exc
+    headers = {
+        "Cache-Control": "private, no-store",
+        "X-Robots-Tag": "noindex, nofollow",
+        **upstream_headers,
+    }
+    return Response(
+        content=body,
+        status_code=status_code,
+        media_type=content_type,
+        headers=headers,
     )
 
 
