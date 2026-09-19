@@ -376,3 +376,13 @@ No provider was auto-enabled in this pass.
 - Feature commit: `0c057e1 feat: add yourlust live provider`; pushed to `feature/provider-registry-probe`.
 - Official deploy: `SEARCH_DEPLOY=PASS build=0c057e163c63`, backup `/opt/search_engine-backups/20260919T130745Z-0c057e163c63`.
 - Production `/api/live-refresh` acceptance: page 1 and page 2 each returned 5/5 complete items, no provider error, overlap 0, canonical host `yourlust.com`, thumbnail host `i.yourlust.com`; cache round-trip returned 5/5 complete rows. Production health: 20 live / 49 trusted / 49 available providers.
+
+## Production update 2026-09-19 — Pornobae live release
+- Generic sitemap remained CUSTOM_REQUIRED because duration metadata was absent there, but the public WordPress GET search form is reachable at `/?s=<query>` with page links `/page/<n>/?s=<query>`; robots does not disallow search.
+- Pre-code live gate: page 1 and page 2 each exposed 36 unique `<article data-video-id=...>` cards with 36/36 canonical URLs, thumbnails, durations and titles; overlap was 0. No card-level preview URL was exposed, so preview remains empty rather than fabricated.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN; enablement RED was exactly the missing source-policy/registry entries, then 15/15 GREEN.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete items; source policy passed 48/48; overlap 0; canonical and thumbnail hosts `pornobae.com`; elapsed ~740 ms and ~993 ms.
+- Full suite before release: 154 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `e0d6b52 feat: add pornobae live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=e0d6b52f1797`, backup `/opt/search_engine-backups/20260919T132008Z-e0d6b52f1797`.
+- Production `/api/live-refresh` acceptance: page 1 and page 2 each returned 5/5 complete items, no provider error, overlap 0; cache contained 10 Pornobae rows and returned 5/5 complete rows. Production health: 21 live / 50 trusted / 50 available providers.
