@@ -345,3 +345,13 @@ No provider was auto-enabled in this pass.
 - Retry deploy: `SEARCH_DEPLOY=PASS build=abb76d86a274`, backup `/opt/search_engine-backups/20260919T115351Z-abb76d86a274`.
 - Post-deploy health: 18 live / 45 trusted / 45 available providers.
 - Final production live acceptance used the correct top-level `/api/live-refresh.items` payload: page 1 and page 2 each returned 5/5 complete PornZog items, provider status error=None, overlap 0, canonical host `pornzog.com`, thumbnails `tn1.pornzog.com`; cache round-trip returned 5/5 complete PornZog rows.
+
+## Production update 2026-09-19 — VXXX generic sitemap release
+- Fresh robots and root sitemap audit: public sitemap is reachable without bypass and exposes 270 video child maps as `/sitemap_vids_N.xml` plus non-video maps.
+- Highest advertised shard `269` currently returns 404 while `268` is valid; production uses video-only filtering and `reverse` child order. The crawler tolerates the future/empty highest shard and proceeds to the latest working shard.
+- Exact bounded config probe: `GENERIC_READY`, 100/100 unique URLs, thumbnails, durations and tags; canonical host `vxxx.com`, thumbnail host `tn.vxxx.com`; no enrichment required.
+- TDD promotion: expected RED on missing config/policy/deploy catalog, targeted GREEN 38/38. Full suite: 148 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `d20e62e feat: add vxxx sitemap provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=d20e62ed53f8`, backup `/opt/search_engine-backups/20260919T123737Z-d20e62ed53f8`.
+- Production acceptance: VXXX indexed 100 rows; `/api/search?provider=vxxx` returned 10/10 complete rows; configured and available true; canonical host `vxxx.com`, thumbnail host `tn.vxxx.com`.
+- Post-acceptance health: 30 configured index / 46 indexed / 47 trusted / 47 available / 18 live providers.
