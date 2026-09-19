@@ -16,6 +16,7 @@ StateDirectory=search_engine
 StateDirectoryMode=0750
 RuntimeDirectory=search_engine
 RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
 ExecStart=/bin/sh -c '/opt/search_engine/deploy/run-maintenance.sh /run/search_engine/maintenance.lock 15 /opt/search_engine/.venv/bin/python -m backend.cli sync-all --limit "$SEARCH_SYNC_LIMIT"'
 NoNewPrivileges=true
 PrivateTmp=true

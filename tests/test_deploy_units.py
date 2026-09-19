@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[1]; DEPLOY=ROOT/'deploy'
 class DeployUnitTests(unittest.TestCase):
     def test_sync_and_backfill_share_maintenance_lock(self):
         for name in ('search-engine-sync.service','search-engine-backfill.service'):
-            t=(DEPLOY/name).read_text(); self.assertIn('/run/search_engine/maintenance.lock',t); self.assertIn('RuntimeDirectory=search_engine',t); self.assertIn('/opt/search_engine/deploy/run-maintenance.sh',t); self.assertNotIn('ExecStart=/usr/bin/flock',t)
+            t=(DEPLOY/name).read_text(); self.assertIn('/run/search_engine/maintenance.lock',t); self.assertIn('RuntimeDirectory=search_engine',t); self.assertIn('RuntimeDirectoryPreserve=yes',t); self.assertIn('/opt/search_engine/deploy/run-maintenance.sh',t); self.assertNotIn('ExecStart=/usr/bin/flock',t)
     def test_backfill_service_is_bounded_and_low_priority(self):
         t=(DEPLOY/'search-engine-backfill.service').read_text()
         for x in ('backfill-all','--max-seconds','TimeoutStartSec=6min','Nice=10','CPUWeight=20','IOWeight=20'): self.assertIn(x,t)
