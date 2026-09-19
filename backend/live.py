@@ -254,6 +254,27 @@ _ZZZTUBE_DURATION_RE = re.compile(
 )
 
 
+_ANYPORN_CARD_RE = re.compile(
+    r'<div\s+class=["\']item[^"\']*["\'][^>]*>(?P<body>.*?)(?=<div\s+class=["\']item[^"\']*["\']|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+_ANYPORN_URL_RE = re.compile(r'<a[^>]+href=["\'](?P<url>/[0-9]+/)["\']', re.IGNORECASE)
+_ANYPORN_IMG_RE = re.compile(
+    r'<img\b(?P<attrs>[^>]*class=["\'][^"\']*\bthumb\b[^"\']*["\'][^>]*)>',
+    re.IGNORECASE | re.DOTALL,
+)
+_ANYPORN_THUMB_RE = re.compile(r'\bdata-original=["\'](?P<thumb>[^"\']+)["\']', re.IGNORECASE)
+_ANYPORN_PREVIEW_RE = re.compile(r'\bdata-preview=["\'](?P<preview>[^"\']+)["\']', re.IGNORECASE)
+_ANYPORN_TITLE_RE = re.compile(
+    r'<strong[^>]+class=["\'][^"\']*\btitle\b[^"\']*["\'][^>]*>(?P<title>.*?)</strong>',
+    re.IGNORECASE | re.DOTALL,
+)
+_ANYPORN_DURATION_RE = re.compile(
+    r'innerHTML\s*=\s*["\'](?P<minutes>[0-9]+)m:(?P<seconds>[0-9]{1,2})s["\']',
+    re.IGNORECASE,
+)
+
+
 _PORNHAT_CARD_RE = re.compile(
     r'<div\b[^>]*class="[^"]*\bthumb-bl-video\b[^"]*"[^>]*>'
     r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bthumb-bl-video\b|\Z)',
@@ -791,6 +812,52 @@ def parse_pornhat_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
             break
     return items
 
+
+def parse_anyporn_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://anyporn.com/"
+    for match in _ANYPORN_CARD_RE.finditer(raw_html):
+        block = match.group("body")
+        href = _ANYPORN_URL_RE.search(block)
+        image = _ANYPORN_IMG_RE.search(block)
+        title = _ANYPORN_TITLE_RE.search(block)
+        duration = _ANYPORN_DURATION_RE.search(block)
+        if href is None or image is None or title is None or duration is None:
+            continue
+        image_attrs = image.group("attrs")
+        thumb = _ANYPORN_THUMB_RE.search(image_attrs)
+        if thumb is None:
+            continue
+        page_url = urljoin(base_url, html.unescape(href.group("url")))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        preview = _ANYPORN_PREVIEW_RE.search(image_attrs)
+        items.append(
+            SearchItem(
+                id=_item_id("anyporn", page_url),
+                provider="anyporn",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=_https_media_url(thumb.group("thumb")),
+                preview_url=(
+                    _https_media_url(preview.group("preview")) if preview else None
+                ),
+                duration_seconds=(
+                    int(duration.group("minutes")) * 60
+                    + int(duration.group("seconds"))
+                ),
+                quality="HD" if "hdpng" in block.lower() else None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_zzztube_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1184,6 +1251,32 @@ class PornHatLiveAdapter(_HttpLiveAdapter):
             self._search_sync, query, page=max(1, page), limit=max(1, limit)
         )
 
+
+class AnyPornLiveAdapter(_HttpLiveAdapter):
+    name = "anyporn"
+    base_url = "https://anyporn.com/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        if page > 1:
+            return LiveProviderResult(
+                self.name, [], None, page,
+                round((time.monotonic() - started) * 1000),
+            )
+        encoded = quote(query.strip(), safe="")
+        raw = self._fetch_text(f"{self.base_url}search/{encoded}/")
+        return LiveProviderResult(
+            self.name, parse_anyporn_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class ZZZTubeLiveAdapter(_HttpLiveAdapter):
     name = "zzztube"
     base_url = "https://zzztube.com/"
@@ -1546,6 +1639,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     RedTubeLiveAdapter(),
     ZZZTubeLiveAdapter(),
     PornHatLiveAdapter(),
+    AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
     ThumbzillaLiveAdapter(),
