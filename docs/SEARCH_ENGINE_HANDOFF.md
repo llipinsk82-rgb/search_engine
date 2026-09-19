@@ -260,3 +260,12 @@ No provider was auto-enabled in this pass.
 - Pre-deploy live gate on VM101: page 1 and page 2 each returned 24/24 URL + thumbnail + duration, source-policy normalization passed 48/48, zero overlap; HD metadata present for 23/24 and 21/24 respectively.
 - First deploy attempt was safely aborted before changes because a bounded backfill held the maintenance lock. After the backfill ended naturally, the same pushed SHA deployed through the official helper with `SEARCH_DEPLOY=PASS`; backup `/opt/search_engine-backups/20260919T101213Z-601584d00bb9`.
 - Production build `601584d00bb9` reports health OK with 15 live providers and 39 trusted/available providers. Correct production acceptance uses `POST /api/live-refresh` (ordinary `/api/search` is cached/indexed search): page 1 and 2 each returned 5/5 complete ZZZTube rows, no provider error, 0 overlap and about 113-124 ms upstream adapter time. Background cache write is functional; a subsequent indexed provider search returned a cached ZZZTube match.
+
+## PornHat live release 2026-09-19
+- Commit `8d8797a` adds PornHat as a trusted live provider using the provider's explicit `/search/<query>/[page]/` contract.
+- Pre-release live gate: page 1 and page 2 returned 24/24 items each with thumbnail, preview MP4 and duration; policy accepted 48/48; overlap 0.
+- Full suite before release: 139 passed, 2 existing FastAPI deprecation warnings.
+- Official deploy PASS: build `8d8797a49c2a`, backup `/opt/search_engine-backups/20260919T102105Z-8d8797a49c2a`.
+- Production health after deploy: 16 live providers, 40 trusted/available providers.
+- Production `/api/live-refresh` acceptance: page 1 and page 2 each 5/5 complete, error=None, overlap 0, ~153-158 ms.
+- Live cache acceptance: `provider=pornhat&q=` returns 5 cached items with preview and duration. `q=step` returning 0 is expected token filtering because the sampled live titles do not contain the literal token `step`.
