@@ -355,3 +355,14 @@ No provider was auto-enabled in this pass.
 - Official deploy: `SEARCH_DEPLOY=PASS build=d20e62ed53f8`, backup `/opt/search_engine-backups/20260919T123737Z-d20e62ed53f8`.
 - Production acceptance: VXXX indexed 100 rows; `/api/search?provider=vxxx` returned 10/10 complete rows; configured and available true; canonical host `vxxx.com`, thumbnail host `tn.vxxx.com`.
 - Post-acceptance health: 30 configured index / 46 indexed / 47 trusted / 47 available / 18 live providers.
+
+## Production update 2026-09-19 — PornDr live release
+- Fresh audit: public search is reachable at `/search/<query>/`; robots does not disallow normal search. Result pagination is exposed only through private KVS AJAX block parameters, so the live adapter is intentionally page-one-only rather than reverse-engineering the private async endpoint.
+- Search-result container gate: page 1 exposes 60/60 canonical video URLs, thumbnails, preview MP4s, durations and titles.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN; enablement RED was exactly the missing source-policy/registry entries, then 15/15 GREEN.
+- Real sandbox gate: page 1 returned 24/24 complete items with preview and policy acceptance 24/24 in ~151 ms; page 2 returns an explicit empty result without making an invented pagination request.
+- Full suite before release: 150 passed, with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `0c72f65 feat: add porndr live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=0c72f6515160`, backup `/opt/search_engine-backups/20260919T125151Z-0c72f6515160`.
+- Production acceptance: `/api/live-refresh` page 1 fetched 5/5 complete PornDr items with preview, error=None and canonical/thumbnail host `www.porndr.com`; page 2 returned the expected empty result; cache round-trip returned 5/5 complete rows with preview.
+- Post-deploy health: 19 live / 48 trusted / 48 available providers.
