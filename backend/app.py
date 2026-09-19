@@ -10,6 +10,8 @@ from urllib.request import HTTPRedirectHandler, Request as UrlRequest, build_ope
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 
+from backend.content_class import ContentClass
+from backend.content_class_live import filter_live_items
 from backend.index import (
     count_items,
     get_item,
@@ -226,6 +228,7 @@ async def _search_response(
     q: str,
     provider: str | None,
     quality: str | None,
+    content_class: ContentClass | None,
     age_check: str | None,
     min_duration: int | None,
     max_duration: int | None,
@@ -254,6 +257,7 @@ async def _search_response(
         q,
         provider=provider,
         quality=quality,
+        content_class=content_class,
         age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
@@ -415,8 +419,13 @@ async def live_refresh(
         max_duration=payload.max_duration,
     )
 
-    # Cache only after the response path has been prepared. The cache function
-    # itself has a non-blocking lock and skips instead of queueing.
+    for provider_result in result.providers:
+        provider_result.items = filter_live_items(
+            provider_result.items, payload.content_class
+        )
+
+    # Cache only after classification/filtering has been applied. The cache
+    # function itself has a non-blocking lock and skips instead of queueing.
     background_tasks.add_task(cache_live_provider_results, result.providers)
 
     fresh_items = []
@@ -458,6 +467,7 @@ async def search_get(
     q: str = Query(default="", max_length=200),
     provider: str | None = None,
     quality: str | None = None,
+    content_class: ContentClass | None = Query(default=None),
     age_check: str | None = Query(
         default=None,
         pattern="^(required|not_required|unknown)$",
@@ -472,6 +482,7 @@ async def search_get(
         q=q,
         provider=provider,
         quality=quality,
+        content_class=content_class,
         age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
@@ -487,6 +498,7 @@ async def search_post(payload: SearchRequest) -> SearchResponse:
         q=payload.q,
         provider=payload.provider,
         quality=payload.quality,
+        content_class=payload.content_class,
         age_check=payload.age_check,
         min_duration=payload.min_duration,
         max_duration=payload.max_duration,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
+from backend.content_class import ContentClass
 from backend.index import count_search_items, indexed_providers, search_items
 from backend.models import SearchItem, SortMode, SourceVariant
 
@@ -57,6 +58,7 @@ async def search_all(
     *,
     provider: str | None = None,
     quality: str | None = None,
+    content_class: ContentClass | None = None,
     age_check: str | None = None,
     min_duration: int | None = None,
     max_duration: int | None = None,
@@ -75,6 +77,7 @@ async def search_all(
         query,
         provider=provider,
         quality=quality,
+        content_class=content_class,
         age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
@@ -84,6 +87,7 @@ async def search_all(
         query,
         provider=provider,
         quality=quality,
+        content_class=content_class,
         age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,

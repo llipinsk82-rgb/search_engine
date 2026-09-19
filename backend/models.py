@@ -49,6 +49,7 @@ class SearchRequest(BaseModel):
     q: str = Field(default="", max_length=200)
     provider: str | None = None
     quality: str | None = None
+    content_class: ContentClass | None = None
     age_check: Literal["required", "not_required", "unknown"] | None = None
     min_duration: int | None = Field(default=None, ge=0)
     max_duration: int | None = Field(default=None, ge=0)
@@ -72,6 +73,7 @@ class LiveRefreshRequest(BaseModel):
     q: str = Field(min_length=1, max_length=200)
     provider: str | None = None
     quality: str | None = None
+    content_class: ContentClass | None = None
     age_check: Literal["required", "not_required", "unknown"] | None = None
     min_duration: int | None = Field(default=None, ge=0)
     max_duration: int | None = Field(default=None, ge=0)
