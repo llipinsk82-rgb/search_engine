@@ -18,7 +18,7 @@ from backend.index import (
     provider_counts,
     update_item_thumbnail,
 )
-from backend.live import LIVE_ADAPTERS, cache_live_provider_results, refresh_live_search
+from backend.live import LIVE_ADAPTERS, cache_live_provider_results, refresh_live_search, sort_live_items
 from backend.media_policy import media_policy_rows, media_url_allowed, provider_media_policy
 from backend.models import (
     LiveProviderStatus,
@@ -26,6 +26,7 @@ from backend.models import (
     LiveRefreshResponse,
     SearchRequest,
     SearchResponse,
+    SortMode,
 )
 from backend.providers import PROVIDERS
 from backend.providers.sitemap import SitemapProvider
@@ -228,6 +229,7 @@ async def _search_response(
     age_check: str | None,
     min_duration: int | None,
     max_duration: int | None,
+    sort: SortMode,
     offset: int,
     limit: int,
     exclude_ids: set[str] | None = None,
@@ -255,6 +257,7 @@ async def _search_response(
         age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
+        sort=sort,
         offset=offset,
         limit=limit,
         allowed_providers=known,
@@ -429,6 +432,8 @@ async def live_refresh(
             seen_live_ids.add(item.id)
             fresh_items.append(item)
 
+    fresh_items = sort_live_items(fresh_items, payload.sort)
+
     return LiveRefreshResponse(
         query=payload.q,
         cached_items=0,
@@ -459,6 +464,7 @@ async def search_get(
     ),
     min_duration: int | None = Query(default=None, ge=0),
     max_duration: int | None = Query(default=None, ge=0),
+    sort: SortMode = Query(default="relevance"),
     offset: int = Query(default=0, ge=0, le=5000),
     limit: int = Query(default=40, ge=1, le=100),
 ) -> SearchResponse:
@@ -469,6 +475,7 @@ async def search_get(
         age_check=age_check,
         min_duration=min_duration,
         max_duration=max_duration,
+        sort=sort,
         offset=offset,
         limit=limit,
     )
@@ -483,6 +490,7 @@ async def search_post(payload: SearchRequest) -> SearchResponse:
         age_check=payload.age_check,
         min_duration=payload.min_duration,
         max_duration=payload.max_duration,
+        sort=payload.sort,
         offset=payload.offset,
         limit=payload.limit,
         exclude_ids=set(payload.exclude_ids),

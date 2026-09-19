@@ -20,7 +20,7 @@ except ImportError:
     websocket_connect = None
 
 from backend.index import merge_provider_batches
-from backend.models import SearchItem
+from backend.models import SearchItem, SortMode
 from backend.settings import DB_PATH
 from backend.source_policy import normalize_trusted_live_item
 
@@ -460,6 +460,22 @@ class LiveProviderResult:
 class LiveRefreshResult:
     providers: list[LiveProviderResult]
     cached_items: int
+
+
+def sort_live_items(items: list[SearchItem], sort: SortMode) -> list[SearchItem]:
+    if sort == "relevance":
+        return list(items)
+    if sort == "newest":
+        return sorted(items, key=lambda item: (item.published_at is None, -item.published_at.timestamp() if item.published_at is not None else 0.0))
+    if sort == "views":
+        return sorted(items, key=lambda item: (item.views is None, -item.views if item.views is not None else 0))
+    if sort == "rating":
+        return sorted(items, key=lambda item: (item.rating_percent is None, -item.rating_percent if item.rating_percent is not None else 0.0, item.rating_count is None, -item.rating_count if item.rating_count is not None else 0))
+    if sort == "longest":
+        return sorted(items, key=lambda item: (item.duration_seconds is None, -item.duration_seconds if item.duration_seconds is not None else 0))
+    if sort == "shortest":
+        return sorted(items, key=lambda item: (item.duration_seconds is None, item.duration_seconds if item.duration_seconds is not None else 0))
+    raise ValueError(f"unsupported sort mode: {sort}")
 
 
 class LiveAdapter(Protocol):
