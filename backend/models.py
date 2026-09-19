@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, HttpUrl
+
+
+SortMode = Literal["relevance", "newest", "views", "rating", "longest", "shortest"]
 
 
 class SearchItem(BaseModel):
@@ -13,6 +17,10 @@ class SearchItem(BaseModel):
     thumbnail: HttpUrl | None = None
     preview_url: HttpUrl | None = None
     duration_seconds: int | None = Field(default=None, ge=0)
+    published_at: datetime | None = None
+    views: int | None = Field(default=None, ge=0)
+    rating_percent: float | None = Field(default=None, ge=0, le=100)
+    rating_count: int | None = Field(default=None, ge=0)
     quality: str | None = None
     tags: list[str] = Field(default_factory=list)
     age_check_status: Literal["required", "not_required", "unknown"] = "unknown"
@@ -33,6 +41,7 @@ class SearchRequest(BaseModel):
     age_check: Literal["required", "not_required", "unknown"] | None = None
     min_duration: int | None = Field(default=None, ge=0)
     max_duration: int | None = Field(default=None, ge=0)
+    sort: SortMode = "relevance"
     offset: int = Field(default=0, ge=0, le=5000)
     limit: int = Field(default=40, ge=1, le=100)
     exclude_ids: list[str] = Field(default_factory=list, max_length=800)
@@ -55,6 +64,7 @@ class LiveRefreshRequest(BaseModel):
     age_check: Literal["required", "not_required", "unknown"] | None = None
     min_duration: int | None = Field(default=None, ge=0)
     max_duration: int | None = Field(default=None, ge=0)
+    sort: SortMode = "relevance"
     page: int = Field(default=1, ge=1, le=5000)
     limit_per_provider: int = Field(default=24, ge=1, le=100)
 
