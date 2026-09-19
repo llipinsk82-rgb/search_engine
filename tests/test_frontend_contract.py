@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v25_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v26_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=25" in html
-    assert "/app.js?v=25" in html
-    assert 'register("/sw.js?v=25", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=26" in html
+    assert "/app.js?v=26" in html
+    assert 'register("/sw.js?v=26", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v25";' in sw
+    assert 'const CACHE = "search-shell-v26";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -170,7 +170,7 @@ def test_sort_selector_state_and_payload_contract() -> None:
     assert 'const sort = params.get("sort") || "relevance";' in app
     assert 'if (payload.sort) livePayload.sort = payload.sort;' in app
     assert app.count('if (stateParams.has("sort")) payload.sort = stateParams.get("sort");') >= 2
-    assert '[sortSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]' in app
+    assert '[sortSelect, contentClassSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]' in app
     assert 'sortSelect.value = "relevance";' in app
 
 
@@ -195,3 +195,44 @@ def test_non_relevance_visible_pool_is_not_round_robin_blended() -> None:
     assert 'function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE)' in app
     assert 'if (sort === "relevance") return blendLiveAndLocal(liveItems, localItems, limit);' in app
     assert app.count('mergeLiveAndLocal(') >= 3
+
+
+def test_content_class_filter_state_and_payload_contract() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    start = html.index('id="content-class"')
+    end = html.index('</select>', start)
+    selector = html[start:end]
+    for value in ("", "amateur", "studio", "unknown"):
+        assert f'value="{value}"' in selector
+    assert 'const contentClassSelect = document.querySelector("#content-class");' in app
+    assert 'if (contentClassSelect.value) params.set("content_class", contentClassSelect.value);' in app
+    assert 'const contentClass = params.get("content_class") || "";' in app
+    assert 'if (payload.content_class) livePayload.content_class = payload.content_class;' in app
+    assert app.count('if (stateParams.has("content_class")) payload.content_class = stateParams.get("content_class");') >= 2
+    assert 'contentClassSelect.value = "";' in app
+
+
+def test_content_class_metadata_is_minimal_and_never_title_inferred() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'class="content-class"' in html
+    assert 'class="studio"' in html
+    assert 'item.content_class === "amateur" ? "Amateur" : ""' in app
+    assert 'item.studio || ""' in app
+    assert 'Unknown' not in app
+    assert 'item.title.toLowerCase' not in app
+    assert 'item.title.includes' not in app
+
+
+def test_frontend_assets_are_v26_after_content_class_filter() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
+    assert "/styles.css?v=26" in html
+    assert "/app.js?v=26" in html
+    assert 'register("/sw.js?v=26", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v26";' in sw
+    assert '"/styles.css?v=26"' in sw and '"/app.js?v=26"' in sw
+    assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in css

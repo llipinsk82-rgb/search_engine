@@ -1,6 +1,7 @@
 const form = document.querySelector("#search-form");
 const queryInput = document.querySelector("#q");
 const sortSelect = document.querySelector("#sort");
+const contentClassSelect = document.querySelector("#content-class");
 const providerSelect = document.querySelector("#provider");
 const qualitySelect = document.querySelector("#quality");
 const durationSelect = document.querySelector("#duration");
@@ -198,6 +199,7 @@ function buildSearchParams() {
   if (query) params.set("q", query);
 
   if (sortSelect.value !== "relevance") params.set("sort", sortSelect.value);
+  if (contentClassSelect.value) params.set("content_class", contentClassSelect.value);
   if (providerSelect.value) params.set("provider", providerSelect.value);
   if (qualitySelect.value) params.set("quality", qualitySelect.value);
   if (ageCheckSelect.value) params.set("age_check", ageCheckSelect.value);
@@ -226,6 +228,11 @@ function restoreState() {
 
   const sort = params.get("sort") || "relevance";
   sortSelect.value = [...sortSelect.options].some((option) => option.value === sort) ? sort : "relevance";
+
+  const contentClass = params.get("content_class") || "";
+  if ([...contentClassSelect.options].some((option) => option.value === contentClass)) {
+    contentClassSelect.value = contentClass;
+  }
 
   const provider = params.get("provider") || "";
   if ([...providerSelect.options].some((option) => option.value === provider)) {
@@ -324,6 +331,8 @@ function resultCard(item) {
   card.querySelector(".published").textContent = publishedText(item.published_at);
   card.querySelector(".views").textContent = viewsText(item.views);
   card.querySelector(".rating").textContent = ratingText(item.rating_percent, item.rating_count);
+  card.querySelector(".content-class").textContent = item.content_class === "amateur" ? "Amateur" : "";
+  card.querySelector(".studio").textContent = item.studio || "";
   card.querySelector(".age-check").textContent =
     item.age_check_status === "required"
       ? "18+ check (UK)"
@@ -402,6 +411,7 @@ async function requestLive(payload, generation, page, { commit = true } = {}) {
     limit_per_provider: requestedLimit,
   };
   if (payload.sort) livePayload.sort = payload.sort;
+  if (payload.content_class) livePayload.content_class = payload.content_class;
   if (payload.provider) livePayload.provider = payload.provider;
   if (payload.quality) livePayload.quality = payload.quality;
   if (payload.age_check) livePayload.age_check = payload.age_check;
@@ -574,6 +584,7 @@ async function loadMore() {
   const stateParams = buildSearchParams();
   const payload = { q: stateParams.get("q") || "" };
   if (stateParams.has("sort")) payload.sort = stateParams.get("sort");
+  if (stateParams.has("content_class")) payload.content_class = stateParams.get("content_class");
   if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
   if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
   if (stateParams.has("age_check")) payload.age_check = stateParams.get("age_check");
@@ -625,6 +636,7 @@ async function search({ persist = true, append = false } = {}) {
 
   const payload = { q: stateParams.get("q") || "" };
   if (stateParams.has("sort")) payload.sort = stateParams.get("sort");
+  if (stateParams.has("content_class")) payload.content_class = stateParams.get("content_class");
   if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
   if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
   if (stateParams.has("age_check")) payload.age_check = stateParams.get("age_check");
@@ -691,7 +703,7 @@ form.addEventListener("submit", (event) => {
   search();
 });
 
-for (const el of [sortSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
+for (const el of [sortSelect, contentClassSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
   el.addEventListener("change", () => search());
 }
 
@@ -703,6 +715,7 @@ clearBtn.addEventListener("click", () => {
   searchGeneration += 1;
   queryInput.value = "";
   sortSelect.value = "relevance";
+  contentClassSelect.value = "";
   providerSelect.value = "";
   qualitySelect.value = "";
   durationSelect.value = "";
@@ -742,7 +755,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=25", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=26", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });
