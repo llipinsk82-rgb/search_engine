@@ -16,14 +16,14 @@
   </header>
 
   <main class="shell">
-    <section class="hero">
+    <section class="hero search-panel">
       <h1>Find content. Skip the noise.</h1>
       <form id="search-form" class="searchbox">
         <input id="q" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Search…" autofocus>
         <button type="submit">Search</button>
       </form>
 
-      <div class="filters">
+      <div class="filters filter-strip">
         <select id="provider" aria-label="Provider"><option value="">All sources</option></select>
         <select id="quality" aria-label="Quality">
           <option value="">Any quality</option>
@@ -50,7 +50,10 @@
     </section>
 
     <section class="statusbar">
-      <span id="status">Ready</span>
+      <div class="status-copy">
+        <span id="status" class="result-summary">Ready</span>
+        <span id="live-detail" class="live-detail"></span>
+      </div>
       <button id="clear" class="ghost" type="button">Clear</button>
     </section>
 
@@ -66,13 +69,15 @@
         <img class="preview" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" hidden>
         <video class="motion-preview" muted loop playsinline preload="none" referrerpolicy="no-referrer" hidden></video>
         <div class="placeholder">Preview</div>
-        <span class="quality"></span>
-        <span class="duration"></span>
+        <div class="media-badges">
+          <span class="quality"></span>
+          <span class="duration"></span>
+        </div>
         <button class="preview-toggle" type="button" aria-label="Play preview" aria-pressed="false" hidden>▶</button>
       </a>
       <div class="meta">
-        <a class="title"></a>
-        <div class="subline">
+        <div class="card-meta-primary"><a class="title"></a></div>
+        <div class="subline card-meta-secondary">
           <span class="source"></span>
           <span class="age-check"></span>
           <span class="alternates"></span>

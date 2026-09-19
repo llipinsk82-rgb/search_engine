@@ -92,3 +92,23 @@ def test_search_submit_runs_once() -> None:
     start = app.index('form.addEventListener("submit"')
     end = app.index("for (const el of", start)
     assert app[start:end].count("search();") == 1
+
+
+def test_cards_ui_v2_markup_hooks() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    for hook in (
+        'search-panel',
+        'filter-strip',
+        'result-summary',
+        'id="live-detail"',
+        'media-badges',
+        'card-meta-primary',
+        'card-meta-secondary',
+    ):
+        assert hook in html
+    for existing in (
+        'class="thumb"', 'class="preview"', 'class="motion-preview"',
+        'class="quality"', 'class="duration"', 'class="preview-toggle"',
+    ):
+        assert existing in html
+    assert 'id="sort"' not in html
