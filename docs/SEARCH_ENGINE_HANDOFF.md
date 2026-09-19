@@ -397,3 +397,13 @@ No provider was auto-enabled in this pass.
 - Official deploy: `SEARCH_DEPLOY=PASS build=b08557b4d17d`, backup `/opt/search_engine-backups/20260919T134725Z-b08557b4d17d`.
 - Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete BustyBus rows, error=None, overlap 0, canonical host `bustybus.com`, thumbnail host `icdn05.bustybus.com`; cache round-trip returned 5/5 complete rows. Health: 22 live / 51 trusted / 51 available providers.
 - PornTube re-audit: `User-agent: *` does not globally disallow search, but normal server-side requests to catalog/pornstar/studio pages redirect to `/tour/sfw`; the actual search UI/URL is session/age-gate state dependent. Do not synthesize consent cookies or bypass the gate. Leave PornTube unpromoted until a stable stateless public search contract is available.
+
+## Production update 2026-09-19 — BigFuck live release
+- Fresh BigFuck audit: `User-agent: *` has an empty `Disallow`; public GET search contract is `/s/<query>/` with normal `/s/<query>/<page>/` pagination. No protection bypass was used.
+- Pre-code live gate: page 1 and page 2 each exposed 108/108 unique cards with canonical URL, thumbnail, preview MP4, duration and title; overlap 0. HD markers were present on 106/108 and 101/108 cards respectively.
+- TDD: parser/adapter RED on missing implementation, then 2/2 GREEN; enablement RED was exactly the missing source-policy/registry entries, then 17/17 GREEN.
+- Real sandbox adapter gate: page 1 and page 2 each returned 24/24 complete rows with preview; source policy accepted 48/48; overlap 0; canonical host `bigfuck.tv`, thumbnail host `dicdn.bigfuck.tv`, preview host `icdn05.bigfuck.tv`.
+- Full suite before release: 158 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `d698322 feat: add bigfuck live provider`; pushed to `feature/provider-registry-probe`.
+- Official deploy: `SEARCH_DEPLOY=PASS build=d6983220097d`, backup `/opt/search_engine-backups/20260919T140932Z-d6983220097d`.
+- Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete BigFuck rows with preview, error=None and overlap 0; cache round-trip returned 5/5 complete rows with preview. Production health: 23 live / 52 trusted / 52 available providers.
