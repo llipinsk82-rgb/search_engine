@@ -63,3 +63,8 @@ def test_invalid_sort_mode_is_rejected():
         SearchRequest(sort="popular")
     with pytest.raises(ValidationError):
         LiveRefreshRequest(q="x", sort="popular")
+
+
+def test_published_at_rejects_naive_datetime():
+    with pytest.raises(ValidationError):
+        make_item(published_at=datetime(2026, 1, 2, 3, 4, 5))
