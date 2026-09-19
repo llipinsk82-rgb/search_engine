@@ -129,3 +129,18 @@ def test_cards_ui_v2_desktop_hierarchy_css() -> None:
     assert "color:" in css[css.index(".card-meta-secondary"):css.index("}", css.index(".card-meta-secondary")) + 1]
     assert "aspect-ratio: 16/9" in css or "aspect-ratio: 16 / 9" in css
     assert ".card { height:" not in css
+
+
+def test_cards_ui_v2_mobile_feed_contract() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    mobile = css[css.index("@media (max-width: 680px)"):]
+    assert "grid-template-columns: 1fr" in mobile
+    assert ".card { width: 100%;" in mobile
+    assert ".thumb {" in mobile and "width: 100%" in mobile
+    assert "aspect-ratio: 16 / 9" in mobile
+    assert ".filter-strip" in mobile
+    assert "overflow-x: auto" in mobile
+    assert "flex: 0 0 auto" in mobile
+    assert "min-height: 44px" in mobile
+    assert "-webkit-line-clamp: 2" in mobile
+    assert "min-width: 0" in mobile
