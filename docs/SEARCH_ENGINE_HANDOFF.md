@@ -429,3 +429,16 @@ No provider was auto-enabled in this pass.
 - Feature commit: `81c2935 feat: add milfporn live provider`; pushed to `feature/provider-registry-probe`.
 - Official deploy: `SEARCH_DEPLOY=PASS build=81c29357479e`, backup `/opt/search_engine-backups/20260919T155557Z-81c29357479e`.
 - Production acceptance: `/api/live-refresh` page 1 and page 2 each returned 5/5 complete MILFPorn rows, error=None, preview absent by design, overlap 0; cache without text filter returned 10/10 complete rows (`provider_count=10`). A text-filtered `q=step` cache query returned 4 rows because FTS filters by derived title, not because cache rows were missing. Production health: 25 live / 54 trusted / 54 available providers.
+
+## Production update 2026-09-19 — ServiPorno generic sitemap release
+- Fresh discovery verified `https://www.serviporno.com/robots.txt`, home and root sitemap are reachable without bypass; `User-agent: *` allows normal crawling (only `/fast-report*` is disallowed).
+- Root sitemap exposes `sitemap.videos.1.xml` through `sitemap.videos.10.xml` plus default/categories/pornstars maps. Production config uses video-only filtering for `/sitemap.videos.<n>.xml` children.
+- Exact video-only bounded probe: `GENERIC_READY`, 100/100 unique URLs, thumbnails and durations; canonical host `www.serviporno.com`; no enrichment required.
+- TDD promotion: RED was exactly the missing production config, trusted policy and deploy-catalog requirements; targeted GREEN 39/39. Isolated full suite before commit: 163 passed with only the two existing FastAPI deprecation warnings; `git diff --check` passed.
+- Feature commit: `10092a2 feat: add serviporno sitemap provider`; pushed to `feature/provider-registry-probe`.
+- First official deploy attempt safely aborted before active changes because a new bounded maintenance backfill acquired the shared lock (`SEARCH_IPC_EXIT=10`). No force action was used; retry after natural completion succeeded.
+- Official deploy: `SEARCH_DEPLOY=PASS build=10092a249476`, backup `/opt/search_engine-backups/20260919T164544Z-10092a249476`.
+- Post-warmup production acceptance: ServiPorno has 100 indexed rows; `/api/search?provider=serviporno&limit=10` returned 10/10 complete rows; configured/available true. Canonical host is `www.serviporno.com`; thumbnail hosts sampled as `pics.serviporno.com` and `pics2.serviporno.com`.
+- Production health after acceptance: 31 configured index providers, 55 trusted / 55 available / 25 live providers.
+- Independent PornFlip worktree changes were isolated before verification/deploy and restored byte-for-byte afterward; they were not included in the ServiPorno feature commit.
+- Same discovery pass: BigPorn rejected because search redirects to robots-disallowed `/search-*`; PornKai rejected because its public `/search?query=` contract currently returns HTTP 500; GotPorn search is robots-disallowed and host returns 403; PornKat remains CUSTOM_REQUIRED because listing and sampled target pages expose no duration; PornDroids generic root probe remains CUSTOM_REQUIRED.
