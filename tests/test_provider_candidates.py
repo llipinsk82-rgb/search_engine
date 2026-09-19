@@ -34,6 +34,15 @@ class ProviderCandidateTests(unittest.TestCase):
         self.assertIn("voyeurhit", trusted_provider_names())
         self.assertTrue(is_searchable_provider("voyeurhit"))
 
+    def test_porngo_is_promoted_to_production_catalog(self):
+        production = json.loads((ROOT / "deploy" / "search-engine-providers.example.json").read_text())
+        row = next(item for item in production if item["name"] == "porngo")
+        self.assertEqual(row["sitemap_url"], "https://www.porngo.com/sitemap.xml")
+        self.assertEqual(row["sitemap_child_order"], "reverse")
+        self.assertIn("type=videos", row["sitemap_include_pattern"])
+        self.assertIn("porngo", trusted_provider_names())
+        self.assertTrue(is_searchable_provider("porngo"))
+
     def test_candidate_catalog_tracks_discovery_without_production_enablement(self):
         rows = json.loads((ROOT / "deploy" / "search-engine-provider-candidates.example.json").read_text())
         self.assertEqual(rows, [])
