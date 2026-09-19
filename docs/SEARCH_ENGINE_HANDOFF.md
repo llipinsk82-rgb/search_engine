@@ -333,4 +333,3 @@ No provider was auto-enabled in this pass.
 - Fresh legacy re-audit: IXXX, DinoTube, ForHerTube, Tiava, AssOAss, TubePornstars, LobsterTube, MetaPorn and SuperPorn remain HTTP 403 and/or robots-disallow search; no bypass attempted.
 - VIPWank is reachable and its public search works, but result cards link through `/to/<encoded external URL>` to third-party tube sites and identify those third-party sources. Treat it as an aggregator/directory rather than an independent provider, matching the earlier MyXVideos decision; do not add it as a separate source.
 - Independent-source batch from those cards: YourLust generic probe remains CUSTOM_REQUIRED (0/100 thumbnail and duration); PornDr has duration but 0/100 thumbnail; VXXX root traversal returned NO_RESULTS without a video filter; SexPlex was the only immediate generic-ready promotion from that batch.
-
