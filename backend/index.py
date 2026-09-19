@@ -5,6 +5,7 @@ import re
 import sqlite3
 import threading
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.models import SearchItem
@@ -51,6 +52,10 @@ def initialize(path: Path = DB_PATH) -> None:
                     thumbnail TEXT,
                     preview_url TEXT,
                     duration_seconds INTEGER,
+                    published_at TEXT,
+                    views INTEGER,
+                    rating_percent REAL,
+                    rating_count INTEGER,
                     quality TEXT,
                     age_check_status TEXT NOT NULL DEFAULT 'unknown',
                     tags_json TEXT NOT NULL DEFAULT '[]',
@@ -86,6 +91,10 @@ def initialize(path: Path = DB_PATH) -> None:
                 "source_order": "INTEGER NOT NULL DEFAULT 0",
                 "preview_url": "TEXT",
                 "age_check_status": "TEXT NOT NULL DEFAULT 'unknown'",
+                "published_at": "TEXT",
+                "views": "INTEGER",
+                "rating_percent": "REAL",
+                "rating_count": "INTEGER",
             }
             for name, ddl in additions.items():
                 if name in columns:
@@ -113,6 +122,20 @@ def initialize(path: Path = DB_PATH) -> None:
                 conn.execute(
                     "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
                     ("__system__", index_key),
+                )
+
+            metadata_index_key = "migration:metadata_sort_indexes_v1"
+            metadata_indexes_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", metadata_index_key),
+            ).fetchone()
+            if metadata_indexes_done is None:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_items_published_at ON items(published_at)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_items_views ON items(views)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_items_rating_percent ON items(rating_percent)")
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", metadata_index_key),
                 )
 
             # Older indexed Beeg rows used /-0/<id>, while the accepted public
@@ -153,8 +176,9 @@ def _upsert_item_row(
         """
         INSERT INTO items (
             id, provider, title, url, thumbnail, preview_url, duration_seconds,
-            quality, age_check_status, tags_json, indexed_at, source_order, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
+            published_at, views, rating_percent, rating_count, quality,
+            age_check_status, tags_json, indexed_at, source_order, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
         ON CONFLICT(id) DO UPDATE SET
             provider=excluded.provider,
             title=excluded.title,
@@ -162,6 +186,10 @@ def _upsert_item_row(
             thumbnail=excluded.thumbnail,
             preview_url=COALESCE(excluded.preview_url, items.preview_url),
             duration_seconds=excluded.duration_seconds,
+            published_at=excluded.published_at,
+            views=excluded.views,
+            rating_percent=excluded.rating_percent,
+            rating_count=excluded.rating_count,
             quality=excluded.quality,
             age_check_status=CASE
                 WHEN excluded.age_check_status = 'unknown'
@@ -181,6 +209,10 @@ def _upsert_item_row(
             str(item.thumbnail) if item.thumbnail else None,
             str(item.preview_url) if item.preview_url else None,
             item.duration_seconds,
+            item.published_at.astimezone(timezone.utc).isoformat() if item.published_at is not None else None,
+            item.views,
+            item.rating_percent,
+            item.rating_count,
             item.quality,
             item.age_check_status,
             tags_json,
@@ -495,7 +527,8 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         row = conn.execute(
             """
             SELECT id, provider, title, url, thumbnail, preview_url,
-                   duration_seconds, quality, age_check_status, tags_json
+                   duration_seconds, published_at, views, rating_percent, rating_count,
+                   quality, age_check_status, tags_json
             FROM items WHERE id = ? AND active = 1
             """,
             (item_id,),
@@ -510,6 +543,10 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         thumbnail=row["thumbnail"],
         preview_url=row["preview_url"],
         duration_seconds=row["duration_seconds"],
+        published_at=datetime.fromisoformat(row["published_at"]) if row["published_at"] else None,
+        views=row["views"],
+        rating_percent=row["rating_percent"],
+        rating_count=row["rating_count"],
         quality=row["quality"],
         tags=json.loads(row["tags_json"] or "[]"),
         age_check_status=row["age_check_status"],
@@ -566,7 +603,8 @@ def search_items(
     sql = f"""
         SELECT
             i.id, i.provider, i.title, i.url, i.thumbnail, i.preview_url,
-            i.duration_seconds, i.quality, i.age_check_status, i.tags_json,
+            i.duration_seconds, i.published_at, i.views, i.rating_percent, i.rating_count,
+            i.quality, i.age_check_status, i.tags_json,
             {rank_select}
         FROM items i
         {joins}
@@ -595,6 +633,10 @@ def search_items(
                 thumbnail=row["thumbnail"],
                 preview_url=row["preview_url"],
                 duration_seconds=row["duration_seconds"],
+                published_at=datetime.fromisoformat(row["published_at"]) if row["published_at"] else None,
+                views=row["views"],
+                rating_percent=row["rating_percent"],
+                rating_count=row["rating_count"],
                 quality=row["quality"],
                 tags=json.loads(row["tags_json"] or "[]"),
                 age_check_status=row["age_check_status"],
