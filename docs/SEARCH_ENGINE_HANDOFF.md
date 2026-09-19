@@ -279,3 +279,13 @@ No provider was auto-enabled in this pass.
 - PornHits re-audit: all tested PornHits URLs redirect to `https://www.pornhub.com/`, canonical is Pornhub and video links are Pornhub `view_video.php` URLs. Treat as duplicate/alias of existing Pornhub provider; do not add a separate provider.
 - Xozilla re-audit: explicit search is reachable and page 1 exposes 100/100 URL + thumbnail + preview, but real DOM has 0/100 duration. Pagination is private AJAX block state. Leave CUSTOM_REQUIRED; do not reverse-engineer the private pagination contract or promote without core duration metadata.
 - PornTrex now resolves DNS but home/robots/sitemap are HTTP 403; no bypass attempted. Porn00 remains reachable without sitemap or a visible search contract. TubeGalore and PornHD robots explicitly disallow search and server-side home requests return 403; do not add live adapters.
+
+## Production update 2026-09-19 — VoyeurHit generic sitemap release
+- Discovery: `https://voyeurhit.com/robots.txt` advertises `/sitemap/`; root sitemap exposes `sitemap_vids_N/` child maps.
+- Generic bounded probe without detail-page enrichment: 100/100 unique URLs, thumbnails, durations and tags; status `GENERIC_READY`.
+- Chosen config: sitemap-only incremental provider, `listed` child order, no enrichment. Future advertised high-number shards can return 404, so no reverse ordering.
+- TDD/config/deploy verification: 142 tests passed; real config probe 100/100 core metadata.
+- Code/config commit: `e3abaf5 feat: add voyeurhit sitemap provider`; pushed to `feature/provider-registry-probe`.
+- Production deploy: `SEARCH_DEPLOY=PASS build=e3abaf5ac308`, backup `/opt/search_engine-backups/20260919T110536Z-e3abaf5ac308`.
+- Post-deploy health: build `e3abaf5ac308`, 42 trusted / 42 available / 17 live providers.
+- Warmup indexed VoyeurHit successfully: provider count 100; production `/api/search?provider=voyeurhit` returned 10/10 complete rows, canonical host `voyeurhit.com`, thumbnail host `tn.voyeurhit.com`.
