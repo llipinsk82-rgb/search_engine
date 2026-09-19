@@ -10,7 +10,7 @@ import re
 import threading
 import time
 from typing import Protocol
-from urllib.parse import quote, quote_plus, urlencode, urljoin
+from urllib.parse import quote, quote_plus, urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 try:
@@ -277,6 +277,16 @@ _BIGFUCK_DURATION_RE = re.compile(
 _BIGFUCK_CLOCK_RE = re.compile(r'(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)')
 
 
+
+
+_MILFPORN_CARD_RE = re.compile(
+    r'<div\b[^>]*class="sybil"[^>]*>\s*'
+    r'<a\b[^>]*href="(?P<url>/videos/[^"]+\.html)"[^>]*>\s*'
+    r'<img\b[^>]*data-src="(?P<thumb>https://cdn\.milfporn\.tv/[^"]+)"[^>]*>\s*</a>\s*'
+    r'<div\b[^>]*class="bonnie"[^>]*>\s*(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)\s*</div>\s*</div>',
+    re.IGNORECASE | re.DOTALL,
+)
+_MILFPORN_SLUG_RE = re.compile(r'/videos/[0-9]+-(?P<slug>[^/]+)\.html$', re.IGNORECASE)
 
 _HQPORN_CARD_RE = re.compile(
     r'<div\b[^>]*class="[^"]*\bb-thumb-item\b[^"]*\bjs-thumb-item\b[^"]*"[^>]*>'
@@ -1196,6 +1206,41 @@ def parse_zzztube_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
             break
     return items
 
+
+def parse_milfporn_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://www.milfporn.tv/"
+    for match in _MILFPORN_CARD_RE.finditer(raw_html):
+        page_url = urljoin(base_url, html.unescape(match.group("url")))
+        if page_url in seen:
+            continue
+        slug = _MILFPORN_SLUG_RE.search(urlparse(page_url).path)
+        if slug is None:
+            continue
+        title = _clean_text(slug.group("slug").replace("-", " ")).title()
+        if not title:
+            continue
+        seen.add(page_url)
+        items.append(
+            SearchItem(
+                id=_item_id("milfporn", page_url),
+                provider="milfporn",
+                title=title[:500],
+                url=page_url,
+                thumbnail=_https_media_url(match.group("thumb")),
+                preview_url=None,
+                duration_seconds=_duration_clock(match.group("duration")),
+                quality=None,
+                tags=[],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_bigfuck_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1815,6 +1860,34 @@ class ZZZTubeLiveAdapter(_HttpLiveAdapter):
             self._search_sync, query, page=max(1, page), limit=max(1, limit)
         )
 
+
+class MILFPornLiveAdapter(_HttpLiveAdapter):
+    name = "milfporn"
+    base_url = "https://www.milfporn.tv/"
+
+    @staticmethod
+    def _query_slug(query: str) -> str:
+        return "-".join(query.strip().lower().split())
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        slug = quote(self._query_slug(query), safe="-")
+        url = f"{self.base_url}search/{slug}/"
+        if page > 1:
+            url = f"{self.base_url}search/{slug}/{page}/"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_milfporn_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class BigFuckLiveAdapter(_HttpLiveAdapter):
     name = "bigfuck"
     base_url = "https://bigfuck.tv/"
@@ -2232,6 +2305,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     BustyBusLiveAdapter(),
     BigFuckLiveAdapter(),
     HQPornLiveAdapter(),
+    MILFPornLiveAdapter(),
     AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
