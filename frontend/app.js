@@ -21,6 +21,71 @@ let localHasMore = false;
 let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
+const providerMediaPolicies = new Map();
+const failedPreviewIds = new Set();
+const FAILED_PREVIEW_STORAGE_KEY = "search.failedPreviewIds.v1";
+const FAILED_PREVIEW_LIMIT = 100;
+
+try {
+  const saved = JSON.parse(sessionStorage.getItem(FAILED_PREVIEW_STORAGE_KEY) || "[]");
+  if (Array.isArray(saved)) {
+    for (const id of saved.slice(-FAILED_PREVIEW_LIMIT)) {
+      if (typeof id === "string" && id) failedPreviewIds.add(id);
+    }
+  }
+} catch (_) {}
+
+function persistFailedPreviewIds() {
+  try {
+    const ids = [...failedPreviewIds].slice(-FAILED_PREVIEW_LIMIT);
+    sessionStorage.setItem(FAILED_PREVIEW_STORAGE_KEY, JSON.stringify(ids));
+  } catch (_) {}
+}
+
+function mediaPolicyFor(provider) {
+  return providerMediaPolicies.get(provider) || {
+    thumbnail_mode: "direct",
+    preview_mode: "disabled",
+    thumbnail_host_suffixes: [],
+    preview_host_suffixes: [],
+  };
+}
+
+function hostMatchesSuffix(host, suffix) {
+  const root = String(suffix || "").toLowerCase().replace(/^\./, "");
+  return Boolean(root) && (host === root || host.endsWith(`.${root}`));
+}
+
+function resolveThumbnailUrl(item) {
+  if (!item?.thumbnail) return "";
+  const policy = mediaPolicyFor(item.provider);
+  if (policy.thumbnail_mode === "proxy") {
+    return `/api/thumb-proxy?provider=${encodeURIComponent(item.provider)}&url=${encodeURIComponent(item.thumbnail)}`;
+  }
+  return item.thumbnail;
+}
+
+function previewEligible(item) {
+  if (!item?.id || !item.preview_url || failedPreviewIds.has(item.id)) return false;
+  const policy = mediaPolicyFor(item.provider);
+  if (!['direct', 'proxy'].includes(policy.preview_mode)) return false;
+  try {
+    const parsed = new URL(item.preview_url);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    return (policy.preview_host_suffixes || []).some((suffix) => hostMatchesSuffix(host, suffix));
+  } catch (_) {
+    return false;
+  }
+}
+
+function resolvePreviewUrl(item) {
+  const policy = mediaPolicyFor(item.provider);
+  if (policy.preview_mode === "proxy") {
+    return `/api/preview-proxy?provider=${encodeURIComponent(item.provider)}&url=${encodeURIComponent(item.preview_url)}`;
+  }
+  return item.preview_url;
+}
 
 function setPreviewToggle(toggle, playing) {
   if (!toggle) return;
@@ -31,6 +96,10 @@ function setPreviewToggle(toggle, playing) {
 
 function stopMotionPreview(motion, still, toggle) {
   if (!motion) return;
+  if (motion._previewStartTimer) {
+    window.clearTimeout(motion._previewStartTimer);
+    motion._previewStartTimer = null;
+  }
   motion.pause();
   motion.hidden = true;
   if (still?.src) still.hidden = false;
@@ -38,7 +107,18 @@ function stopMotionPreview(motion, still, toggle) {
   if (activeMotionPreview?.motion === motion) activeMotionPreview = null;
 }
 
-function startMotionPreview(motion, still, url, toggle) {
+function failMotionPreview(itemId, motion, still, toggle) {
+  if (itemId) {
+    failedPreviewIds.add(itemId);
+    persistFailedPreviewIds();
+  }
+  stopMotionPreview(motion, still, toggle);
+  motion.removeAttribute("src");
+  motion.load();
+  toggle.hidden = true;
+}
+
+function startMotionPreview(motion, still, url, toggle, itemId) {
   if (!motion || !url) return;
   if (activeMotionPreview?.motion && activeMotionPreview.motion !== motion) {
     stopMotionPreview(
@@ -47,13 +127,15 @@ function startMotionPreview(motion, still, url, toggle) {
       activeMotionPreview.toggle,
     );
   }
-  if (!motion.src) motion.src = url;
+  if (motion.src !== url) motion.src = url;
   motion.hidden = false;
-  if (still) still.hidden = true;
-  activeMotionPreview = { motion, still, toggle };
-  motion.play().then(() => setPreviewToggle(toggle, true)).catch(() => {
-    stopMotionPreview(motion, still, toggle);
-  });
+  if (still?.src) still.hidden = false;
+  activeMotionPreview = { motion, still, toggle, itemId };
+  motion._previewStartTimer = window.setTimeout(
+    () => failMotionPreview(itemId, motion, still, toggle),
+    4000,
+  );
+  motion.play().catch(() => failMotionPreview(itemId, motion, still, toggle));
 }
 
 function durationText(seconds) {
@@ -68,6 +150,10 @@ async function loadProviders() {
     const response = await fetch("/api/providers");
     if (!response.ok) return;
     const data = await response.json();
+    providerMediaPolicies.clear();
+    for (const row of data.media_policies || []) {
+      if (row?.name) providerMediaPolicies.set(row.name, row);
+    }
     for (const provider of data.providers || []) {
       const option = document.createElement("option");
       option.value = provider;
@@ -146,17 +232,14 @@ function resultCard(item) {
   title.href = item.url;
 
   if (item.thumbnail) {
-    const resolvedThumb = item.provider === "thumbzilla"
-      ? `/api/thumb-proxy?provider=thumbzilla&url=${encodeURIComponent(item.thumbnail)}`
-      : item.thumbnail;
-    preview.src = resolvedThumb;
+    preview.src = resolveThumbnailUrl(item);
     preview.hidden = false;
     placeholder.hidden = true;
 
     preview.addEventListener("error", () => {
-      const selfHealingProvider = item.provider === "thumbzilla" || item.provider === "tube8";
+      const policy = mediaPolicyFor(item.provider);
       const attempt = Number(preview.dataset.healAttempt || "0");
-      if (selfHealingProvider && attempt < 2) {
+      if (policy.thumbnail_mode === "refresh" && attempt < 2) {
         preview.dataset.healAttempt = String(attempt + 1);
         const retry = () => {
           preview.src = `/api/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`;
@@ -171,21 +254,32 @@ function resultCard(item) {
     });
   }
 
-  if (item.preview_url) {
-    motion.dataset.previewUrl = item.preview_url;
+  if (previewEligible(item)) {
+    const resolvedPreview = resolvePreviewUrl(item);
+    motion.dataset.previewUrl = resolvedPreview;
     motion.preload = "none";
     motion.referrerPolicy = "no-referrer";
     if (item.thumbnail) motion.poster = preview.src;
     previewToggle.hidden = false;
     setPreviewToggle(previewToggle, false);
-    motion.addEventListener("error", () => stopMotionPreview(motion, preview, previewToggle));
+    motion.addEventListener("playing", () => {
+      if (motion._previewStartTimer) {
+        window.clearTimeout(motion._previewStartTimer);
+        motion._previewStartTimer = null;
+      }
+      if (preview?.src) preview.hidden = true;
+      setPreviewToggle(previewToggle, true);
+    });
+    motion.addEventListener("error", () => {
+      failMotionPreview(item.id, motion, preview, previewToggle);
+    });
     previewToggle.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (activeMotionPreview?.motion === motion && !motion.paused) {
         stopMotionPreview(motion, preview, previewToggle);
       } else {
-        startMotionPreview(motion, preview, item.preview_url, previewToggle);
+        startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id);
       }
     });
   } else {
@@ -566,7 +660,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=22", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=23", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

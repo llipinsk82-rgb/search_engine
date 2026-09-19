@@ -54,11 +54,11 @@ def test_frontend_assets_are_v22_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=22" in html
-    assert "/app.js?v=22" in html
-    assert 'register("/sw.js?v=22", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=23" in html
+    assert "/app.js?v=23" in html
+    assert 'register("/sw.js?v=23", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v22";' in sw
+    assert 'const CACHE = "search-shell-v23";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -74,12 +74,18 @@ def test_provider_media_bypasses_service_worker() -> None:
 
 
 
-def test_stale_thumbzilla_and_tube8_thumbnails_self_heal() -> None:
+def test_card_media_is_policy_driven() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'item.provider === "thumbzilla" || item.provider === "tube8"' in app
+    assert 'const providerMediaPolicies = new Map();' in app
+    assert 'function resolveThumbnailUrl(item)' in app
+    assert 'function previewEligible(item)' in app
+    assert 'const failedPreviewIds = new Set();' in app
+    assert 'sessionStorage' in app
+    assert 'item.provider === "thumbzilla" || item.provider === "tube8"' not in app
     assert '`/api/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`' in app
     assert 'preview.dataset.healAttempt' in app
-    assert 'window.setTimeout(retry, 700)' in app
+    assert '4000' in app
+    assert '/api/preview-proxy?provider=' in app
 
 def test_search_submit_runs_once() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
