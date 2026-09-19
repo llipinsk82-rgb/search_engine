@@ -707,6 +707,44 @@ def parse_drtuber_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     return items
 
 
+def parse_redtube_video(row: object) -> SearchItem | None:
+    if not isinstance(row, dict):
+        return None
+    video = row.get("video")
+    if not isinstance(video, dict):
+        return None
+    page_url = str(video.get("url") or "").strip()
+    title = _clean_text(video.get("title"))
+    if not page_url or not title:
+        return None
+
+    thumbnail = str(video.get("thumb") or video.get("default_thumb") or "").strip() or None
+    duration_raw = str(video.get("duration") or "").strip()
+    duration = _duration_clock(duration_raw) if duration_raw else None
+
+    tags: list[str] = []
+    raw_tags = video.get("tags")
+    if isinstance(raw_tags, list):
+        for entry in raw_tags:
+            if not isinstance(entry, dict):
+                continue
+            tag = _clean_text(entry.get("tag_name"))
+            if tag and tag not in tags:
+                tags.append(tag)
+
+    return SearchItem(
+        id=_item_id("redtube", page_url),
+        provider="redtube",
+        title=title[:500],
+        url=page_url,
+        thumbnail=thumbnail,
+        duration_seconds=duration,
+        quality=None,
+        tags=tags[:80],
+        score=1.0,
+    )
+
+
 def parse_tnaflix_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -996,6 +1034,47 @@ class DrTuberLiveAdapter(_HttpLiveAdapter):
 
     async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
         return await asyncio.to_thread(self._search_sync, query, page=max(1, page), limit=max(1, limit))
+
+
+class RedTubeLiveAdapter(_HttpLiveAdapter):
+    name = "redtube"
+    api_url = "https://api.redtube.com/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        params = urlencode(
+            {
+                "data": "redtube.Videos.searchVideos",
+                "output": "json",
+                "search": query.strip(),
+                "page": page,
+            }
+        )
+        payload = self._fetch_json(f"{self.api_url}?{params}")
+        items: list[SearchItem] = []
+        videos = payload.get("videos")
+        if isinstance(videos, list):
+            for row in videos:
+                item = parse_redtube_video(row)
+                if item is not None:
+                    items.append(item)
+
+        raw_total = payload.get("count")
+        try:
+            total = int(str(raw_total)) if raw_total is not None else None
+        except (TypeError, ValueError):
+            total = None
+
+        return LiveProviderResult(
+            self.name, items[:limit], total, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
 
 
 class TNAFlixLiveAdapter(_HttpLiveAdapter):
@@ -1294,6 +1373,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     HQPornerLiveAdapter(),
     EpornerLiveAdapter(),
     DrTuberLiveAdapter(),
+    RedTubeLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
     ThumbzillaLiveAdapter(),
