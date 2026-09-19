@@ -1,5 +1,6 @@
 const form = document.querySelector("#search-form");
 const queryInput = document.querySelector("#q");
+const sortSelect = document.querySelector("#sort");
 const providerSelect = document.querySelector("#provider");
 const qualitySelect = document.querySelector("#quality");
 const durationSelect = document.querySelector("#duration");
@@ -155,6 +156,24 @@ function durationText(seconds) {
   return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
+function publishedText(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function viewsText(value) {
+  if (!Number.isFinite(value)) return "";
+  return `${Math.trunc(value).toLocaleString()} views`;
+}
+
+function ratingText(percent, count) {
+  if (!Number.isFinite(percent)) return "";
+  const votes = Number.isFinite(count) ? ` (${Math.trunc(count).toLocaleString()})` : "";
+  return `${Math.round(percent)}%${votes}`;
+}
+
 async function loadProviders() {
   try {
     const response = await fetch("/api/providers");
@@ -178,6 +197,7 @@ function buildSearchParams() {
   const query = queryInput.value.trim();
   if (query) params.set("q", query);
 
+  if (sortSelect.value !== "relevance") params.set("sort", sortSelect.value);
   if (providerSelect.value) params.set("provider", providerSelect.value);
   if (qualitySelect.value) params.set("quality", qualitySelect.value);
   if (ageCheckSelect.value) params.set("age_check", ageCheckSelect.value);
@@ -203,6 +223,9 @@ function restoreState() {
     : window.location.search.slice(1);
   const params = new URLSearchParams(rawState);
   queryInput.value = params.get("q") || "";
+
+  const sort = params.get("sort") || "relevance";
+  sortSelect.value = [...sortSelect.options].some((option) => option.value === sort) ? sort : "relevance";
 
   const provider = params.get("provider") || "";
   if ([...providerSelect.options].some((option) => option.value === provider)) {
@@ -298,6 +321,9 @@ function resultCard(item) {
 
   title.textContent = item.title;
   card.querySelector(".source").textContent = `✓ ${item.provider}`;
+  card.querySelector(".published").textContent = publishedText(item.published_at);
+  card.querySelector(".views").textContent = viewsText(item.views);
+  card.querySelector(".rating").textContent = ratingText(item.rating_percent, item.rating_count);
   card.querySelector(".age-check").textContent =
     item.age_check_status === "required"
       ? "18+ check (UK)"
@@ -375,6 +401,7 @@ async function requestLive(payload, generation, page, { commit = true } = {}) {
     page,
     limit_per_provider: requestedLimit,
   };
+  if (payload.sort) livePayload.sort = payload.sort;
   if (payload.provider) livePayload.provider = payload.provider;
   if (payload.quality) livePayload.quality = payload.quality;
   if (payload.age_check) livePayload.age_check = payload.age_check;
@@ -417,6 +444,42 @@ function blendLiveAndLocal(liveItems, localItems, limit = PAGE_SIZE) {
   return out;
 }
 
+function compareOptionalNumber(a, b, ascending = false) {
+  const aKnown = Number.isFinite(a);
+  const bKnown = Number.isFinite(b);
+  if (aKnown !== bKnown) return aKnown ? -1 : 1;
+  if (!aKnown) return 0;
+  return ascending ? a - b : b - a;
+}
+
+function sortVisibleItems(items, sort) {
+  const rows = [...items];
+  if (sort === "relevance") return rows;
+  return rows.sort((a, b) => {
+    if (sort === "newest") return compareOptionalNumber(Date.parse(a.published_at || ""), Date.parse(b.published_at || ""));
+    if (sort === "views") return compareOptionalNumber(a.views, b.views);
+    if (sort === "rating") {
+      const rating = compareOptionalNumber(a.rating_percent, b.rating_percent);
+      return rating || compareOptionalNumber(a.rating_count, b.rating_count);
+    }
+    if (sort === "longest") return compareOptionalNumber(a.duration_seconds, b.duration_seconds);
+    if (sort === "shortest") return compareOptionalNumber(a.duration_seconds, b.duration_seconds, true);
+    return 0;
+  });
+}
+
+function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE) {
+  if (sort === "relevance") return blendLiveAndLocal(liveItems, localItems, limit);
+  const unique = [];
+  const ids = new Set();
+  for (const item of [...liveItems, ...localItems]) {
+    if (!item?.id || ids.has(item.id)) continue;
+    ids.add(item.id);
+    unique.push(item);
+  }
+  return sortVisibleItems(unique, sort).slice(0, limit);
+}
+
 async function fetchLocal(payload, { limit = PAGE_SIZE, excludeSeen = false } = {}) {
   const body = { ...payload, offset: 0, limit };
   if (excludeSeen && seenIds.size) {
@@ -453,7 +516,7 @@ async function prepareNextPage(payload, generation) {
   const localItems = (local.items || []).filter((item) => item?.id && !seenIds.has(item.id));
 
   return {
-    items: blendLiveAndLocal(liveItems, localItems, PAGE_SIZE),
+    items: mergeLiveAndLocal(liveItems, localItems, payload.sort || "relevance", PAGE_SIZE),
     localHasMore: Boolean(local.has_more),
     live,
     livePage: nextLivePage,
@@ -489,7 +552,7 @@ async function refreshLive(payload, generation) {
 
     const data = await fetchLocal(payload);
     if (generation !== searchGeneration) return;
-    const merged = blendLiveAndLocal(live.items || [], data.items || []);
+    const merged = mergeLiveAndLocal(live.items || [], data.items || [], payload.sort || "relevance");
     render(merged);
     localHasMore = Boolean(data.has_more);
 
@@ -510,6 +573,7 @@ async function loadMore() {
   const generation = searchGeneration;
   const stateParams = buildSearchParams();
   const payload = { q: stateParams.get("q") || "" };
+  if (stateParams.has("sort")) payload.sort = stateParams.get("sort");
   if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
   if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
   if (stateParams.has("age_check")) payload.age_check = stateParams.get("age_check");
@@ -560,6 +624,7 @@ async function search({ persist = true, append = false } = {}) {
   if (persist) persistState(stateParams);
 
   const payload = { q: stateParams.get("q") || "" };
+  if (stateParams.has("sort")) payload.sort = stateParams.get("sort");
   if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
   if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
   if (stateParams.has("age_check")) payload.age_check = stateParams.get("age_check");
@@ -626,7 +691,7 @@ form.addEventListener("submit", (event) => {
   search();
 });
 
-for (const el of [providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
+for (const el of [sortSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
   el.addEventListener("change", () => search());
 }
 
@@ -637,6 +702,7 @@ moreBtn.addEventListener("click", () => {
 clearBtn.addEventListener("click", () => {
   searchGeneration += 1;
   queryInput.value = "";
+  sortSelect.value = "relevance";
   providerSelect.value = "";
   qualitySelect.value = "";
   durationSelect.value = "";
@@ -676,7 +742,7 @@ if ("serviceWorker" in navigator) {
   });
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=24", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=25", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

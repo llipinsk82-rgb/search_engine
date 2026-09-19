@@ -50,15 +50,15 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v24_and_worker_forces_update() -> None:
+def test_frontend_assets_are_v25_and_worker_forces_update() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=24" in html
-    assert "/app.js?v=24" in html
-    assert 'register("/sw.js?v=24", { updateViaCache: "none" })' in app
+    assert "/styles.css?v=25" in html
+    assert "/app.js?v=25" in html
+    assert 'register("/sw.js?v=25", { updateViaCache: "none" })' in app
     assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v24";' in sw
+    assert 'const CACHE = "search-shell-v25";' in sw
     assert 'cache: "no-store"' in sw
 
 
@@ -111,7 +111,7 @@ def test_cards_ui_v2_markup_hooks() -> None:
         'class="quality"', 'class="duration"', 'class="preview-toggle"',
     ):
         assert existing in html
-    assert 'id="sort"' not in html
+    assert 'id="sort"' in html
 
 
 def test_cards_ui_v2_desktop_hierarchy_css() -> None:
@@ -154,3 +154,44 @@ def test_cards_ui_v2_separates_primary_and_live_status() -> None:
     assert 'liveDetailEl.textContent = text || "";' in app
     assert 'statusEl.textContent = liveStatusText' not in app
     assert 'cached matches · live:' not in app
+
+
+def test_sort_selector_state_and_payload_contract() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    expected_values = ["relevance", "newest", "views", "rating", "longest", "shortest"]
+    sort_start = html.index('id="sort"')
+    sort_end = html.index('</select>', sort_start)
+    sort_html = html[sort_start:sort_end]
+    for value in expected_values:
+        assert f'value="{value}"' in sort_html
+    assert 'const sortSelect = document.querySelector("#sort");' in app
+    assert 'if (sortSelect.value !== "relevance") params.set("sort", sortSelect.value);' in app
+    assert 'const sort = params.get("sort") || "relevance";' in app
+    assert 'if (payload.sort) livePayload.sort = payload.sort;' in app
+    assert app.count('if (stateParams.has("sort")) payload.sort = stateParams.get("sort");') >= 2
+    assert '[sortSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]' in app
+    assert 'sortSelect.value = "relevance";' in app
+
+
+def test_optional_sort_metadata_is_rendered_without_fake_placeholders() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    for hook in ('class="published"', 'class="views"', 'class="rating"'):
+        assert hook in html
+    assert 'function publishedText(value)' in app
+    assert 'function viewsText(value)' in app
+    assert 'function ratingText(percent, count)' in app
+    assert 'item.published_at' in app
+    assert 'item.views' in app
+    assert 'item.rating_percent' in app
+    assert 'item.rating_count' in app
+    assert '0 views' not in app
+
+
+def test_non_relevance_visible_pool_is_not_round_robin_blended() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'function sortVisibleItems(items, sort)' in app
+    assert 'function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE)' in app
+    assert 'if (sort === "relevance") return blendLiveAndLocal(liveItems, localItems, limit);' in app
+    assert app.count('mergeLiveAndLocal(') >= 3
