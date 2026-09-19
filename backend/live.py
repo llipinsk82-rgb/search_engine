@@ -275,6 +275,30 @@ _ANYPORN_DURATION_RE = re.compile(
 )
 
 
+
+_PORNZOG_CARD_RE = re.compile(
+    r'<div\b[^>]*class="thumb-video(?:\s[^"]*)?"[^>]*>(?P<body>.*?)(?=</li>\s*(?:<li>|</ul>)|\Z)',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNZOG_LINK_RE = re.compile(
+    r'<a\b(?P<attrs>[^>]*\bclass="[^"]*\bthumb-video-link\b[^"]*"[^>]*)>',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNZOG_URL_RE = re.compile(r'\bhref="(?P<url>/video/[^"]+/)"', re.IGNORECASE)
+_PORNZOG_THUMB_RE = re.compile(r'\bdata-original="(?P<thumb>https?://[^"]+)"', re.IGNORECASE)
+_PORNZOG_DURATION_RE = re.compile(
+    r'<div\b[^>]*class="duration"[^>]*>\s*(?P<duration>[0-9]{1,3}:[0-9]{2}(?::[0-9]{2})?)\s*</div>',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNZOG_TITLE_RE = re.compile(
+    r'<a\b[^>]*class="title"[^>]*>\s*<span>(?P<title>.*?)</span>',
+    re.IGNORECASE | re.DOTALL,
+)
+_PORNZOG_TAGS_RE = re.compile(r'<p\b[^>]*class="tags"[^>]*>(?P<tags>.*?)</p>', re.IGNORECASE | re.DOTALL)
+_PORNZOG_TAG_RE = re.compile(r'<a\b[^>]*>(?P<tag>.*?)</a>', re.IGNORECASE | re.DOTALL)
+_PORNZOG_HD_RE = re.compile(r'<div\b[^>]*class="hd"[^>]*>', re.IGNORECASE)
+
+
 _PORNHAT_CARD_RE = re.compile(
     r'<div\b[^>]*class="[^"]*\bthumb-bl-video\b[^"]*"[^>]*>'
     r'(?P<body>.*?)(?=<div\b[^>]*class="[^"]*\bthumb-bl-video\b|\Z)',
@@ -773,6 +797,52 @@ def parse_drtuber_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
 
 
 
+
+def parse_pornzog_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
+    items: list[SearchItem] = []
+    seen: set[str] = set()
+    base_url = "https://pornzog.com/"
+    for match in _PORNZOG_CARD_RE.finditer(raw_html):
+        block = match.group("body")
+        link = _PORNZOG_LINK_RE.search(block)
+        thumb = _PORNZOG_THUMB_RE.search(block)
+        duration = _PORNZOG_DURATION_RE.search(block)
+        title = _PORNZOG_TITLE_RE.search(block)
+        if link is None or thumb is None or duration is None or title is None:
+            continue
+        href = _PORNZOG_URL_RE.search(link.group("attrs"))
+        if href is None:
+            continue
+        page_url = urljoin(base_url, html.unescape(href.group("url")))
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        tags: list[str] = []
+        tags_match = _PORNZOG_TAGS_RE.search(block)
+        if tags_match is not None:
+            for tag_match in _PORNZOG_TAG_RE.finditer(tags_match.group("tags")):
+                tag = _clean_text(tag_match.group("tag"))
+                if tag and tag not in tags:
+                    tags.append(tag)
+        items.append(
+            SearchItem(
+                id=_item_id("pornzog", page_url),
+                provider="pornzog",
+                title=_clean_text(title.group("title"))[:500],
+                url=page_url,
+                thumbnail=html.unescape(thumb.group("thumb")),
+                preview_url=None,
+                duration_seconds=_duration_clock(duration.group("duration")),
+                quality="HD" if _PORNZOG_HD_RE.search(block) else None,
+                tags=tags[:80],
+                score=1.0,
+            )
+        )
+        if len(items) >= limit:
+            break
+    return items
+
+
 def parse_pornhat_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -1229,6 +1299,30 @@ class DrTuberLiveAdapter(_HttpLiveAdapter):
 
 
 
+
+class PornZogLiveAdapter(_HttpLiveAdapter):
+    name = "pornzog"
+    base_url = "https://pornzog.com/"
+
+    def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
+        started = time.monotonic()
+        page = max(1, int(page))
+        encoded = quote(query.strip(), safe="")
+        url = f"{self.base_url}search/?s={encoded}"
+        if page > 1:
+            url = f"{url}&page={page}"
+        raw = self._fetch_text(url)
+        return LiveProviderResult(
+            self.name, parse_pornzog_listing(raw, limit=limit), None, page,
+            round((time.monotonic() - started) * 1000),
+        )
+
+    async def search(self, query: str, *, page: int = 1, limit: int = 24) -> LiveProviderResult:
+        return await asyncio.to_thread(
+            self._search_sync, query, page=max(1, page), limit=max(1, limit)
+        )
+
+
 class PornHatLiveAdapter(_HttpLiveAdapter):
     name = "pornhat"
     base_url = "https://www.pornhat.one/"
@@ -1639,6 +1733,7 @@ LIVE_ADAPTERS: list[LiveAdapter] = [
     RedTubeLiveAdapter(),
     ZZZTubeLiveAdapter(),
     PornHatLiveAdapter(),
+    PornZogLiveAdapter(),
     AnyPornLiveAdapter(),
     TNAFlixLiveAdapter(),
     SpankBangLiveAdapter(),
