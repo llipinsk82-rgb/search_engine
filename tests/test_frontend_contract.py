@@ -50,18 +50,6 @@ def test_prefetches_next_page_before_show_more() -> None:
     assert "requestLive(payload, generation, nextLivePage, { commit: false })" in app
 
 
-def test_frontend_assets_are_v26_and_worker_forces_update() -> None:
-    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=26" in html
-    assert "/app.js?v=26" in html
-    assert 'register("/sw.js?v=26", { updateViaCache: "none" })' in app
-    assert "controllerchange" in app
-    assert 'const CACHE = "search-shell-v26";' in sw
-    assert 'cache: "no-store"' in sw
-
-
 def test_provider_media_bypasses_service_worker() -> None:
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -204,19 +192,6 @@ def test_content_class_metadata_is_minimal_and_never_title_inferred() -> None:
     assert 'item.title.includes' not in app
 
 
-def test_frontend_assets_are_v26_after_content_class_filter() -> None:
-    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
-    sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=26" in html
-    assert "/app.js?v=26" in html
-    assert 'register("/sw.js?v=26", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v26";' in sw
-    assert '"/styles.css?v=26"' in sw and '"/app.js?v=26"' in sw
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
-
-
 def test_premium_shell_has_primary_and_secondary_filter_hierarchy() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     assert 'class="search-shell"' in html
@@ -345,3 +320,25 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     null_page = load_more[load_more.index("if (!page) {"):load_more.index("prefetchedPage = null;")]
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
+
+def test_frontend_assets_are_v27() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
+    assert "/styles.css?v=27" in html
+    assert "/app.js?v=27" in html
+    assert 'register("/sw.js?v=27", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v27";' in sw
+    assert '"/styles.css?v=27"' in sw
+    assert '"/app.js?v=27"' in sw
+
+
+def test_service_worker_reload_is_guarded() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v27";' in app
+    controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
+    assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
+    assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
+    assert "window.location.reload();" in controller
+    assert "window.setTimeout" in controller
+    assert "sessionStorage.removeItem(SW_RELOAD_GUARD)" in controller

@@ -920,15 +920,25 @@ async function boot() {
 boot();
 
 if ("serviceWorker" in navigator) {
-  let reloadingForWorker = false;
+  const SW_RELOAD_GUARD = "search.swReload.v27";
+
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloadingForWorker) return;
-    reloadingForWorker = true;
+    try {
+      if (sessionStorage.getItem(SW_RELOAD_GUARD) === "1") return;
+      sessionStorage.setItem(SW_RELOAD_GUARD, "1");
+    } catch (_) {}
     window.location.reload();
   });
+
+  window.setTimeout(() => {
+    try {
+      sessionStorage.removeItem(SW_RELOAD_GUARD);
+    } catch (_) {}
+  }, 5000);
+
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=26", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=27", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });
