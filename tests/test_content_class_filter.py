@@ -1,7 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from urllib.parse import urlencode
 
 import pytest
@@ -87,3 +87,37 @@ def test_live_results_are_classified_before_content_filtering_and_cache() -> Non
     amateur=run_live("amateur"); assert ids(amateur.items)==["amateur-tag"]; assert amateur.items[0].content_class=="amateur"
     studio=run_live("studio"); assert ids(studio.items)==["studio-tag","studio-label"]; assert all(row.content_class=="studio" for row in studio.items)
     unknown=run_live("unknown"); assert ids(unknown.items)==["title-only"]; assert unknown.items[0].content_class=="unknown"
+
+def test_filtered_live_response_caches_full_classified_batch() -> None:
+    from fastapi import BackgroundTasks
+
+    background_tasks = BackgroundTasks()
+    cache = Mock(return_value=4)
+    with (
+        patch("backend.app.refresh_live_search", AsyncMock(return_value=live_result())),
+        patch("backend.app.count_items", return_value=4),
+        patch("backend.app.cache_live_provider_results", cache),
+    ):
+        response = asyncio.run(
+            live_refresh(
+                LiveRefreshRequest(q="alpha", content_class="amateur"),
+                background_tasks,
+            )
+        )
+        asyncio.run(background_tasks())
+
+    assert ids(response.items) == ["amateur-tag"]
+    cached_results = cache.call_args.args[0]
+    cached_items = cached_results[0].items
+    assert ids(cached_items) == [
+        "amateur-tag",
+        "studio-tag",
+        "studio-label",
+        "title-only",
+    ]
+    assert [row.content_class for row in cached_items] == [
+        "amateur",
+        "studio",
+        "studio",
+        "unknown",
+    ]

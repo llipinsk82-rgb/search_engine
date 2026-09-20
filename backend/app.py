@@ -420,22 +420,28 @@ async def live_refresh(
     )
 
     for provider_result in result.providers:
-        provider_result.items = filter_live_items(
-            provider_result.items, payload.content_class
-        )
+        provider_result.items = filter_live_items(provider_result.items, None)
 
-    # Cache only after classification/filtering has been applied. The cache
-    # function itself has a non-blocking lock and skips instead of queueing.
+    # Cache the full classified provider batches. Request-specific content
+    # filtering is applied only to the response copy below.
     background_tasks.add_task(cache_live_provider_results, result.providers)
 
+    response_provider_items = [
+        (
+            provider_result,
+            filter_live_items(provider_result.items, payload.content_class),
+        )
+        for provider_result in result.providers
+    ]
+
     fresh_items = []
-    max_rows = max((len(item.items) for item in result.providers), default=0)
+    max_rows = max((len(items) for _, items in response_provider_items), default=0)
     seen_live_ids: set[str] = set()
     for position in range(max_rows):
-        for provider_result in result.providers:
-            if position >= len(provider_result.items):
+        for _, items in response_provider_items:
+            if position >= len(items):
                 continue
-            item = provider_result.items[position]
+            item = items[position]
             if item.id in seen_live_ids:
                 continue
             seen_live_ids.add(item.id)
@@ -449,14 +455,14 @@ async def live_refresh(
         indexed_items=count_items(),
         providers=[
             LiveProviderStatus(
-                provider=item.provider,
-                fetched=len(item.items),
-                total=item.total,
-                page=item.page,
-                elapsed_ms=item.elapsed_ms,
-                error=item.error,
+                provider=provider_result.provider,
+                fetched=len(items),
+                total=provider_result.total,
+                page=provider_result.page,
+                elapsed_ms=provider_result.elapsed_ms,
+                error=provider_result.error,
             )
-            for item in result.providers
+            for provider_result, items in response_provider_items
         ],
         items=fresh_items,
     )
