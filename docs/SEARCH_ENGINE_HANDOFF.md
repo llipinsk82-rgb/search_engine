@@ -209,3 +209,68 @@ Plan: semantic shell; premium CSS 3/2/1; mobile filter sheet; accessible card/pr
 Self-review PASS: spec coverage checked; no TODO/TBD placeholders; five Review Focus failure modes pinned to tests; every implementation task ends green; backend out of scope; git diff --check PASS.
 
 Next gate: user reviews plan and selects Native or Subagent-driven execution. After approval execute task-by-task with TDD and release gates.
+
+## 2026-09-20 — AUTHORITATIVE PHASE E PREMIUM PRODUCT FINISH PRE-RELEASE GATE
+
+This section supersedes the previous Phase E design-only checkpoint.
+
+### Feature state — VERIFIED
+
+- branch: `feature/premium-product-finish`
+- implementation HEAD before this handoff commit: `8fbdf679d7d98b4bad4cd0a7fbef598d2dc6dfaa`
+- base production/release code: `82a152999e173b8649e4d6dfce5e0003cdf579d0`
+- frontend shell: v27
+- implementation tasks 1-6: complete
+- pre-release accessibility review fix: mobile filter-sheet initial Shift+Tab escape closed by `8fbdf67`
+
+Implemented product finish:
+- restrained dark premium media-first shell;
+- desktop 3-column cards, tablet 2, mobile 1;
+- desktop primary Sort + Content hierarchy;
+- secondary Provider/Quality/Duration/Age Check hierarchy;
+- mobile Sort/Content/Filters with real modal filter sheet;
+- same secondary filter DOM group is relocated rather than duplicated;
+- manual one-active-preview retained;
+- preview control is no longer nested inside the media link;
+- thumbnail link gets an accessible name from title;
+- dedicated status live region replaces live results-grid announcements;
+- visible focus treatment and trapped/returned filter-sheet focus;
+- skeleton, filtered-empty, empty, error/Retry and partial-live-failure states;
+- live failure preserves cached/indexed results;
+- PWA shell v27 with sessionStorage controllerchange reload guard.
+
+### Fresh automated gate — VERIFIED
+
+Run on VM101 worktree `/opt/bs-sandbox/search_engine-worktrees/premium-product-finish`:
+- `tests/test_frontend_contract.py`: **31 passed**
+- full Python suite: **241 passed**
+- warnings: **2 existing FastAPI `on_event` deprecation warnings only**
+- `python -m compileall -q backend`: PASS
+- `node --check frontend/app.js`: PASS
+- `git diff --check`: PASS
+- worktree clean before this documentation update
+
+### Production state before Phase E release
+
+Production remains unchanged at Phase D build `82a152999e17` at this checkpoint.
+No Phase E production deploy has been attempted yet.
+
+### Visual acceptance
+
+`PENDING` — authenticated desktop/mobile production visual smoke has not yet been performed.
+Do not mark visual PASS without operator-authenticated browser evidence.
+
+### Exact next action
+
+1. Push `feature/premium-product-finish`.
+2. Verify current remote release is an ancestor of the exact Phase E HEAD.
+3. Fast-forward `feature/provider-registry-probe` only.
+4. Preserve any canonical local handoff-only edits; stop on unrelated app-code dirt.
+5. Fast-forward canonical sandbox to exact release HEAD.
+6. Official helper CHECK as `blackserv`.
+7. Wait for natural maintenance-lock window; do not kill sync/backfill.
+8. Official helper DEPLOY.
+9. Verify build ID, `/api/health`, service and timers.
+10. Run local production API acceptance for search/live/content-class/provider media policy.
+11. Record authenticated visual smoke as PASS or `NOT_VERIFIED`.
+12. Write final authoritative deployed Phase E checkpoint.
