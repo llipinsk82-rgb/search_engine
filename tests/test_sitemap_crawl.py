@@ -177,5 +177,61 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(item)
         self.assertEqual(item.duration_seconds, 937)
 
+
+    async def test_malformed_child_sitemap_does_not_abort_index(self) -> None:
+        provider = SitemapProvider(
+            name="local",
+            sitemap_url="https://example.com/sitemap-index.xml",
+            max_pages=10,
+            delay_seconds=0,
+            timeout_seconds=2,
+            obey_robots=False,
+        )
+
+        def fake_fetch(url: str, *, timeout_seconds=None):
+            if url.endswith("/sitemap-index.xml"):
+                return (
+                    '<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                    '<sitemap><loc>https://example.com/broken.xml</loc></sitemap>'
+                    '<sitemap><loc>https://example.com/good.xml</loc></sitemap></sitemapindex>'
+                )
+            if url.endswith("/broken.xml"):
+                return '<urlset><url><loc>https://example.com/broken</loc><bad>&</bad></url></urlset>'
+            if url.endswith("/good.xml"):
+                return (
+                    '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/0.9">'
+                    '<url><loc>https://example.com/watch/1</loc></url></urlset>'
+                )
+            if url.endswith("/watch/1"):
+                return (
+                    '<html><head><meta property="og:title" content="Good child">'
+                    '<meta property="og:image" content="https://example.com/thumb.jpg"></head></html>'
+                )
+            raise AssertionError(url)
+
+        provider._fetch_text = fake_fetch
+        items = await provider.collect(limit=10)
+
+        self.assertEqual([item.title for item in items], ["Good child"])
+
+    async def test_malformed_root_sitemap_remains_fatal(self) -> None:
+        from xml.etree import ElementTree
+
+        provider = SitemapProvider(
+            name="local",
+            sitemap_url="https://example.com/sitemap.xml",
+            max_pages=10,
+            delay_seconds=0,
+            timeout_seconds=2,
+            obey_robots=False,
+        )
+        provider._fetch_text = (
+            lambda url, *, timeout_seconds=None:
+            "<sitemapindex><bad>&</bad></sitemapindex>"
+        )
+
+        with self.assertRaises(ElementTree.ParseError):
+            await provider.collect(limit=10)
+
 if __name__ == "__main__":
     unittest.main()

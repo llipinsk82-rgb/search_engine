@@ -514,7 +514,15 @@ class SitemapProvider(SearchProvider):
                 if current != url and exc.code == 404:
                     continue
                 raise
-            root = ElementTree.fromstring(xml)
+            try:
+                root = ElementTree.fromstring(xml)
+            except ElementTree.ParseError:
+                # A sitemap index can contain one transiently malformed child
+                # shard. Skip only malformed children; malformed root sitemaps
+                # remain fatal so provider-wide corruption is still visible.
+                if current != url:
+                    continue
+                raise
             root_name = _local_name(root.tag)
 
             if root_name == "sitemapindex":
