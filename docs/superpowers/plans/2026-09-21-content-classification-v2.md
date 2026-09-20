@@ -582,21 +582,13 @@ Use a provider-state migration key for the enrichment-state index so startup wor
 
 - [ ] **Step 6: Recompute class and source together on normal upsert**
 
-Replace class-only derivation with:
+Replace class-only derivation with this exact assignment:
 
-```python
-classification = classify_content_evidence(tags=item.tags, studio=item.studio)
-content_class = (
-    item.content_class if item.content_class != "unknown" else classification.content_class
-)
-content_class_source = (
-    classification.source
-    if item.content_class == "unknown" or item.content_class == classification.content_class
-    else "explicit_provider"
-)
-```
+    classification = classify_content_evidence(tags=item.tags, studio=item.studio)
+    content_class = classification.content_class
+    content_class_source = classification.source
 
-Persist `content_class_source` in INSERT and `ON CONFLICT ... DO UPDATE`. Explicit non-unknown classes may use `explicit_provider` only when they arrived as explicit structured item metadata; provider identity is never consulted.
+Persist both content_class and content_class_source in INSERT and ON CONFLICT DO UPDATE. The normal upsert must always derive both values from current trusted tags/studio. Do not map an arbitrary pre-populated item.content_class to explicit_provider. That source remains reserved until a separately documented/tested explicit provider metadata field is introduced; provider identity is never evidence.
 
 - [ ] **Step 7: Implement evidence-safe row update and candidate/state helpers**
 
@@ -652,7 +644,7 @@ git commit -m "feat: persist content classification provenance"
 - Create: `backend/content_reclassify.py`
 - Modify: `backend/cli.py`
 - Create: `tests/test_content_reclassify.py`
-- Modify: `tests/test_cli.py` if present; otherwise create `tests/test_content_class_cli.py`
+- Create: tests/test_content_class_cli.py
 
 **Interfaces:**
 - Produces:
@@ -791,7 +783,6 @@ git add backend/content_reclassify.py backend/cli.py tests/test_content_reclassi
 git commit -m "feat: add bounded content reclassification"
 ```
 
-If the repository already had `tests/test_cli.py` and it was modified instead, stage that file instead of the new CLI test filename.
 
 ---
 
@@ -927,7 +918,8 @@ git commit -m "feat: add bounded unknown content enrichment"
 - Modify: `deploy/search-engine-backfill.service`
 - Modify: `deploy/search-engine.env.example`
 - Modify: `tests/test_deploy_units.py`
-- Modify: `tests/test_backfill_many.py` or create `tests/test_backfill_enrichment_handoff.py`
+- Modify: tests/test_backfill_many.py
+- Create: tests/test_backfill_enrichment_handoff.py
 
 **Interfaces:**
 - Consumes: `backfill-all`, `enrich_unknown_content()`.
@@ -1022,7 +1014,6 @@ git add backend/cli.py deploy/search-engine-backfill.service \
 git commit -m "feat: schedule bounded content enrichment"
 ```
 
-Stage only files that exist/changed.
 
 ---
 

@@ -1610,3 +1610,27 @@ Exact next gate:
 1. user reviews/approves the written spec;
 2. only after written-spec approval, create the implementation plan with the writing-plans workflow;
 3. only after plan review/execution-method approval, begin TDD implementation.
+
+## 2026-09-21 — AUTHORITATIVE CONTENT CLASSIFICATION V2 PLAN CHECKPOINT
+
+Content Classification v2 written spec has been approved.
+Implementation plan is complete and self-reviewed.
+
+Branch: feature/content-classification-v2
+Spec: docs/superpowers/specs/2026-09-21-content-classification-v2-design.md
+Plan: docs/superpowers/plans/2026-09-21-content-classification-v2.md
+
+Plan decomposition: 8 tasks.
+1. Read-only provider evidence audit and explicit enrichment capability.
+2. Provenance-aware deterministic classifier.
+3. Trusted productionCompany/page metadata extraction and evidence-safe merge.
+4. SQLite provenance migration and atomic evidence persistence.
+5. Bounded offline reclassification and observability CLI.
+6. Bounded Unknown enrichment with retry/backoff.
+7. Existing maintenance-lock scheduler integration.
+8. Integration gate, rollout, measurement, and handoff.
+
+Hard rules remain: no title/provider/domain/image inference, no public enum/API change, conflicts remain Unknown, all production data work bounded/resumable, official deploy path only.
+
+Implementation has NOT started.
+Next gate: plan review and execution method selection.
