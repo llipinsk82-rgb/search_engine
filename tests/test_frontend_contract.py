@@ -149,7 +149,7 @@ def test_sort_selector_state_and_payload_contract() -> None:
     assert 'const sort = params.get("sort") || "relevance";' in app
     assert 'if (payload.sort) livePayload.sort = payload.sort;' in app
     assert app.count('if (stateParams.has("sort")) payload.sort = stateParams.get("sort");') >= 2
-    assert '[sortSelect, contentClassSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]' in app
+    assert '[sortSelect, contentClassSelect]' in app
     assert 'sortSelect.value = "relevance";' in app
 
 
@@ -250,3 +250,39 @@ def test_preview_button_is_not_nested_inside_media_link() -> None:
     thumb_end = media.index('</a>', thumb_start)
     assert 'class="preview-toggle"' not in media[thumb_start:thumb_end]
     assert media.index('class="preview-toggle"') > thumb_end
+
+
+def test_mobile_filter_sheet_contract() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    for hook in (
+        'id="filters-open"', 'id="filter-sheet"', 'role="dialog"',
+        'aria-modal="true"', 'id="filters-close"', 'id="filters-reset"',
+        'id="filters-apply"', 'id="mobile-secondary-filters"',
+    ):
+        assert hook in html
+    for fn in (
+        "function openFilterSheet()",
+        "function closeFilterSheet(",
+        "function applyMobileFilters()",
+        "function resetSecondaryFilters()",
+        "function trapFilterSheetFocus(event)",
+    ):
+        assert fn in app
+    assert 'document.body.classList.add("filter-sheet-open")' in app
+    assert 'document.body.classList.remove("filter-sheet-open")' in app
+    assert 'event.key === "Escape"' in app
+    assert 'event.key !== "Tab"' in app
+    assert "filtersOpenBtn.focus()" in app
+
+
+def test_mobile_secondary_changes_wait_for_apply() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const mobileQuery = window.matchMedia("(max-width: 680px)")' in app
+    assert "function secondaryFilterChanged()" in app
+    section = app[app.index("function secondaryFilterChanged()"):app.index("function resetSecondaryFilters()")]
+    assert "mobileQuery.matches" in section
+    assert "search();" in section
+    apply = app[app.index("function applyMobileFilters()"):app.index("function trapFilterSheetFocus")]
+    assert "search();" in apply
+    assert "closeFilterSheet" in apply

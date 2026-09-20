@@ -408,7 +408,7 @@ select:hover { border-color: var(--border-strong); }
   right: 0;
   bottom: 0;
   width: min(460px, 100%);
-  max-height: min(82vh, 720px);
+  max-height: min(86vh, 720px);
   display: grid;
   grid-template-rows: auto 1fr auto;
   background: var(--bg-elevated);
@@ -436,8 +436,8 @@ select:hover { border-color: var(--border-strong); }
 }
 
 .filter-sheet-header button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -574,7 +574,7 @@ body.filter-sheet-open { overflow: hidden; }
   .filter-sheet-panel {
     left: 0;
     width: 100%;
-    max-height: 88vh;
+    max-height: min(86vh, 720px);
   }
 }
 

@@ -12,6 +12,18 @@ const liveDetailEl = document.querySelector("#live-detail");
 const clearBtn = document.querySelector("#clear");
 const moreBtn = document.querySelector("#more");
 const template = document.querySelector("#card-template");
+const filtersOpenBtn = document.querySelector("#filters-open");
+const filterSheet = document.querySelector("#filter-sheet");
+const filtersCloseBtn = document.querySelector("#filters-close");
+const filtersResetBtn = document.querySelector("#filters-reset");
+const filtersApplyBtn = document.querySelector("#filters-apply");
+const desktopSecondaryFilters = document.querySelector(".secondary-filters");
+const mobileSecondaryFilters = document.querySelector("#mobile-secondary-filters");
+const filterSheetPanel = document.querySelector(".filter-sheet-panel");
+const mobileQuery = window.matchMedia("(max-width: 680px)");
+let filterSheetOpen = false;
+const secondaryFiltersHome = document.createComment("secondary-filters-home");
+desktopSecondaryFilters.after(secondaryFiltersHome);
 
 const PAGE_SIZE = 40;
 let nextOffset = 0;
@@ -32,6 +44,66 @@ function setPrimaryStatus(text) {
 function setLiveDetail(text) {
   if (!liveDetailEl) return;
   liveDetailEl.textContent = text || "";
+}
+
+function openFilterSheet() {
+  if (filterSheetOpen) return;
+  filterSheetOpen = true;
+  mobileSecondaryFilters.append(desktopSecondaryFilters);
+  filterSheet.hidden = false;
+  filtersOpenBtn.setAttribute("aria-expanded", "true");
+  document.body.classList.add("filter-sheet-open");
+  window.requestAnimationFrame(() => filterSheetPanel.focus());
+}
+
+function closeFilterSheet({ returnFocus = true } = {}) {
+  if (!filterSheetOpen) return;
+  filterSheetOpen = false;
+  secondaryFiltersHome.before(desktopSecondaryFilters);
+  filterSheet.hidden = true;
+  filtersOpenBtn.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("filter-sheet-open");
+  if (returnFocus) filtersOpenBtn.focus();
+}
+
+function applyMobileFilters() {
+  closeFilterSheet();
+  search();
+}
+
+function secondaryFilterChanged() {
+  if (mobileQuery.matches) return;
+  search();
+}
+
+function resetSecondaryFilters() {
+  providerSelect.value = "";
+  qualitySelect.value = "";
+  durationSelect.value = "";
+  ageCheckSelect.value = "";
+}
+
+function trapFilterSheetFocus(event) {
+  if (!filterSheetOpen) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeFilterSheet();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const focusable = [...filterSheetPanel.querySelectorAll(
+    'button:not([disabled]), select:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )].filter((node) => !node.hidden);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 const providerMediaPolicies = new Map();
 const failedPreviewIds = new Set();
@@ -703,9 +775,23 @@ form.addEventListener("submit", (event) => {
   search();
 });
 
-for (const el of [sortSelect, contentClassSelect, providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
+for (const el of [sortSelect, contentClassSelect]) {
   el.addEventListener("change", () => search());
 }
+
+for (const el of [providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
+  el.addEventListener("change", secondaryFilterChanged);
+}
+
+filtersOpenBtn.addEventListener("click", openFilterSheet);
+filtersCloseBtn.addEventListener("click", () => closeFilterSheet());
+filtersResetBtn.addEventListener("click", resetSecondaryFilters);
+filtersApplyBtn.addEventListener("click", applyMobileFilters);
+filterSheet.querySelector("[data-filter-close]").addEventListener("click", () => closeFilterSheet());
+filterSheet.addEventListener("keydown", trapFilterSheetFocus);
+mobileQuery.addEventListener("change", (event) => {
+  if (!event.matches && filterSheetOpen) closeFilterSheet({ returnFocus: false });
+});
 
 moreBtn.addEventListener("click", () => {
   search({ persist: false, append: true });
