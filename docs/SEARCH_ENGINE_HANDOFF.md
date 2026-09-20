@@ -1439,3 +1439,61 @@ Before Phase E deploy, one backfill run failed because SexPlex returned malforme
 2. If visual smoke PASS, mark Phase E fully CLOSED.
 3. If visual defects are observed, capture screenshots and fix only on a new isolated branch/worktree; do not edit production directly.
 4. Independently monitor recurrence of the SexPlex malformed-XML backfill failure; treat it as provider-maintenance work, separate from Phase E.
+
+## 2026-09-20 — AUTHORITATIVE PREMIUM V28 BODY-SURFACE HOTFIX
+
+This section supersedes the previous Phase E deployed checkpoint only for the frontend shell/build identifiers below.
+
+### Root cause — VERIFIED
+
+Source-level post-deploy audit found a real CSS selector typo in the premium stylesheet: `bwdy {` instead of `body {`.
+
+Impact:
+- browser default body margin could remain active;
+- intended full-page premium background/gradient and base body color were not guaranteed to apply;
+- automated Phase E contract tests did not previously cover the real `body` selector.
+
+### TDD fix — VERIFIED
+
+Dedicated branch/worktree:
+- branch: `fix/premium-body-selector`
+- code SHA: `510540ea5f093afa05eec0fa6782d986517d1ee2`
+
+Changes:
+- corrected `bwdy {` -> `body {`;
+- added regression coverage for body surface selector;
+- bumped frontend shell from v27 to v28 so existing service-worker caches cannot retain the broken CSS;
+- updated SW cache and guarded reload key to v28.
+
+Final gate:
+- frontend contract suite: 32 PASS;
+- full suite: 242 PASS;
+- only 2 pre-existing FastAPI `on_event` deprecation warnings;
+- `python -m compileall -q backend`: PASS;
+- `node --check frontend/app.js`: PASS;
+- `git diff --check`: PASS.
+
+### Production — VERIFIED
+
+Official helper CHECK: PASS.
+Official helper deploy executed; independent verification established:
+- production build: `510540ea5f09`;
+- `/api/health`: `status=ok`;
+- `search-engine.service`: active;
+- sync timer: active;
+- backfill timer: active;
+- production HTML serves `/styles.css?v=28` and `/app.js?v=28`;
+- production service worker cache is `search-shell-v28`;
+- production stylesheet contains `body {` and no `bwdy {` selector.
+
+No direct production edits were made.
+
+### Visual acceptance
+
+Still `NOT_VERIFIED` from automation because no authenticated browser/Chromium harness is available on VM101 and public Basic Auth must not be bypassed.
+
+Exact next action for Phase E visual closure: authenticated user-side hard refresh and desktop/mobile screenshots.
+
+### Separate operational RED FLAG
+
+SexPlex sitemap/XML currently intermittently/repeatedly returns malformed XML (`not well-formed (invalid token): line 11502, column 245`) and can make `search-engine-backfill.service` exit 1. This is independent of the Phase E frontend release and maintenance lock was free during the v28 deploy. Treat SexPlex as separate provider-maintenance work.
