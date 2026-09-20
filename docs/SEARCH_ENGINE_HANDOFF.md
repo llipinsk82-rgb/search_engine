@@ -129,3 +129,67 @@ When BlackServ Bridge becomes functional:
 ## CTO mode
 
 User commands such as `/loop /cto /minimal /handoff /go` mean continue autonomously through safe reversible steps. Stop only for a real blocker, irreversible/destructive risk, or evidence that would require guessing.
+
+
+## 2026-09-20 — AUTHORITATIVE PHASE D COMPLETE / PHASE E DESIGN CHECKPOINT
+
+This section supersedes older Phase D blocker/next-action notes above.
+
+### Production — VERIFIED
+
+- production build: `82a152999e17`
+- `/api/health`: `status=ok`
+- `search-engine.service`: active
+- sync timer: active
+- backfill timer: active
+- indexed items at acceptance: 1,120,245
+- providers: 31 configured / 25 live / 55 trusted / 55 available
+
+Phase D content-class production acceptance:
+- invalid content class -> HTTP 422
+- indexed `amateur` -> only `amateur`
+- indexed `unknown` -> only `unknown`
+- live `amateur` -> only `amateur`
+- full classified live batches are cached before response-specific filtering
+
+Phase D is CLOSED.
+
+### Release / source
+
+- release branch `feature/provider-registry-probe` was fast-forwarded to exact code SHA `82a152999e173b8649e4d6dfce5e0003cdf579d0`
+- official deploy helper CHECK passed
+- official deploy completed; SentinelX transport timed out, but independent post-check verified production build `82a152999e17`
+- no direct production edits were made
+
+### Phase E — Premium Product Finish
+
+User approved the premium Product Finish direction.
+
+Dedicated branch/worktree:
+- branch: `feature/premium-product-finish`
+- base: `82a152999e173b8649e4d6dfce5e0003cdf579d0`
+- worktree: `/opt/bs-sandbox/search_engine-worktrees/premium-product-finish`
+
+Design spec:
+- `docs/superpowers/specs/2026-09-20-premium-product-finish-design.md`
+
+Approved direction:
+- dark premium media-first browser
+- no framework rewrite
+- desktop primary controls: Sort + Content
+- Provider/Quality/Duration secondary; Age Check advanced
+- desktop generally 3 columns, tablet 2, mobile 1
+- mobile controls: Sort / Content / Filters with bottom/full-height filter sheet
+- larger media-first cards
+- manual one-active-preview preserved
+- accessibility fixes: no nested button-in-link, accessible thumb link, scoped live region, focus management
+- explicit skeleton/empty/error/partial-provider states
+- safe PWA update behavior
+
+### Current gate
+
+Implementation has NOT started.
+
+The design spec has been written and self-reviewed. Per the agreed design workflow, the next required action is user review/approval of the written spec. After that, create the implementation plan and execute TDD on this branch.
+
+Do not revert to older Phase D blocker instructions above.
