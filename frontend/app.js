@@ -926,7 +926,7 @@ async function boot() {
 boot();
 
 if ("serviceWorker" in navigator) {
-  const SW_RELOAD_GUARD = "search.swReload.v27";
+  const SW_RELOAD_GUARD = "search.swReload.v28";
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     try {
@@ -944,7 +944,7 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=27", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=28", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

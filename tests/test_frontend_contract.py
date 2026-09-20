@@ -321,21 +321,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v27() -> None:
+def test_frontend_assets_are_v28() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=27" in html
-    assert "/app.js?v=27" in html
-    assert 'register("/sw.js?v=27", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v27";' in sw
-    assert '"/styles.css?v=27"' in sw
-    assert '"/app.js?v=27"' in sw
+    assert "/styles.css?v=28" in html
+    assert "/app.js?v=28" in html
+    assert 'register("/sw.js?v=28", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v28";' in sw
+    assert '"/styles.css?v=28"' in sw
+    assert '"/app.js?v=28"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v27";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v28";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -353,3 +353,12 @@ def test_filter_sheet_initial_focus_is_trapped_in_panel() -> None:
     trap = app[app.index("function trapFilterSheetFocus(event)"):app.index("const providerMediaPolicies")]
     assert "document.activeElement === filterSheetPanel" in trap
     assert "!filterSheetPanel.contains(document.activeElement)" in trap
+
+def test_premium_body_selector_applies_page_surface() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "bwdy {" not in css
+    start = css.index("body {")
+    body = css[start:css.index("}", start) + 1]
+    assert "margin: 0" in body
+    assert "min-height: 100vh" in body
+    assert "var(--bg-page)" in body
