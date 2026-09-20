@@ -1573,3 +1573,40 @@ Fresh production verification after the malformed-child sitemap fix:
 This is a second independent production acceptance after the initial successful run. The SexPlex malformed-child incident remains CLOSED.
 
 Phase E visual acceptance remains NOT_VERIFIED until an authenticated desktop/mobile browser screenshot is supplied.
+
+## 2026-09-21 — CONTENT CLASSIFICATION V2 DESIGN CHECKPOINT
+
+User approved the in-chat Content Classification v2 design direction.
+
+Verified problem statement:
+- the existing content-class filter/API works correctly;
+- representative query `Tiny` before v2: all=8,093, amateur=47, studio=0, unknown=8,046;
+- the deficiency is trusted classification evidence, not filter transport.
+
+V2 design principles:
+- no title/provider/domain/image inference;
+- no provider-wide studio assumptions;
+- missing evidence remains unknown;
+- amateur+studio conflict remains unknown;
+- public enum remains amateur/studio/unknown;
+- classification provenance is internal;
+- existing tags/studio are reclassified offline before network enrichment;
+- unresolved unknown rows are enriched only through bounded/resumable page metadata collection;
+- existing maintenance lock remains authoritative;
+- Preview Coverage is explicitly out of scope.
+
+Written design spec:
+`docs/superpowers/specs/2026-09-21-content-classification-v2-design.md`
+
+Branch/worktree:
+- branch: `feature/content-classification-v2`
+- worktree: `/opt/bs-sandbox/search_engine-worktrees/content-classification-v2`
+- base: `2f1352a545b74be56efb2bef9e7f4ce5563bd1a7`
+
+No product code has been changed yet.
+No production change has been made.
+
+Exact next gate:
+1. user reviews/approves the written spec;
+2. only after written-spec approval, create the implementation plan with the writing-plans workflow;
+3. only after plan review/execution-method approval, begin TDD implementation.
