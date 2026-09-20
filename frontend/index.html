@@ -11,33 +11,41 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">SEARCH</div>
+    <a class="brand" href="/" aria-label="Search home">SEARCH</a>
     <span class="badge">DEV</span>
   </header>
 
   <main class="shell">
-    <section class="hero search-panel">
-      <h1>Find content. Skip the noise.</h1>
+    <section class="search-shell" aria-label="Search controls">
       <form id="search-form" class="searchbox">
-        <input id="q" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Search…" autofocus>
+        <label class="sr-only" for="q">Search</label>
+        <input id="q" name="q" type="search" maxlength="200" autocomplete="off"
+               placeholder="Search videos, creators, topics…" autofocus>
         <button type="submit">Search</button>
       </form>
 
-      <div class="filters filter-strip">
-        <select id="sort" aria-label="Sort">
-          <option value="relevance">Relevance</option>
-          <option value="newest">Newest</option>
-          <option value="views">Most viewed</option>
-          <option value="rating">Best rated</option>
-          <option value="longest">Longest</option>
-          <option value="shortest">Shortest</option>
-        </select>
-        <select id="content-class" aria-label="Content type">
-          <option value="">All content types</option>
-          <option value="amateur">Amateur</option>
-          <option value="studio">Studio</option>
-          <option value="unknown">Unknown</option>
-        </select>
+      <div class="control-row">
+        <div class="primary-controls">
+          <select id="sort" aria-label="Sort">
+            <option value="relevance">Relevance</option>
+            <option value="newest">Newest</option>
+            <option value="views">Most viewed</option>
+            <option value="rating">Best rated</option>
+            <option value="longest">Longest</option>
+            <option value="shortest">Shortest</option>
+          </select>
+          <select id="content-class" aria-label="Content type">
+            <option value="">All content types</option>
+            <option value="amateur">Amateur</option>
+            <option value="studio">Studio</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+        <button id="filters-open" class="filters-open" type="button"
+                aria-controls="filter-sheet" aria-expanded="false">Filters</button>
+      </div>
+
+      <div class="secondary-filters">
         <select id="provider" aria-label="Provider"><option value="">All sources</option></select>
         <select id="quality" aria-label="Quality">
           <option value="">Any quality</option>
@@ -51,7 +59,7 @@
         <select id="duration" aria-label="Duration">
           <option value="">Any length</option>
           <option value="0:600">Under 10 min</option>
-          <option value="600:1800">10–30 min</option>
+          <option value="600:1800">10–0 min</option>
           <option value="1800:">30+ min</option>
         </select>
         <select id="age-check" aria-label="Age check">
@@ -63,32 +71,53 @@
       </div>
     </section>
 
-    <section class="statusbar">
+    <section class="statusbar" aria-label="Search status">
       <div class="status-copy">
-        <span id="status" class="result-summary">Ready</span>
+        <span id="status" class="result-summary" role="status"
+              aria-live="polite" aria-atomic="true">Ready</span>
         <span id="live-detail" class="live-detail"></span>
       </div>
       <button id="clear" class="ghost" type="button">Clear</button>
     </section>
 
-    <section id="results" class="grid" aria-live="polite"></section>
+    <section id="results" class="grid"></section>
     <div class="more-row">
       <button id="more" class="more" type="button" hidden>Show more</button>
     </div>
   </main>
 
+  <div id="filter-sheet" class="filter-sheet" role="dialog" aria-modal="true"
+       aria-labelledby="filter-sheet-title" hidden>
+    <button class="filter-sheet-backdrop" type="button" data-filter-close
+            aria-label="Close filters"></button>
+    <section class="filter-sheet-panel" tabindex="-1">
+      <header class="filter-sheet-header">
+        <h2 id="filter-sheet-title">Filters</h2>
+        <button id="filters-close" type="button" aria-label="Close filters">×</button>
+      </header>
+      <div id="mobile-secondary-filters" class="mobile-secondary-filters"></div>
+      <footer class="filter-sheet-actions">
+        <button id="filters-reset" type="button" class="ghost">Reset</button>
+        <button id="filters-apply" type="button" class="primary-action">Apply filters</button>
+      </footer>
+    </section>
+  </div>
+
   <template id="card-template">
     <article class="card">
-      <a class="thumb">
-        <img class="preview" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" hidden>
-        <video class="motion-preview" muted loop playsinline preload="none" referrerpolicy="no-referrer" hidden></video>
-        <div class="placeholder">Preview</div>
+      <div class="media-frame">
+        <a class="thumb">
+          <img class="preview" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" hidden>
+          <video class="motion-preview" muted loop playsinline preload="none" referrerpolicy="no-referrer" hidden></video>
+          <div class="placeholder">Preview</div>
+        </a>
         <div class="media-badges">
           <span class="quality"></span>
           <span class="duration"></span>
         </div>
-        <button class="preview-toggle" type="button" aria-label="Play preview" aria-pressed="false" hidden>▶</button>
-      </a>
+        <button class="preview-toggle" type="button" aria-label="Play preview"
+                aria-pressed="false" hidden>▶</button>
+      </div>
       <div class="meta">
         <div class="card-meta-primary"><a class="title"></a></div>
         <div class="subline card-meta-secondary">

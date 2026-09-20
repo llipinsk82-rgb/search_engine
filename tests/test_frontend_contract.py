@@ -94,26 +94,6 @@ def test_search_submit_runs_once() -> None:
     assert app[start:end].count("search();") == 1
 
 
-def test_cards_ui_v2_markup_hooks() -> None:
-    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    for hook in (
-        'search-panel',
-        'filter-strip',
-        'result-summary',
-        'id="live-detail"',
-        'media-badges',
-        'card-meta-primary',
-        'card-meta-secondary',
-    ):
-        assert hook in html
-    for existing in (
-        'class="thumb"', 'class="preview"', 'class="motion-preview"',
-        'class="quality"', 'class="duration"', 'class="preview-toggle"',
-    ):
-        assert existing in html
-    assert 'id="sort"' in html
-
-
 def test_cards_ui_v2_desktop_hierarchy_css() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
     assert ".search-panel {" in css
@@ -236,3 +216,38 @@ def test_frontend_assets_are_v26_after_content_class_filter() -> None:
     assert 'const CACHE = "search-shell-v26";' in sw
     assert '"/styles.css?v=26"' in sw and '"/app.js?v=26"' in sw
     assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in css
+
+
+def test_premium_shell_has_primary_and_secondary_filter_hierarchy() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert 'class="search-shell"' in html
+    assert 'class="primary-controls"' in html
+    assert 'class="secondary-filters"' in html
+    primary = html[html.index('class="primary-controls"'):html.index('</div>', html.index('class="primary-controls"'))]
+    assert 'id="sort"' in primary
+    assert 'id="content-class"' in primary
+    assert 'id="provider"' not in primary
+    assert 'id="quality"' not in primary
+    assert 'id="duration"' not in primary
+
+
+def test_results_grid_is_not_live_region_and_status_is() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    results_start = html.index('id="results"')
+    results_tag = html[results_start:html.index('>', results_start) + 1]
+    assert "aria-live" not in results_tag
+    status_start = html.index('id="status"')
+    status_tag = html[status_start:html.index('>', status_start) + 1]
+    assert 'role="status"' in status_tag
+    assert 'aria-live="polite"' in status_tag
+    assert 'aria-atomic="true"' in status_tag
+
+
+def test_preview_button_is_not_nested_inside_media_link() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    template = html[html.index('<template id="card-template">'):html.index('</template>')]
+    media = template[template.index('class="media-frame"'):]
+    thumb_start = media.index('class="thumb"')
+    thumb_end = media.index('</a>', thumb_start)
+    assert 'class="preview-toggle"' not in media[thumb_start:thumb_end]
+    assert media.index('class="preview-toggle"') > thumb_end
