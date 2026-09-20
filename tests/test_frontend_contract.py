@@ -286,3 +286,24 @@ def test_mobile_secondary_changes_wait_for_apply() -> None:
     apply = app[app.index("function applyMobileFilters()"):app.index("function trapFilterSheetFocus")]
     assert "search();" in apply
     assert "closeFilterSheet" in apply
+
+
+def test_card_thumb_gets_accessible_name_from_title() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'thumb.setAttribute("aria-label", `View ${item.title}`);' in app
+
+
+def test_preview_failure_is_scoped_to_its_media_frame() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'toggle.closest(".media-frame")?.classList.add("preview-failed");' in app
+    assert "failedPreviewIds.add(itemId);" in app
+    assert "toggle.hidden = true;" in app
+
+
+def test_manual_one_active_preview_contract_is_preserved() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    start = app[app.index("function startMotionPreview("):app.index("function durationText(")]
+    assert "activeMotionPreview?.motion && activeMotionPreview.motion !== motion" in start
+    assert "stopMotionPreview(" in start
+    assert "IntersectionObserver" not in app
+    assert "pointerenter" not in app

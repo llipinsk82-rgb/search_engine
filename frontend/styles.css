@@ -334,6 +334,7 @@ select:hover { border-color: var(--border-strong); }
 }
 
 .preview-toggle:active { transform: scale(.96); }
+.preview-failed .preview-toggle { display: none; }
 
 .meta { padding: 12px 13px 14px; }
 

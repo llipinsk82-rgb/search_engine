@@ -199,11 +199,13 @@ function failMotionPreview(itemId, motion, still, toggle) {
   stopMotionPreview(motion, still, toggle);
   motion.removeAttribute("src");
   motion.load();
+  toggle.closest(".media-frame")?.classList.add("preview-failed");
   toggle.hidden = true;
 }
 
 function startMotionPreview(motion, still, url, toggle, itemId) {
   if (!motion || !url) return;
+  toggle.closest(".media-frame")?.classList.remove("preview-failed");
   if (activeMotionPreview?.motion && activeMotionPreview.motion !== motion) {
     stopMotionPreview(
       activeMotionPreview.motion,
@@ -341,6 +343,7 @@ function resultCard(item) {
   const previewToggle = card.querySelector(".preview-toggle");
 
   thumb.href = item.url;
+  thumb.setAttribute("aria-label", `View ${item.title}`);
   title.href = item.url;
 
   if (item.thumbnail) {
