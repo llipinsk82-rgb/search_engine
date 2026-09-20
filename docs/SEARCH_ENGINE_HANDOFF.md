@@ -1497,3 +1497,64 @@ Exact next action for Phase E visual closure: authenticated user-side hard refre
 ### Separate operational RED FLAG
 
 SexPlex sitemap/XML currently intermittently/repeatedly returns malformed XML (`not well-formed (invalid token): line 11502, column 245`) and can make `search-engine-backfill.service` exit 1. This is independent of the Phase E frontend release and maintenance lock was free during the v28 deploy. Treat SexPlex as separate provider-maintenance work.
+
+## 2026-09-21 — AUTHORITATIVE SEXPLEX MALFORMED CHILD SITEMAP FIX
+
+This section closes the SexPlex malformed-XML operational RED FLAG recorded in the Phase E checkpoints.
+
+### Root cause — VERIFIED
+
+SexPlex root sitemap index at https://sexplex.com/sitemap.xml is valid and currently advertises 342 video child sitemaps.
+
+A fresh read-only scan with SearchEngineIndexer/0.5 found exactly one malformed child shard:
+- https://sexplex.com/sitemap/?type=videos&from_links_videos=41
+- parser error: not well-formed (invalid token): line 11502, column 245
+
+The generic sitemap crawler previously tolerated missing child shards with HTTP 404 but treated ElementTree.ParseError from any child as fatal, aborting the whole provider and causing search-engine-backfill.service to exit 1.
+
+### Fix — VERIFIED
+
+Branch: fix/sitemap-malformed-child
+Code SHA: 75d25430070d60ff1f022d47d6e1142275f773fa
+
+Behavior:
+- malformed child sitemap: skip that child and continue;
+- malformed root sitemap: remains fatal;
+- no broad XML sanitization and no provider-specific bypass.
+
+Verification:
+- malformed-child regression observed RED before fix and GREEN after;
+- malformed-root regression remained fatal;
+- tests/test_sitemap_crawl.py: 9 PASS;
+- full suite: 244 PASS;
+- only 2 pre-existing FastAPI on_event deprecation warnings;
+- python compileall backend: PASS;
+- git diff check: PASS.
+
+A real-network probe using current SexPlex shard 41 followed by shard 42 confirmed the fixed crawler skipped shard 41 and returned a valid record from shard 42.
+
+### Production — VERIFIED
+
+Official helper CHECK passed for build 75d25430070d.
+Official helper deploy executed. SentinelX transport timed out, so success was established independently:
+- helper status build: 75d25430070d;
+- /api/health: status=ok;
+- search-engine.service: active;
+- sync timer: active;
+- backfill timer: active;
+- deployed sitemap.py contains the child-only ElementTree.ParseError guard.
+
+Natural production acceptance after deploy:
+- backfill started: 2026-09-21 00:16:34 CEST;
+- maintenance lock acquired normally;
+- SexPlex result: batches=1 fetched=250 status=paused;
+- backfill final state: Result=success, ExecMainStatus=0;
+- unit finished successfully at 2026-09-21 00:19:37 CEST.
+
+The recurring SexPlex malformed-XML backfill failure is CLOSED.
+
+### Remaining product gate
+
+Phase E automated and production verification is complete, including frontend shell v28 and this provider-maintenance fix.
+Authenticated browser visual smoke remains NOT_VERIFIED because public UI access is protected by operator Basic Auth and no authentication bypass is permitted.
+Exact next action: authenticated user-side hard refresh plus desktop/mobile screenshots to close Phase E visual acceptance.
