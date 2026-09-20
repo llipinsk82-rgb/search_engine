@@ -342,3 +342,14 @@ def test_service_worker_reload_is_guarded() -> None:
     assert "window.location.reload();" in controller
     assert "window.setTimeout" in controller
     assert "sessionStorage.removeItem(SW_RELOAD_GUARD)" in controller
+
+
+def test_filter_sheet_initial_focus_is_trapped_in_panel() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    sheet = html[html.index('id="filter-sheet"'):html.index('</div>', html.index('id="filter-sheet"'))]
+    assert 'data-filter-close' in sheet
+    assert 'tabindex="-1"' in sheet
+    trap = app[app.index("function trapFilterSheetFocus(event)"):app.index("const providerMediaPolicies")]
+    assert "document.activeElement === filterSheetPanel" in trap
+    assert "!filterSheetPanel.contains(document.activeElement)" in trap

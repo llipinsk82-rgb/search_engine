@@ -97,6 +97,12 @@ function trapFilterSheetFocus(event) {
   if (!focusable.length) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
+  if (document.activeElement === filterSheetPanel || !filterSheetPanel.contains(document.activeElement)) {
+    event.preventDefault();
+    if (event.shiftKey) last.focus();
+    else first.focus();
+    return;
+  }
   if (event.shiftKey && document.activeElement === first) {
     event.preventDefault();
     last.focus();
