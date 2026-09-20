@@ -94,36 +94,35 @@ def test_search_submit_runs_once() -> None:
     assert app[start:end].count("search();") == 1
 
 
-def test_cards_ui_v2_desktop_hierarchy_css() -> None:
+def test_premium_css_uses_tokens_and_three_two_one_grid() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
-    assert ".search-panel {" in css
-    panel = css[css.index(".search-panel {"):css.index("}", css.index(".search-panel {")) + 1]
-    assert "position: sticky" in panel
-    assert "top: 58px" in panel
-    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
-    medium = css[css.index("@media (max-width: 1000px)"):css.index("@media (max-width: 820px)")]
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in medium
-    intermediate = css[css.index("@media (max-width: 820px)"):css.index("@media (max-width: 680px)")]
-    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in intermediate
-    assert ".card-meta-secondary" in css
-    assert "color:" in css[css.index(".card-meta-secondary"):css.index("}", css.index(".card-meta-secondary")) + 1]
-    assert "aspect-ratio: 16/9" in css or "aspect-ratio: 16 / 9" in css
-    assert ".card { height:" not in css
-
-
-def test_cards_ui_v2_mobile_feed_contract() -> None:
-    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    for token in (
+        "--bg-page:", "--bg-surface:", "--bg-elevated:", "--border-subtle:",
+        "--text-primary:", "--text-secondary:", "--text-muted:", "--focus-ring:",
+        "--radius-card:", "--space-2:", "--space-4:",
+    ):
+        assert token in css
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
+    tablet = css[css.index("@media (max-width: 960px)"):css.index("@media (max-width: 680px)")]
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in tablet
     mobile = css[css.index("@media (max-width: 680px)"):]
     assert "grid-template-columns: 1fr" in mobile
-    assert ".card { width: 100%;" in mobile
-    assert ".thumb {" in mobile and "width: 100%" in mobile
-    assert "aspect-ratio: 16 / 9" in mobile
-    assert ".filter-strip" in mobile
-    assert "overflow-x: auto" in mobile
-    assert "flex: 0 0 auto" in mobile
-    assert "min-height: 44px" in mobile
-    assert "-webkit-line-clamp: 2" in mobile
-    assert "min-width: 0" in mobile
+    assert "aspect-ratio: 16 / 9" in css or "aspect-ratio: 16/9" in css
+
+
+def test_premium_mobile_has_no_horizontal_filter_strip() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    mobile = css[css.index("@media (max-width: 680px)"):]
+    assert "overflow-x: auto" not in mobile
+    assert ".filters-open" in mobile
+    assert ".secondary-filters" in mobile
+    assert "display: none" in mobile[mobile.index(".secondary-filters"):]
+
+
+def test_keyboard_focus_is_explicit() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert ":focus-visible" in css
+    assert "var(--focus-ring)" in css
 
 
 def test_cards_ui_v2_separates_primary_and_live_status() -> None:
@@ -215,7 +214,7 @@ def test_frontend_assets_are_v26_after_content_class_filter() -> None:
     assert 'register("/sw.js?v=26", { updateViaCache: "none" })' in app
     assert 'const CACHE = "search-shell-v26";' in sw
     assert '"/styles.css?v=26"' in sw and '"/app.js?v=26"' in sw
-    assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in css
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
 
 
 def test_premium_shell_has_primary_and_secondary_filter_hierarchy() -> None:
