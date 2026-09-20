@@ -1,6 +1,6 @@
 # Search Engine — CURRENT HANDOFF
 
-Updated: 2026-09-19 21:35 UK
+Updated: 2026-09-20 UK
 
 ## Project
 
@@ -13,28 +13,45 @@ Updated: 2026-09-19 21:35 UK
 - Public alias: `search.blackserv.eu`
 - Backend: `127.0.0.1:8775`
 
-## Last verified production state
+## Fresh VM101 / production verification — 2026-09-20
 
-BlackServ Bridge is still broken at invocation time (`Resource not found`), so VM101 could not be freshly re-checked in this session.
+BlackServ Bridge was functional at the start of this session and reached VM101 (`os2.blackserv.eu`) as user `blackserv`.
 
-Last verified production state carried from the Phase C acceptance:
+Fresh verified production state:
 
-- production/release code: `6eb04675eda9505ab4794a4cb5eb5f622b0bf0f2`
-- Phase C deployed
-- service/health previously PASS
+- production build: `6eb04675eda9505ab4794a4cb5eb5f622b0bf0f2` (`6eb04675eda9`)
+- `search-engine.service`: active
+- sync timer: active
+- backfill timer: active
+- `/api/health`: `status=ok`
+- indexed items at the fresh check: `1095322`
+- configured index providers: 31
+- live providers: 25
+- trusted providers: 55
+- available providers: 55
 
-Treat this as **last verified production state**, not a fresh check from this session.
+Fresh canonical sandbox state at that check:
 
-## Phase D current code state
+- branch: `feature/provider-registry-probe`
+- HEAD: `6eb04675eda9505ab4794a4cb5eb5f622b0bf0f2`
+- working tree dirty only because `docs/SEARCH_ENGINE_HANDOFF.md` had an uncommitted documentation update
+- no application-code diff was present
+- official helper `check` correctly refused a dirty source checkout
+
+Direct read of `/opt/search_engine` remains permission-denied for `blackserv`; production state must be verified through the authorized helper/API path, not by bypassing permissions.
+
+Later in the same session the BlackServ Bridge capability disappeared from the available tool registry again. Plugin discovery does not expose a reconnectable public BlackServ Bridge plugin. Therefore no further VM101 mutation/test/deploy was attempted after that point.
+
+## Phase A / B / C
+
+- Phase A Media Reliability: DONE / deployed / production smoke PASS.
+- Phase B Cards/UI v2: code/tests/deploy PASS; authenticated visual browser smoke remains `NOT_VERIFIED`.
+- Phase C Metadata + Sorting: DONE / deployed / production API acceptance PASS.
+- Current production frontend is v25 because production remains on `6eb04675...`.
+
+## Phase D code state
 
 Phase D Tasks 1–4 are implemented on `feature/content-class-filter`.
-
-### Exact deploy candidate code SHA
-
-`613cf769e1adfe665416ef7f6dcc269e1ed0fbcc`
-
-This is the code commit that must be canonically tested on VM101 before release/deploy.
-Do **not** use a later docs-only handoff commit as the deploy target.
 
 Relevant history:
 
@@ -44,8 +61,17 @@ Relevant history:
 4. `9cb5948995da9115e281f4f28d9bb3310f927bf0` — frontend v26
 5. `3107e7552762d80b44d463c5af77ecc3a6f75916` — docs-only handoff refresh
 6. `613cf769e1adfe665416ef7f6dcc269e1ed0fbcc` — restore minimal `backend/index.py` structure after Task 3 patch churn
+7. `6533ab7c541832eab519ff43c6621fb981ead3ff` — docs-only release blocker/cleanup handoff
 
-## Implemented behavior
+GitHub still freshly verifies `613cf769...` is a clean fast-forward descendant of release `6eb04675...`:
+
+- ahead: 6
+- behind: 0
+- merge base: `6eb04675eda9505ab4794a4cb5eb5f622b0bf0f2`
+
+However, **do not fast-forward or deploy `613cf769...` as-is now**. A new cache-semantics RED FLAG was found by direct code inspection and must be closed first.
+
+## Implemented Phase D behavior
 
 - Explicit content classes: `amateur`, `studio`, `unknown`.
 - No title-based inference.
@@ -55,110 +81,118 @@ Relevant history:
 - Migration is additive and preserves existing rows.
 - Search supports exact `content_class` filtering.
 - GET/POST validation rejects unsupported values.
-- Live results are classified and filtered before cache/render.
 - Frontend v26: All / Amateur / Studio / Unknown.
 - Cards show `Amateur` only for explicit amateur classification.
 - Studio name appears only when a real studio value exists.
 - No fake `Unknown` card badge.
 - Mobile one-column behavior preserved.
 
-## RED FLAG found and resolved before release
+## Resolved earlier RED FLAG: backend/index.py rewrite
 
-A release comparison found that Task 3 commit `d5b8ede...` had unnecessarily rewritten/minified much of `backend/index.py`:
+Task 3 previously rewrote/minified too much of `backend/index.py`. Repair commit `613cf769...` restored the Task 2 structure and kept only the minimal content-class plumbing.
 
-- no functions were removed,
-- tests still passed,
-- `git diff -w` showed intended semantics plus large formatting/comment/docstring churn,
-- but the file changed from 737 to 467 lines, which was unacceptable release noise.
+Historical shadow verification on exact `613cf769...`:
 
-Root cause: the earlier shadow patch-script rewrote the whole file in compressed form while adding the content-class filter.
-
-Repair commit: `613cf769e1adfe665416ef7f6dcc269e1ed0fbcc`.
-
-After repair, `backend/index.py` relative to Task 2 (`a09103...`) is exactly:
-
-- **8 insertions**
-- **0 deletions**
-
-Those eight lines are only the `content_class` parameter, SQL predicate and propagation into count/search.
-
-## Fresh verification on exact remote SHA `613cf769...`
-
-Shadow clone was fetched/reset to the exact GitHub commit before verification.
-
-Results:
-
-- full Python suite: **227 passed**
-- FastAPI warnings: 2 existing `on_event` deprecation warnings
-- targeted content-class/sorting/migration gate: **29 passed**
+- full Python suite: 227 passed
+- targeted content-class/sorting/migration gate: 29 passed
+- 2 existing FastAPI `on_event` warnings
 - `python -m compileall -q backend`: PASS
-- `node --check frontend/app.js`: PASS using temporary Node under `/tmp`
+- `node --check frontend/app.js`: PASS
 - `git diff --check`: PASS
-- branch worktree after reset: clean
-- release ref remains `6eb04675...`
-- code diff from release after cleanup: **420 insertions / 19 deletions** across 15 code/test/frontend files, excluding handoff docs
 
-Do not convert these shadow results into a VM101 or production PASS claim.
+These remain shadow results and do not replace a fresh canonical VM101 gate.
 
-## Access blocker
+## NEW RED FLAG — live filtered request can narrow the cache
 
-### BlackServ Bridge
+Fresh inspection of `backend/app.py` at exact `613cf769...` confirms the current flow in `/api/live-refresh` is:
 
-Discovery exposes BlackServ Bridge tools, but real invocation returns:
+1. `refresh_live_search(...)` fetches provider results.
+2. Each provider result is passed through `filter_live_items(provider_result.items, payload.content_class)`.
+3. The already filtered `result.providers` collection is then passed to `cache_live_provider_results(...)` as a background task.
+4. The filtered collection is also used to build the response.
 
-`Resource not found: BlackServ_Bridge.bridge_health`
+Therefore a request such as `content_class=amateur` can cause only the amateur subset from that live fetch to be handed to the cache layer. This is the exact architecture concern already called out in the broader project handoff.
 
-This is reproducible. Plugin directory search also does not expose a reconnectable public `BlackServ Bridge` plugin, so the connector cannot be repaired from this chat via Plugin Management.
+Root-cause evidence:
 
-### SentinelX
+- `backend/app.py` mutates `provider_result.items` before scheduling the cache task.
+- `tests/test_content_class_filter.py::test_live_results_are_classified_before_content_filtering_and_cache` checks response classification/filtering but does **not** assert what collection is passed to `cache_live_provider_results`.
+- This explains how the historical 227-test shadow suite could remain green while cache narrowing was not actually pinned by a regression test.
 
-SentinelX exposes one host:
+### Required semantics
 
-- hostname: `blackserv`
-- host id: `host_e174a7a41f23328d`
+The intended minimal model is:
 
-It is **not** VM101 Search Engine:
+1. fetch full live provider results,
+2. classify/normalize all live items,
+3. cache the full normalized provider batches,
+4. derive a filtered response copy for the current `content_class` request,
+5. never mutate/cache a request-specific subset as the canonical live cache representation.
 
-- `/opt/bs-sandbox/search_engine` absent
-- `/opt/search_engine` absent
-- `/opt/bs-sandbox` contains Sentinel_BS work
+Do not add a new subsystem. This should remain a small Phase D correction.
 
-Do not use this host as a substitute for VM101 deployment.
+## Required TDD fix before release
+
+When canonical VM101 execution is available again:
+
+1. Create/use an isolated clean worktree from the latest Phase D code branch.
+2. Add a regression test that patches `cache_live_provider_results` and proves an `amateur` request still hands the cache the full classified batch (`amateur`, `studio`, `unknown`), while the returned response contains only amateur items.
+3. Run the new test and observe the expected RED on current code.
+4. Make the smallest implementation change that separates full classified cache data from the filtered response data.
+5. Re-run the regression test to GREEN.
+6. Run the existing content-class targeted gate.
+7. Run the full pytest suite.
+8. Run `python -m compileall -q backend`.
+9. Run `node --check frontend/app.js` if Node exists on VM101; otherwise keep that limitation explicit.
+10. Run `git diff --check`.
+11. Verify clean worktree and inspect the final diff.
+12. Commit/push the code fix to `feature/content-class-filter`.
+13. Record the new exact code SHA. That new SHA, not `613cf769...`, becomes the Phase D deploy candidate.
+14. Verify release `feature/provider-registry-probe` remains at `6eb04675...` and the new code SHA is a clean fast-forward descendant.
+15. Fast-forward the release branch to the new exact code SHA only; do not include later docs-only commits in the release target.
+16. Push release branch.
+17. Run `/usr/local/bin/search-engine-deploy-client check`.
+18. If CHECK PASS and maintenance gate is naturally free, deploy only through the authorized helper.
+19. Verify deployed build exact SHA, `/api/health`, service, sync timer and backfill timer.
+20. Production acceptance must cover cached/live `amateur`, `studio`, `unknown`, invalid value 422, no-title-inference, and specifically prove that a filtered live request does not poison/narrow subsequent cached results.
+21. Verify frontend v26 selector/assets if authorized access is available; authenticated visual browser smoke remains `NOT_VERIFIED` if access is unavailable. Do not bypass Basic Auth.
+22. Only then mark Phase D DONE.
 
 ## Release safety
 
 Do not:
 
+- deploy `613cf769...` before the cache semantics fix,
+- deploy any docs-only commit,
 - edit production directly,
 - fake a VM101 gate from shadow tests,
-- deploy from the unrelated SentinelX host,
+- use unrelated SentinelX host `blackserv` as VM101,
 - kill healthy sync/backfill jobs,
 - bypass the authorized deploy helper,
-- advance/deploy the release branch merely because shadow tests pass,
-- deploy a docs-only handoff commit instead of code SHA `613cf769...`,
-- claim Phase D production PASS before helper deploy + independent acceptance.
+- bypass Basic Auth,
+- claim Phase D production PASS before canonical test gate + helper deploy + independent acceptance.
 
-## Exact next action when Bridge works
+## Phase E — Frontend Product Finish
 
-1. Run Bridge health.
-2. Inspect canonical `/opt/bs-sandbox/search_engine` branch/HEAD/status/diff.
-3. Do not overwrite unrelated local work; first reconcile any old pending handoff job/diff if still present.
-4. Fetch `origin/feature/content-class-filter` and `origin/feature/provider-registry-probe`.
-5. Create/use a clean canonical worktree at exact code SHA `613cf769e1adfe665416ef7f6dcc269e1ed0fbcc`.
-6. Run full pytest on VM101.
-7. Run `python -m compileall -q backend`.
-8. Run `node --check frontend/app.js` if Node exists; otherwise explicitly retain the shadow Node result as the limitation.
-9. Run `git diff --check` and inspect the Phase D diff.
-10. Confirm release branch `feature/provider-registry-probe` is still at `6eb04675...` and fast-forwardable to `613cf769...`.
-11. Fast-forward release branch to **code SHA `613cf769...` only**, not to a later docs-only handoff commit.
-12. Push release branch.
-13. Run `/usr/local/bin/search-engine-deploy-client check`.
-14. If CHECK PASS and maintenance lock is free, run authorized deploy helper.
-15. Verify production build equals `613cf769e1adfe665416ef7f6dcc269e1ed0fbcc`.
-16. Verify `/api/health`, service, sync timer and backfill timer.
-17. Production acceptance: cached search and live refresh for `amateur`, `studio`, `unknown`; invalid value must reject; no-title-inference behavior must remain true.
-18. Verify frontend v26 assets and `content-class` selector are served.
-19. Only then mark Phase D production PASS and update this same handoff.
+Phase E starts only after Phase D is production-complete.
+
+Approved direction:
+
+1. a11y card semantics: remove interactive button inside thumbnail link; give thumbnail link an accessible name; narrow `aria-live` to a status region.
+2. Result Card V3: image -> quality/duration -> preview -> title -> views/rating/date -> provider/studio/content metadata.
+3. Mobile Filters V2: visible `Sort | Type | Filters(n)`; secondary filters in an apply-based mobile panel/bottom sheet.
+4. Loading/updating/empty/error/partial-provider states.
+5. Product identity cleanup: remove `DEV`/generic technical chrome.
+6. Desktop filter hierarchy: Sort/Content primary; Provider/Quality/Duration secondary; Age check advanced.
+7. Stronger manual Preview affordance; still no autoplay and only one preview at a time.
+8. Safer PWA update UX.
+9. Browser-level regression coverage where feasible.
+
+No React/Vue/framework rewrite. Preserve existing search/live/prefetch/media behavior.
+
+## Current blocker
+
+At this handoff update the required next action is blocked by missing BlackServ Bridge/VM101 execution capability in the active tool registry. GitHub remains available, but GitHub-only edits or shadow tests are not an acceptable substitute for the required canonical RED→GREEN/full gate.
 
 ## CTO mode
 
