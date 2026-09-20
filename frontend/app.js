@@ -424,6 +424,59 @@ function resultCard(item) {
   return card;
 }
 
+function renderSkeletons(count = 6, { append = false } = {}) {
+  if (!append) resultsEl.replaceChildren();
+  for (let index = 0; index < count; index += 1) {
+    const skeleton = document.createElement("article");
+    skeleton.className = "card skeleton-card";
+    skeleton.dataset.uiState = "skeleton";
+    skeleton.innerHTML = `
+      <div class="skeleton-media"></div>
+      <div class="skeleton-copy">
+        <span></span><span></span>
+      </div>`;
+    resultsEl.append(skeleton);
+  }
+}
+
+function clearSkeletons() {
+  for (const node of resultsEl.querySelectorAll('[data-ui-state="skeleton"]')) node.remove();
+}
+
+function hasActiveFilters() {
+  return Boolean(
+    contentClassSelect.value ||
+    providerSelect.value ||
+    qualitySelect.value ||
+    durationSelect.value ||
+    ageCheckSelect.value
+  );
+}
+
+function renderEmptyState({ filtered = hasActiveFilters() } = {}) {
+  resultsEl.replaceChildren();
+  const state = document.createElement("div");
+  state.className = "state-panel";
+  state.innerHTML = filtered
+    ? '<strong>No results match these filters.</strong><button type="button" data-action="clear-filters">Clear filters</button>'
+    : '<strong>No results found.</strong><span>Try a different search.</span>';
+  resultsEl.append(state);
+}
+
+function renderErrorState(message) {
+  resultsEl.replaceChildren();
+  const state = document.createElement("div");
+  state.className = "state-panel state-error";
+  const copy = document.createElement("strong");
+  copy.textContent = message || "Search failed";
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.dataset.action = "retry-search";
+  retry.textContent = "Retry";
+  state.append(copy, retry);
+  resultsEl.append(state);
+}
+
 function render(items, { append = false } = {}) {
   if (!append) {
     resultsEl.replaceChildren();
@@ -438,12 +491,6 @@ function render(items, { append = false } = {}) {
     added += 1;
   }
 
-  if (!seenIds.size && !append) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "No results";
-    resultsEl.append(empty);
-  }
   nextOffset = seenIds.size;
   return added;
 }
@@ -461,6 +508,10 @@ function liveSummary(providers) {
   return parts.join(" · ");
 }
 
+function liveFailureCount(providers) {
+  return (providers || []).filter((item) => Boolean(item?.error)).length;
+}
+
 function upstreamHasMore(live, requestedLimit) {
   return (live.providers || []).some((item) => {
     if (item.error || !item.fetched) return false;
@@ -474,7 +525,12 @@ function upstreamHasMore(live, requestedLimit) {
 function applyLiveState(live, page, requestedLimit = 24) {
   livePage = page;
   liveHasMore = upstreamHasMore(live, requestedLimit);
-  liveStatusText = liveSummary(live.providers);
+  const summary = liveSummary(live.providers);
+  const failures = liveFailureCount(live.providers);
+  const unavailable = failures
+    ? `${failures} live source${failures === 1 ? "" : "s"} unavailable`
+    : "";
+  liveStatusText = [summary, unavailable].filter(Boolean).join(" · ");
   setLiveDetail(liveStatusText);
 }
 
@@ -650,6 +706,7 @@ async function refreshLive(payload, generation) {
   } catch (_) {
     if (generation !== searchGeneration) return;
     moreBtn.disabled = false;
+    setLiveDetail("Live sources unavailable — showing cached results.");
     if (!prefetchedPage && !prefetchPromise) startPrefetch(payload, generation);
   }
 }
@@ -669,6 +726,7 @@ async function loadMore() {
   moreBtn.disabled = true;
   moreBtn.textContent = prefetchedPage ? "Showing…" : "Loading…";
   setPrimaryStatus(prefetchedPage ? "Showing prepared results…" : "Finishing next page…");
+  renderSkeletons(3, { append: true });
 
   try {
     let page = prefetchedPage;
@@ -676,7 +734,13 @@ async function loadMore() {
       if (!prefetchPromise) startPrefetch(payload, generation);
       page = prefetchedPage || (prefetchPromise ? await prefetchPromise : null);
     }
-    if (!page || generation !== searchGeneration) return;
+    if (generation !== searchGeneration) return;
+    if (!page) {
+      clearSkeletons();
+      moreBtn.disabled = false;
+      moreBtn.textContent = "Show more";
+      return;
+    }
 
     prefetchedPage = null;
     prefetchPromise = null;
@@ -686,6 +750,7 @@ async function loadMore() {
     }
     localHasMore = page.localHasMore;
 
+    clearSkeletons();
     render(page.items || [], { append: true });
 
     moreBtn.hidden = !(localHasMore || liveHasMore);
@@ -696,6 +761,7 @@ async function loadMore() {
 
     startPrefetch(payload, generation);
   } catch (error) {
+    clearSkeletons();
     moreBtn.disabled = false;
     moreBtn.textContent = "Show more";
     setPrimaryStatus(error.message || "Loading more failed");
@@ -730,11 +796,14 @@ async function search({ persist = true, append = false } = {}) {
   moreBtn.hidden = true;
   moreBtn.disabled = true;
   setPrimaryStatus("Searching…");
+  renderSkeletons();
 
   try {
     const data = await fetchLocal(payload);
     if (generation !== searchGeneration) return;
+    clearSkeletons();
     render(data.items || []);
+    if (!seenIds.size) renderEmptyState();
     localHasMore = Boolean(data.has_more);
 
     const total = Number.isFinite(data.total) ? data.total : nextOffset;
@@ -757,15 +826,30 @@ async function search({ persist = true, append = false } = {}) {
       startPrefetch(payload, generation);
     }
   } catch (error) {
-    resultsEl.replaceChildren();
+    clearSkeletons();
     seenIds = new Set();
     nextOffset = 0;
     moreBtn.hidden = true;
     moreBtn.disabled = false;
-    setPrimaryStatus(error.message || "Search failed");
+    renderErrorState(error.message || "Search failed");
+    setPrimaryStatus("Search unavailable");
     setLiveDetail("");
   }
 }
+
+resultsEl.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-action]")?.dataset.action;
+  if (action === "retry-search") {
+    search({ persist: false });
+  } else if (action === "clear-filters") {
+    contentClassSelect.value = "";
+    providerSelect.value = "";
+    qualitySelect.value = "";
+    durationSelect.value = "";
+    ageCheckSelect.value = "";
+    search();
+  }
+});
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && activeMotionPreview?.motion) {

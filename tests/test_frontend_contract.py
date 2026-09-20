@@ -307,3 +307,41 @@ def test_manual_one_active_preview_contract_is_preserved() -> None:
     assert "stopMotionPreview(" in start
     assert "IntersectionObserver" not in app
     assert "pointerenter" not in app
+
+
+def test_explicit_search_state_helpers_exist() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    for fn in (
+        "function renderSkeletons(",
+        "function clearSkeletons()",
+        "function renderEmptyState(",
+        "function renderErrorState(",
+        "function hasActiveFilters()",
+    ):
+        assert fn in app
+    assert 'retry.dataset.action = "retry-search";' in app
+    assert 'data-action="clear-filters"' in app
+
+
+def test_recoverable_live_failure_keeps_cached_results() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    refresh = app[app.index("async function refreshLive("):app.index("async function loadMore(")]
+    catch_section = refresh[refresh.index("catch"): ]
+    assert "resultsEl.replaceChildren()" not in catch_section
+    assert "Live sources unavailable" in catch_section
+
+
+def test_partial_provider_failure_is_surfaced_quietly() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "function liveFailureCount(providers)" in app
+    assert "liveFailureCount(live.providers)" in app
+    assert "live source" in app and "unavailable" in app
+
+
+def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generation() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    load_more = app[app.index("async function loadMore()"):app.index("async function search(")]
+    assert "if (generation !== searchGeneration) return;" in load_more
+    null_page = load_more[load_more.index("if (!page) {"):load_more.index("prefetchedPage = null;")]
+    assert "clearSkeletons();" in null_page
+    assert 'moreBtn.textContent = "Show more";' in null_page
