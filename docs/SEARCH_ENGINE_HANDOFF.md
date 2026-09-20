@@ -1558,3 +1558,18 @@ The recurring SexPlex malformed-XML backfill failure is CLOSED.
 Phase E automated and production verification is complete, including frontend shell v28 and this provider-maintenance fix.
 Authenticated browser visual smoke remains NOT_VERIFIED because public UI access is protected by operator Basic Auth and no authentication bypass is permitted.
 Exact next action: authenticated user-side hard refresh plus desktop/mobile screenshots to close Phase E visual acceptance.
+
+## 2026-09-21 — SEXPLEX STABILITY RECHECK
+
+Fresh production verification after the malformed-child sitemap fix:
+- production build: 75d25430070d
+- API health: status=ok
+- indexed items observed: 1,131,703
+- service, sync timer and backfill timer: active
+- second independent natural backfill acquired the maintenance lock
+- SexPlex result: batches=1 fetched=250 status=paused
+- backfill unit result: success, ExecMainStatus=0
+
+This is a second independent production acceptance after the initial successful run. The SexPlex malformed-child incident remains CLOSED.
+
+Phase E visual acceptance remains NOT_VERIFIED until an authenticated desktop/mobile browser screenshot is supplied.
