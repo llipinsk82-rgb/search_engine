@@ -193,3 +193,19 @@ Implementation has NOT started.
 The design spec has been written and self-reviewed. Per the agreed design workflow, the next required action is user review/approval of the written spec. After that, create the implementation plan and execute TDD on this branch.
 
 Do not revert to older Phase D blocker instructions above.
+
+## 2026-09-20 - AUTHORITATIVE PHASE E PLAN CHECKPOINT
+
+This section supersedes the earlier Phase E current-gate paragraph.
+
+Phase E design spec is approved.
+Implementation plan is complete and self-reviewed: docs/superpowers/plans/2026-09-20-premium-product-finish.md
+Branch: feature/premium-product-finish
+Base/deployed Phase D code: 82a152999e173b8649e4d6dfce5e0003cdf579d0
+Implementation code has NOT started.
+
+Plan: semantic shell; premium CSS 3/2/1; mobile filter sheet; accessible card/preview; explicit UI states; guarded PWA v27; full release/deploy acceptance.
+
+Self-review PASS: spec coverage checked; no TODO/TBD placeholders; five Review Focus failure modes pinned to tests; every implementation task ends green; backend out of scope; git diff --check PASS.
+
+Next gate: user reviews plan and selects Native or Subagent-driven execution. After approval execute task-by-task with TDD and release gates.
