@@ -129,3 +129,173 @@ When BlackServ Bridge becomes functional:
 ## CTO mode
 
 User commands such as `/loop /cto /minimal /handoff /go` mean continue autonomously through safe reversible steps. Stop only for a real blocker, irreversible/destructive risk, or evidence that would require guessing.
+
+
+---
+
+## 2026-09-20 SentinelX → VM101 canonical Phase D cache-fix checkpoint
+
+User explicitly authorized SentinelX as a temporary transport path, with the constraint that work stays inside the Search Engine sandbox on VM101 and nothing else is changed.
+
+Verified access path:
+
+- SentinelX host: `host_e174a7a41f23328d`
+- PVE host: `blackserv.eu`
+- PVE network: `vmbr2 = VM101 / VPS services side`
+- VM101 config MAC: `BC:24:11:09:5D:E2`
+- VM101 IP from PVE neighbour table: `192.168.1.100`
+- root SSH alias on PVE: `sentinel-bs-os2`
+- SSH target: `os2.blackserv.eu`
+- SSH login: `debian`
+- VM101 work is performed as `blackserv` via `sudo -u blackserv`
+- canonical sandbox remains `/opt/bs-sandbox/search_engine`
+- production remains `/opt/search_engine`
+
+Important Git detail:
+
+- `blackserv` repo has `core.sshCommand` pointing at `/tmp/search-engine-github-known-hosts`
+- that temporary known-hosts file was absent
+- the Search Engine sandbox already had the correct `github.com` ED25519 host key in `/opt/bs-sandbox/.ssh/known_hosts`
+- fetch was therefore performed with a temporary `GIT_SSH_COMMAND` override using only sandbox-owned key/known-hosts files
+- no system SSH config was changed
+
+Fresh Git refs after fetch:
+
+- `origin/feature/provider-registry-probe` = `6eb04675eda9505ab4794a4cb5eb5f622b0bf0f2`
+- `origin/feature/content-class-filter` = `c527d4ae1ff0da49622f2d7f82cafe4b6dbc87b1` (docs-only continuity HEAD)
+- canonical checkout stayed on `feature/provider-registry-probe` at `6eb04675...`
+- canonical checkout still has only the pre-existing dirty `docs/SEARCH_ENGINE_HANDOFF.md`
+- no canonical code file was modified
+
+Isolated implementation worktree created:
+
+`/opt/bs-sandbox/search_engine-worktrees/content-class-cache-fix`
+
+Branch:
+
+`feature/content-class-cache-fix`
+
+Base code SHA:
+
+`613cf769e1adfe665416ef7f6dcc269e1ed0fbcc`
+
+A local `.venv` was created inside this worktree only and contains project requirements + pytest. No system Python packages were changed.
+
+### TDD evidence
+
+Baseline before code change:
+
+- `tests/test_content_class_filter.py`: **5 passed**
+- 2 existing FastAPI `on_event` deprecation warnings
+
+New regression test:
+
+`test_filtered_live_response_caches_full_classified_batch`
+
+Observed RED on the original code:
+
+- response correctly contained only `["amateur-tag"]`
+- cache received only `["amateur-tag"]`
+- expected cache batch was full classified set:
+  - `amateur-tag`
+  - `studio-tag`
+  - `studio-label`
+  - `title-only`
+
+This directly reproduced the cache narrowing bug.
+
+### Minimal fix semantics
+
+`backend/app.py` now:
+
+1. classifies every provider batch using `filter_live_items(items, None)`,
+2. schedules the full classified `result.providers` collection for cache,
+3. derives a separate request-filtered response collection,
+4. builds interleaved response items and provider `fetched` counts from that filtered response collection,
+5. never mutates the cache collection down to the request-specific `content_class` subset.
+
+No new subsystem was added.
+
+### GREEN / verification
+
+Regression test after fix:
+
+- **1 passed**
+- 2 existing warnings
+
+Targeted content-class file:
+
+- **6 passed**
+- 2 existing warnings
+
+First full-suite run through `sudo -u blackserv` produced:
+
+- **227 passed**
+- **1 failed**
+- 2 warnings
+
+The single failure was `test_maintenance_runner.py::MaintenanceRunnerTests::test_lock_contention_is_clean_skip`.
+
+Root cause was execution environment, not application code:
+
+- `blackserv` account shell is `/usr/sbin/nologin`
+- the test's `flock -c` uses `$SHELL`
+- with the inherited nologin shell the lock-holder command exits immediately with `This account is currently not available`
+- the test then sees the protected `/bin/false` execute and returns 1
+
+Fresh full-suite rerun with the execution environment explicitly set to `SHELL=/bin/bash`:
+
+- **228 passed**
+- **0 failed**
+- 2 existing FastAPI warnings
+
+Additional fresh gate:
+
+- `python -m compileall -q backend`: **PASS**
+- `node --check frontend/app.js`: **PASS**
+- `git diff --check`: **PASS**
+
+### Local code commit
+
+Exact code commit:
+
+`82a152999e173b8649e4d6dfce5e0003cdf579d0`
+
+Commit message:
+
+`fix: keep full classified live cache`
+
+Files changed:
+
+- `backend/app.py`
+- `tests/test_content_class_filter.py`
+
+The code worktree was clean immediately after the code commit.
+
+### Release / production status
+
+Because the user explicitly limited this SentinelX exception to the Search Engine sandbox on VM101:
+
+- code commit was **not pushed**
+- release branch was **not changed**
+- helper CHECK was **not run**
+- production was **not deployed**
+- `/opt/search_engine` was **not modified**
+
+Production/release therefore remain at the last verified build:
+
+`6eb04675eda9505ab4794a4cb5eb5f622b0bf0f2`
+
+### Exact next action
+
+When permission scope includes GitHub/release again:
+
+1. fresh-verify worktree `feature/content-class-cache-fix` is clean at code SHA `82a152999e173b8649e4d6dfce5e0003cdf579d0`,
+2. push this code branch using the sandbox Search Engine SSH key/known-hosts context,
+3. verify `82a1529...` is a clean fast-forward descendant of release `6eb04675...`,
+4. do not use docs-only continuity HEAD `c527d4ae...` as a deploy target,
+5. fast-forward release to the exact code SHA only,
+6. run authorized helper CHECK,
+7. deploy only if CHECK + maintenance gate PASS,
+8. run production acceptance including proof that a filtered live request cannot narrow/poison subsequent cached results,
+9. only then mark Phase D DONE and proceed to Phase E Product Finish.
