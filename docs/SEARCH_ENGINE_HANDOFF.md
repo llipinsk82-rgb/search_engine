@@ -1783,3 +1783,36 @@ No provider identity or domain is classification evidence.
 Content Classification v2 is closed. No more reclassification mutation is required.
 
 Recommended next slice: **Preview Coverage**. Audit provider preview extraction and media-policy coverage, then improve `preview_url` coverage in bounded or on-demand fashion instead of crawling the whole index aggressively.
+
+## 2026-09-21 — PREVIEW COVERAGE V2 SPEC CHECKPOINT
+
+Status: in-chat architecture approved; written spec created; implementation NOT started.
+
+Branch: `feature/preview-coverage-v2`
+Base: `1a9aa1f5e40ee6fbe0b9264a1aa850bf676ac581`
+Spec: `docs/superpowers/specs/2026-09-21-preview-coverage-v2-design.md`
+
+Verified read-only baseline used by the spec:
+- active rows: 1,158,630
+- stored non-empty previews: 6,205 (~0.54%)
+- 14 providers currently have any stored preview
+- sitemap/page pipeline does not persist previews today
+- `SitemapProvider._merge_enriched_item()` does not merge preview today
+- existing media policy allows several known providers and deliberately disables `pornhat`, `porndr`, `anyporn`
+- Tube8 is the clearest gap: ~245k indexed rows but only ~586 stored previews
+
+Approved architecture:
+- provider-by-provider read-only preview audit
+- explicit `preview_enrichment` capability, default OFF
+- evidence-only preview extraction; no guessed URLs/full-video substitution
+- media-policy validation before playable storage/use
+- non-destructive preview-only DB update
+- durable preview enrichment retry state
+- bounded enrichment under the existing maintenance lock
+- stats for stored vs policy-playable preview coverage
+- no UI rewrite
+- no mass crawl
+
+Hard gate:
+- user must review/approve the written spec before implementation planning
+- implementation has NOT started
