@@ -2086,3 +2086,36 @@ Exact next step:
 - after visual PASS, continue only with newly observed UX issues or the next explicitly selected Search Engine product goal.
 
 No API schema, provider behavior, DB schema, search semantics, content classification, or preview resolver behavior changed in this bounded polish slice.
+
+
+## 2026-09-21 — FASTAPI LIFESPAN CLEANUP CLOSEOUT
+
+Production code build:
+`3c0b1d05935fe7adf1a0ca7e89d298b1b3d7f1b1`
+
+Scope:
+- replaced deprecated `@app.on_event("startup")` with FastAPI lifespan;
+- `initialize()` still runs exactly once during application startup before requests are served;
+- no API, DB schema, provider, scheduler, preview, classification, or frontend behavior changed.
+
+TDD / verification:
+- RED confirmed deprecated source hook remained and emitted the existing 2 FastAPI warnings;
+- targeted lifespan tests: 2 PASS;
+- final full suite: 345 PASS;
+- final full suite warning count: 0;
+- compileall PASS;
+- `git diff --check` PASS.
+
+Production acceptance:
+- official deploy CHECK PASS before rollout;
+- production helper status: build `3c0b1d05935f`, service active, sync timer active, backfill timer active;
+- `/api/health` PASS on build `3c0b1d05935f`;
+- systemd service `Result=success`, `ExecMainStatus=0`, `ActiveState=active`;
+- journal after the deployed restart shows normal FastAPI startup and contains no `DeprecationWarning` and no `on_event` warning.
+
+Remaining product gate:
+- authenticated visual smoke for frontend v30 remains `NOT_VERIFIED`; public unauthenticated UI still returns HTTP 403 and authentication was not bypassed.
+
+Exact next step:
+- close visual acceptance when an authenticated desktop/mobile screenshot or browser session is available;
+- otherwise continue only with a newly selected Search Engine product goal, not historical superseded handoff items.
