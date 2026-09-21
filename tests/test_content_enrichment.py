@@ -81,6 +81,10 @@ def test_explicit_studio_upgrades_unknown_to_studio(tmp_path: Path) -> None:
     assert item is not None
     assert item.content_class == "studio"
     assert item.studio == "Example Studio"
+    with sqlite3.connect(db) as conn:
+        assert conn.execute(
+            "SELECT content_class_source FROM items WHERE id=?", ("a",)
+        ).fetchone() == ("studio_label",)
     assert report.attempted == 1
     assert report.enriched == 1
     assert report.classified_studio == 1
@@ -123,12 +127,15 @@ def test_no_signal_records_thirty_day_backoff(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
     _seed(db, ("a", "p"))
     provider = FakeProvider("p")
+    before = get_item("a", path=db)
 
     report = asyncio.run(
         enrich_unknown_content([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
     )
 
     state = _state(db, "a")
+    after = get_item("a", path=db)
+    assert after == before
     assert report.no_signal == 1
     assert state[0] == "no_signal"
     assert state[1] == 0
