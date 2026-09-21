@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 import sqlite3
+from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request as UrlRequest, build_opener, urlopen
 
@@ -131,11 +132,18 @@ def _preview_proxy_fetch(
         return body, content_type, int(getattr(response, "status", 200)), upstream_headers
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    initialize()
+    yield
+
+
 app = FastAPI(
     title="Search Engine API",
     version="0.5.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
+    lifespan=lifespan,
 )
 
 
@@ -147,11 +155,6 @@ async def api_privacy_headers(request: Request, call_next):
         response.headers["Pragma"] = "no-cache"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
     return response
-
-
-@app.on_event("startup")
-async def startup() -> None:
-    initialize()
 
 
 def _provider_observability() -> dict[str, object]:
