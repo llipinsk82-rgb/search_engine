@@ -1,3 +1,373 @@
+# CURRENT AUTHORITATIVE STATE — 2026-09-21
+
+> This section is the authoritative current handoff. Older entries below are retained as history only. If an older entry conflicts with this section, use this section.
+
+## 1. Project / role / operating mode
+
+Project: **BlackServ Search Engine**
+
+Repository: `llipinsk82-rgb/search_engine`
+
+User workflow: `/loop /cto /minimal /handoff /go`
+
+Working expectation:
+- act as CTO / Tech Lead;
+- verify real state before making claims;
+- continue autonomously through safe/reversible work;
+- use TDD for behavior changes;
+- maintain this handoff;
+- do not wait for repeated `go` between normal implementation steps;
+- stop only for a real blocker, irreversible/destructive action, security-sensitive action, or a side effect outside the authorized Search Engine scope.
+
+Current product is a dark, media-first video search/index UI backed by FastAPI + SQLite/FTS5 + static HTML/CSS/JS.
+
+## 2. Safety / transport / scope
+
+BlackServ Bridge was unavailable in this ChatGPT session. The owner explicitly authorized **SentinelX as a temporary transport exception**, with these limits:
+- work only on Search Engine / VM101;
+- do not change Panel, Franek, Sentinel_BS or other projects;
+- do not change PVE/hypervisor configuration;
+- use the existing SSH alias from the PVE host to VM101;
+- use `sudo` only as needed for the existing Search Engine workflow.
+
+SentinelX host:
+- host id: `host_e174a7a41f23328d`
+- hostname: `blackserv`
+
+VM101:
+- PVE VM id: `101`
+- VM name: `vps-vpn`
+- IP: `192.168.1.100`
+- SSH alias on PVE: `sentinel-bs-os2`
+- VM SSH user behind alias: `debian`
+
+Canonical sandbox: `/opt/bs-sandbox/search_engine`
+Production: `/opt/search_engine`
+Production DB: `/var/lib/search_engine/search.db`
+Backend: `127.0.0.1:8775`
+Public: `search.blackserv.eu`
+
+Public UI is protected by external Nginx auth. **Do not bypass or extract credentials.**
+
+Official deploy path only:
+- `sudo -u blackserv /usr/local/bin/search-engine-deploy-client status`
+- `sudo -u blackserv /usr/local/bin/search-engine-deploy-client check`
+- `sudo -u blackserv /usr/local/bin/search-engine-deploy-client deploy`
+
+Never direct-edit `/opt/search_engine`. Never manually write production SQLite. Do not kill healthy sync/backfill jobs. Respect `/run/search_engine/maintenance.lock`.
+
+Because the `blackserv` account uses `nologin`, full tests from linked worktrees use the canonical venv:
+`SHELL=/bin/bash /opt/bs-sandbox/search_engine/.venv/bin/python -m pytest -q`
+
+## 3. Git / worktrees / exact current state
+
+### Canonical release worktree
+Path: `/opt/bs-sandbox/search_engine`
+Branch: `feature/provider-registry-probe`
+Local HEAD: `671d9d57c993f8f51273efbf7a7d174852bbdc01`
+Remote `origin/feature/provider-registry-probe`: `4df78a1ff4779c7f7ecd7805b9d1e378a3e386cf`
+Canonical branch is currently **ahead by 6 commits**. Do not reset or force-checkout it.
+
+### Current Content Classification v2.1 worktree
+Path: `/opt/bs-sandbox/search_engine-worktrees/content-classification-v2-1`
+Branch: `feature/content-classification-v2-1`
+HEAD before this final docs refresh: `5c14966387e5c0ab8963919037ca1ebd789a94f0`
+Remote before this final docs refresh: `0876f9ef863153f41ed4e95d3e080a92f3a66757`
+The branch was ahead by one docs-only closeout commit before this handoff refresh.
+
+Important recent commits:
+- `d524be9` — docs: define content classification v2.1
+- `05eb302` — docs: plan content classification v2.1
+- `b552321` — docs: audit studio evidence providers
+- `86e0303` — feat: add provider studio evidence rules
+- `527395a` — feat: enrich explicit provider studio evidence
+- `671d9d5` — test: lock studio enrichment provenance (**verified/deployed code SHA**)
+- `0876f9e` — docs: gate content classification v2.1
+- `5c14966` — docs: close content classification v2.1 rollout
+
+Preserved stashes in canonical repo:
+- `stash@{0}: pre-phase-e-release-handoff-20260920`
+- `stash@{1}: predeploy-handoff-20260920`
+Do not delete without explicit owner instruction.
+
+## 4. Fresh production state
+
+Verified production code build: `671d9d57c993`
+
+`/api/health`:
+- `status=ok`
+- version `0.5.0`
+- indexed items: **1,206,272**
+- indexed providers: **55**
+- configured index providers: **31**
+- live providers: **25**
+- trusted providers: **55**
+- available providers: **55**
+
+Service state:
+- `search-engine.service`: active
+- sync timer: active
+- backfill timer: active
+
+Current content-class distribution from production DB:
+- `unknown / none`: **1,107,149**
+- `amateur / tag_amateur`: **98,937**
+- `studio / studio_label`: **154**
+- `studio / tag_studio`: **29**
+- `unknown / conflict`: **3**
+
+Total current Studio rows = **183** (`154 studio_label + 29 tag_studio`).
+
+Fresh cached query split `(all / amateur / studio / unknown)`:
+- `Tiny`: **8518 / 1767 / 8 / 6743**
+- `Sis`: **4334 / 651 / 4 / 3679**
+- `Babe`: **89739 / 17502 / 47 / 72190**
+
+The content-type select itself is not broken. The product problem was and remains **evidence coverage**, especially Studio.
+
+## 5. Content Classification v2.1 — COMPLETED AND DEPLOYED
+
+Goal: increase trustworthy Studio coverage using **only explicit, canonical-item-bound** studio / producer / production-company evidence.
+
+Hard rules:
+- public API remains exactly `amateur | studio | unknown`;
+- `content_class_source` is authoritative provenance;
+- never infer from title or provider/domain identity;
+- uploader/channel/performer/category/navigation/recommendation-card data are not Studio evidence;
+- conflict remains `unknown/conflict`;
+- existing non-empty `studio` always wins;
+- missing/malformed/ambiguous evidence fails closed;
+- no mass crawl.
+
+All **31 configured sitemap providers** were audited against current production Unknown samples.
+
+Confirmed v2.1 runtime rules:
+- `xgroovy` — JSON-LD `VideoObject.productionCompany`
+- `xcafe` — scoped microdata `productionCompany -> name`
+- `porndoe` — JSON-LD `VideoObject.producer -> name`
+
+Deliberately rejected as ambiguous:
+- `xvideos` — sponsor/uploader information is not accepted as item studio evidence
+- `xxxbule` — mixed genre/keywords combine studio-like and performer names
+- `pornsexvideo` — site-level/related-card text, not canonical item metadata
+- `sexplex` — serialized payload exposes a studio index but no proven stable item-bound value path
+
+`xnxx` audit sample returned HTTP 404 and was recorded `FETCH_UNAVAILABLE`; no guessed evidence was created.
+
+New/changed implementation:
+- `deploy/search-engine-content-evidence-rules.json`
+- `backend/content_evidence_rules.py`
+- provider rule fixtures and audit manifest
+- `SitemapProvider` integration
+- rule-backed providers automatically become content-enrichment eligible even without explicit provider JSON flag
+- existing bounded persistence/retry/provenance pipeline reused
+
+Verification before deploy:
+- baseline before v2.1: **345 PASS**
+- final full suite: **360 PASS**
+- compileall PASS
+- `node --check frontend/app.js` PASS
+- `git diff --check` PASS
+- official helper CHECK PASS
+
+Verified/deployed code SHA: `671d9d57c993f8f51273efbf7a7d174852bbdc01`
+
+Initial bounded rollout cycle:
+- attempted 25
+- enriched 21
+- classified amateur 2
+- classified studio 7
+- conflicts 0
+- no_signal 16
+- failures 0
+
+Immediate rollout effect:
+- `studio/studio_label`: 131 -> 138 (+7)
+- `amateur/tag_amateur`: 98,781 -> 98,783 (+2)
+- `unknown/conflict`: 3 -> 3
+- non-empty studio: 131 -> 138
+
+Initial `studio_label` attribution:
+- xgroovy 131
+- porndoe 5
+- xcafe 2
+
+The +7 global `studio_label` delta exactly matched `classified_studio=7`, proving attributable explicit evidence.
+
+Scheduled bounded enrichment has continued naturally. Fresh current production now has `studio/studio_label=154`, total Studio **183**.
+
+Do not replace this with heuristics just to make Studio look balanced.
+
+Relevant docs:
+- `docs/superpowers/specs/2026-09-21-content-classification-v2-1-design.md`
+- `docs/superpowers/plans/2026-09-21-content-classification-v2-1.md`
+- `docs/CONTENT_CLASSIFICATION_V2_1_PROVIDER_AUDIT.md`
+
+## 6. Preview coverage — current verified state
+
+Preview problem is **coverage of source/index metadata**, not the PLAY button UI.
+
+Fresh production DB:
+- active rows: **1,206,272**
+- rows with non-empty stored `preview_url`: **6,246**
+- stored preview coverage: about **0.52%**
+
+Stored preview rows by provider:
+- tnaflix 1,239 / 1,239
+- youjizz 917 / 917
+- spankbang 915 / 925
+- beeg 804 / 804
+- tube8 596 / 245,341
+- thumbzilla 385 / 385
+- drtuber 318 / 318
+- xhamster 276 / 276
+- pornhub 234 / 234
+- hqporn 133 / 133
+- pornhat 126 / 126
+- bigfuck 125 / 125
+- porndr 101 / 101
+- anyporn 77 / 77
+
+Current media policy allows preview for **11 practical providers**:
+`beeg, youjizz, drtuber, bigfuck, hqporn, tnaflix, spankbang, thumbzilla, xhamster, pornhub, tube8`
+
+Policy-disabled despite stored URLs:
+- `pornhat` 126
+- `porndr` 101
+- `anyporn` 77
+
+Stored potentially usable preview rows = **5,942** before browser/session media failure.
+
+Preview Coverage v2 authoritative audit:
+- `PLAYBACK_CONFIRMED` 9: `bigfuck, drtuber, hqporn, spankbang, thumbzilla, tnaflix, tube8, xhamster, youjizz`
+- `BLOCKED_BY_POLICY` 3: `anyporn, porndr, pornhat`
+- `AMBIGUOUS` 16: `bigassporn, brazzilmoms, fpo, freeporn, justporn, megatube, mypornhere, porngo, pornhub, pornid, sextubespot, sexvid, sunporno, theyarehuge, xgroovy, zbporn`
+- `NO_SIGNAL` 27: `beeg, bustybus, eporner, hdzog, hqporner, lexotic, milfporn, porndig, porndoe, pornobae, pornone, pornsexvideo, pornzog, pussyspace, redtube, serviporno, sexplex, tubev, txxx, voyeurhit, vxxx, xcafe, xnxx, xvideos, xxxbule, yourlust, zzztube`
+
+Beeg and Pornhub still have usable preview through existing live adapter behavior; the canonical v2 audit did not need a new rule for them.
+
+Preview v2 already implements:
+- provider-aware media policy;
+- canonical rule manifest;
+- bounded preview enrichment under maintenance lock;
+- strict safe-host allowlists;
+- on-demand resolver for ephemeral preview sources;
+- no guessed preview paths;
+- no full-video substitution as fake preview;
+- one active frontend preview at a time;
+- session suppression after preview failure.
+
+**Do not re-run Preview Coverage v2 from scratch.**
+
+Next preview work is **Preview Coverage v3**:
+1. fresh read-only re-audit only of the 16 previously `AMBIGUOUS` providers plus relevant live providers;
+2. accept only exact canonical item-bound preview/trailer media;
+3. reject recommendation-card media, unrelated page video and full-video substitution;
+4. keep current host/media safety policy;
+5. use bounded/on-demand enrichment, not mass crawling.
+
+Important opportunity: Tube8 has ~245k indexed rows but only 596 stored previews. Never crawl 245k detail pages naively.
+
+Relevant docs:
+- `docs/PREVIEW_COVERAGE_V2_PROVIDER_AUDIT.md`
+- `docs/superpowers/specs/2026-09-21-preview-coverage-v2-design.md`
+- `docs/superpowers/plans/2026-09-21-preview-coverage-v2.md`
+- `deploy/search-engine-preview-rules.json`
+
+## 7. Premium frontend / visual state
+
+Premium product finish is implemented: dark media-first UI, mobile one large card/row, responsive desktop grid, sort/content/filters, mobile filter sheet, manual preview, explicit state handling and PWA hardening.
+
+Premium polish later removed the production `DEV` badge in source, compacted provider telemetry, simplified age-gate text, improved Reset contrast, fixed duration copy and bumped frontend cache to v30.
+
+Authenticated mobile screenshots previously verified:
+- mobile shell PASS
+- result cards/feed PASS
+- open Filters sheet PASS
+- no horizontal overflow observed
+
+Desktop authenticated 3-column visual acceptance remains **NOT_VERIFIED**.
+
+Important RED FLAG from the owner's latest mobile screenshots:
+- browser still visibly showed `DEV` although deployed v30 source removed it;
+- stale PWA/service-worker/browser shell is plausible but **not proven**;
+- first verify actual loaded asset versions before changing source;
+- do not blindly patch DEV again.
+
+The floating download icon and bottom `Tab / Progress / Finished` bar in screenshots are browser-extension UI, not Search Engine UI.
+
+## 8. Interpretation of Amateur / Studio / Unknown
+
+The filter control works.
+
+Exact `Tiny` evolution:
+- old: 8093 All / 47 Amateur / 0 Studio / 8046 Unknown
+- after v2: 8468 / 1763 / 7 / 6698
+- fresh now: 8518 / 1767 / 8 / 6743
+
+`Unknown` means **insufficient trustworthy evidence**, not “neither amateur nor studio”.
+
+## 9. Current next steps / priorities
+
+There is no production incident and no rollback required.
+
+1. This handoff refresh and `docs/NEW_CHAT_START_2026-09-21.md` are docs-only: commit/push them, **do not deploy docs-only commits**.
+2. Highest current user-visible value: **Preview Coverage v3** fresh audit of previously ambiguous/current live providers, with no safety-policy weakening.
+3. Classification v2.1: let scheduled enrichment continue and re-measure; add v2.2 rules only if new explicit item-bound evidence exists.
+4. Visual acceptance: verify authenticated desktop v30 and why latest mobile screenshot still shows `DEV` before touching source.
+
+## 10. Verification discipline
+
+Repository state:
+```bash
+cd /opt/bs-sandbox/search_engine
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/feature/provider-registry-probe
+```
+
+Current v2.1 worktree:
+```bash
+cd /opt/bs-sandbox/search_engine-worktrees/content-classification-v2-1
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/feature/content-classification-v2-1
+```
+
+Production:
+```bash
+sudo -u blackserv /usr/local/bin/search-engine-deploy-client status
+sudo -u blackserv /usr/local/bin/search-engine-deploy-client check
+curl -fsS http://127.0.0.1:8775/api/health
+```
+
+Full tests from linked worktree:
+```bash
+SHELL=/bin/bash /opt/bs-sandbox/search_engine/.venv/bin/python -m pytest -q
+```
+
+Pre-release minimum:
+```bash
+SHELL=/bin/bash /opt/bs-sandbox/search_engine/.venv/bin/python -m pytest -q
+/opt/bs-sandbox/search_engine/.venv/bin/python -m compileall -q backend
+node --check frontend/app.js
+git diff --check
+```
+
+Release discipline: **tests -> commit -> push -> helper check -> official deploy -> independent acceptance -> handoff update**.
+
+## 11. Files next chat reads first
+
+1. `docs/SEARCH_ENGINE_HANDOFF.md`
+2. `docs/NEW_CHAT_START_2026-09-21.md`
+3. `docs/CONTENT_CLASSIFICATION_V2_1_PROVIDER_AUDIT.md`
+4. `docs/superpowers/specs/2026-09-21-content-classification-v2-1-design.md`
+5. `docs/superpowers/plans/2026-09-21-content-classification-v2-1.md`
+6. `docs/PREVIEW_COVERAGE_V2_PROVIDER_AUDIT.md`
+7. `docs/superpowers/specs/2026-09-21-preview-coverage-v2-design.md`
+8. `docs/superpowers/plans/2026-09-21-preview-coverage-v2.md`
+
+---
 # Search Engine handoff
 
 Updated 2026-09-03 23:33 UK.
@@ -2145,3 +2515,130 @@ Milestone status:
 - PRODUCT_DONE for current code/data/operations scope;
 - NOT_VERIFIED only: authenticated desktop/mobile visual smoke of frontend v30, because unauthenticated public UI returns HTTP 403 and auth was not bypassed;
 - next implementation work requires either authenticated visual evidence or a new explicit product goal from the owner.
+
+## 2026-09-21 — CONTENT CLASSIFICATION V2.1 PRE-DEPLOY GATE
+
+Branch:
+`feature/content-classification-v2-1`
+
+Verified code SHA:
+`671d9d57c993f8f51273efbf7a7d174852bbdc01`
+
+Goal:
+- improve trustworthy Studio coverage using only explicit, canonical-item-bound studio / producer / production-company evidence;
+- preserve API values `amateur | studio | unknown` and provenance semantics;
+- never infer from title, provider identity, uploader/channel, categories/navigation, or recommendation cards.
+
+Provider audit:
+- confirmed runtime rules: xgroovy JSON-LD `productionCompany`, xcafe scoped microdata `productionCompany/name`, porndoe JSON-LD `producer/name`;
+- ambiguous and deliberately rejected: xvideos sponsor/uploader data, xxxbule mixed genre/performer data, sexplex serialized studio index without a proven stable item-bound value path;
+- all 31 configured providers audited from current production Unknown samples, maximum three samples/provider.
+
+TDD / verification:
+- manifest contract RED then GREEN;
+- rule loader/extractor RED then GREEN;
+- canonical enrichment integration RED then GREEN;
+- persistence/provenance regressions PASS without additional production-code changes;
+- final full suite: 360 PASS;
+- compileall PASS;
+- `node --check frontend/app.js` PASS;
+- `git diff --check` PASS.
+
+Production baseline before deploy:
+- current build: `3c0b1d05935f`, health PASS;
+- active rows: 1,204,370;
+- unknown/none: 1,105,426;
+- unknown/conflict: 3;
+- amateur/tag_amateur: 98,781;
+- studio/studio_label: 131;
+- studio/tag_studio: 29;
+- non-empty studio: 131;
+- Tiny all/amateur/studio/unknown: 8516 / 1767 / 8 / 6741;
+- Sis: 4329 / 651 / 4 / 3674;
+- Babe: 89408 / 17462 / 40 / 71906.
+
+VERIFIED:
+- code and tests above.
+
+NOT_VERIFIED:
+- production effect of xcafe/porndoe rules until exact code SHA is deployed and one bounded maintenance enrichment cycle completes.
+
+Exact next step:
+- push branch;
+- helper CHECK;
+- deploy exact verified code SHA `671d9d57c993f8f51273efbf7a7d174852bbdc01` through the official deploy helper;
+- run one bounded enrichment cycle under the existing maintenance lock;
+- collect the same global/source/query measurements and accept only attributable `studio_label` increases.
+
+## 2026-09-21 — CONTENT CLASSIFICATION V2.1 PRODUCTION CLOSEOUT
+
+Production code build:
+`671d9d57c993f8f51273efbf7a7d174852bbdc01`
+
+Release branch:
+`feature/content-classification-v2-1`
+
+Scope delivered:
+- audited all 31 configured sitemap providers against current production Unknown samples;
+- added deterministic provider studio-evidence rule loader/extractor;
+- confirmed rules for xgroovy JSON-LD `productionCompany`, xcafe scoped microdata `productionCompany/name`, and porndoe JSON-LD `producer/name`;
+- rule-backed providers become scheduled content-enrichment eligible even without an explicit provider JSON flag;
+- existing studio always wins;
+- no title/provider/uploader/channel/category/recommendation inference was introduced;
+- ambiguous xvideos/xxxbule/sexplex evidence remains rejected.
+
+Verification before deploy:
+- full suite: 360 PASS;
+- compileall PASS;
+- `node --check frontend/app.js` PASS;
+- `git diff --check` PASS;
+- official helper CHECK PASS on exact code SHA.
+
+Production deploy:
+- official helper DEPLOY PASS on exact code build `671d9d57c993`;
+- `/api/health` PASS;
+- service active;
+- sync and backfill timers active;
+- post-deploy normal sync completed `Result=success`, `ExecMainStatus=0` before manual bounded enrichment.
+
+Bounded rollout acceptance:
+- maintenance lock acquired normally;
+- attempted=25;
+- enriched=21;
+- amateur=2;
+- studio=7;
+- conflicts=0;
+- no_signal=16;
+- failures=0.
+
+Before -> after evidence counts:
+- studio/studio_label: 131 -> 138 (+7);
+- amateur/tag_amateur: 98,781 -> 98,783 (+2);
+- unknown/conflict: 3 -> 3;
+- non-empty studio: 131 -> 138.
+
+Post-cycle `studio_label` attribution:
+- xgroovy=131;
+- porndoe=5;
+- xcafe=2.
+
+The +7 global `studio_label` delta exactly matches the bounded-cycle `classified_studio=7`, so the production change is attributable to explicit item-bound evidence from the approved rules.
+
+Cached query split before -> after (all / amateur / studio / unknown):
+- Tiny: 8516/1767/8/6741 -> 8516/1767/8/6741;
+- Sis: 4329/651/4/3674 -> 4329/651/4/3674;
+- Babe: 89408/17462/40/71906 -> 89411/17462/40/71909; the +3 rows are normal sync growth and remain Unknown.
+
+Important remaining limitation:
+- Studio coverage remains sparse because most providers expose no trustworthy item-bound studio/producer field under the accepted evidence policy;
+- this release proves and expands the safe pipeline but does not make the filter visually balanced immediately;
+- scheduled bounded enrichment will continue processing eligible Unknown rows naturally;
+- no mass crawl and no heuristic title/provider classification should be introduced to make the numbers look better.
+
+Preview status remains separate from this branch:
+- current production preview coverage is still constrained primarily by source/index coverage, not the card UI;
+- the previous Preview Coverage v2 audit remains authoritative; no preview policy was weakened by Classification v2.1.
+
+Exact next product step:
+- let scheduled content enrichment continue and re-measure Studio coverage after natural cycles;
+- separately run Preview Coverage v3 only as a fresh audit of previously AMBIGUOUS/live providers, accepting new preview support only when canonical item binding and safe playback are proven.
