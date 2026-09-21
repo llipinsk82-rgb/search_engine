@@ -1863,3 +1863,74 @@ Implementation gate:
 - user must review/approve this plan and select execution method;
 - recommended execution: Native, because Tasks 2–6 share tightly coupled interfaces and the current harness has no separate subagent executor;
 - no product code, release, production data, or production deploy has been changed in this planning phase.
+
+## 2026-09-21 — PREVIEW COVERAGE V2 PRE-RELEASE GATE
+
+Feature branch: `feature/preview-coverage-v2`
+Code HEAD before this docs checkpoint: `8e33dcfccd50d5b8451912d569253ab806ae413f`
+Production before rollout: `caf2da197ae6`
+
+Implementation status:
+- Task 1 provider audit/runtime rule projection: DONE
+- Task 2 canonical-bound rules + sitemap/live provider map: DONE
+- Task 3 preview-only persistence/retry/stats: DONE
+- Task 4 bounded preview enrichment + CLI + content-fetch reuse: DONE
+- Task 5 media-policy regression: DONE; NO_POLICY_DELTA
+- Task 6 same-lock scheduler integration: DONE
+- Task 7 rollout: pending at this checkpoint
+
+Audited runtime-capable providers (9):
+`bigfuck`, `drtuber`, `hqporn`, `spankbang`, `thumbzilla`, `tnaflix`, `tube8`, `xhamster`, `youjizz`.
+
+Safety decisions:
+- preview evidence must bind to the exact indexed canonical URL;
+- related/recommended-card preview is rejected;
+- `live_search_exact` capability enables the live adapter, not a same-named SitemapProvider;
+- existing preview is never replaced;
+- persistence re-checks media policy;
+- `pornhat`, `porndr`, `anyporn` remain preview-disabled;
+- no mass crawl; scheduler defaults are batch 10 / 30 seconds under the existing maintenance lock.
+
+Verification before release:
+- targeted Preview Coverage v2 gate: 82 passed, 2 existing FastAPI deprecation warnings
+- complete suite: 324 passed, 2 existing FastAPI deprecation warnings
+- compileall: PASS
+- `node --check frontend/app.js`: PASS
+- `git diff --check`: PASS
+- feature tree clean before this docs edit
+
+Read-only production baseline before deploy:
+- active rows: 1,175,406
+- stored preview: 6,205 (0.5279%)
+- policy-playable preview: 5,903 (0.5022%)
+- `preview_enrichment_state`: absent
+- Tube8: 245,341 active / 586 stored / 586 playable
+- service: active
+- sync timer: active
+- backfill timer: active
+- sync/backfill services: inactive at baseline sample
+
+Key existing high-coverage baseline:
+- Beeg 804/804 playable
+- BigFuck 125/125 playable
+- DrTuber 318/318 playable
+- HQPorn 128/128 playable
+- Pornhub 233/233 playable
+- Thumbzilla 385/385 playable
+- TNAFlix 1239/1239 playable
+- XHamster 276/276 playable
+- YouJizz 917/917 playable
+
+Rollout sequence:
+1. push feature and fast-forward release without force;
+2. fast-forward canonical sandbox;
+3. official helper CHECK;
+4. wait for natural free maintenance lock;
+5. official deploy only;
+6. verify build/health/schema/runtime;
+7. run preview stats + one tiny batch (3 / 20s);
+8. verify newly stored previews;
+9. observe two natural scheduler runs;
+10. record before/after coverage and final handoff.
+
+At this checkpoint production is intentionally unchanged.
