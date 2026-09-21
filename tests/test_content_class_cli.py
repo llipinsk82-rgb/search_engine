@@ -128,3 +128,35 @@ def test_enrich_content_command(monkeypatch, capsys) -> None:
     assert "attempted=3" in out
     assert "enriched=2" in out
     assert "failures=1" in out
+
+
+def test_enrich_previews_command_forwards_index_and_live_providers(monkeypatch, capsys) -> None:
+    seen = {}
+    class Report:
+        attempted=3; extracted=2; stored=1; playable=1; no_preview=1; blocked_policy=0; failures=1
+    async def fake(index_providers, live_adapters, *, batch_size, max_seconds):
+        seen.update(index=index_providers, live=live_adapters, batch=batch_size, seconds=max_seconds)
+        return Report()
+    monkeypatch.setattr(cli, "enrich_missing_previews", fake, raising=False)
+    monkeypatch.setattr(sys, "argv", ["search-engine", "enrich-previews", "--batch-size", "10", "--max-seconds", "30"])
+    cli.main()
+    assert seen["index"] is cli.PROVIDERS
+    assert seen["live"] is cli.LIVE_ADAPTERS
+    assert seen["batch"] == 10 and seen["seconds"] == 30.0
+    out=capsys.readouterr().out
+    assert "preview-enrichment: attempted=3" in out
+    assert "stored=1" in out and "failures=1" in out
+
+
+def test_preview_coverage_stats_command(monkeypatch, capsys) -> None:
+    class Row:
+        def __init__(self,total,stored,playable): self.total=total; self.stored=stored; self.playable=playable
+    class Stats:
+        total=4; stored=2; playable=1; stored_percent=50.0; playable_percent=25.0
+        states={"success":1}; providers={"bigfuck":Row(4,2,1)}
+    monkeypatch.setattr(cli, "preview_coverage_stats", lambda: Stats(), raising=False)
+    monkeypatch.setattr(sys, "argv", ["search-engine", "preview-coverage-stats"])
+    cli.main()
+    out=capsys.readouterr().out
+    assert "total=4 stored=2 playable=1" in out
+    assert "states=" in out and "bigfuck=" in out

@@ -7,6 +7,9 @@ from pathlib import Path
 
 from backend.content_enrichment import enrich_unknown_content
 from backend.content_reclassify import content_class_stats, reclassify_content
+from backend.live import LIVE_ADAPTERS
+from backend.preview_enrichment import enrich_missing_previews
+from backend.preview_stats import preview_coverage_stats
 from backend.importer import load_jsonl
 from backend.index import (
     count_items,
@@ -187,6 +190,12 @@ def main() -> None:
     enrich.add_argument("--batch-size", type=int, default=25)
     enrich.add_argument("--max-seconds", type=float, default=45.0)
 
+    enrich_previews = subparsers.add_parser("enrich-previews")
+    enrich_previews.add_argument("--batch-size", type=int, default=10)
+    enrich_previews.add_argument("--max-seconds", type=float, default=30.0)
+
+    subparsers.add_parser("preview-coverage-stats")
+
     seed = subparsers.add_parser("seed-demo")
     seed.add_argument("--limit", type=int, default=1000)
 
@@ -289,6 +298,38 @@ def main() -> None:
             f"amateur={report.classified_amateur} studio={report.classified_studio} "
             f"conflicts={report.conflicts} no_signal={report.no_signal} failures={report.failures}"
         )
+        return
+
+    if args.command == "enrich-previews":
+        report = asyncio.run(
+            enrich_missing_previews(
+                PROVIDERS,
+                LIVE_ADAPTERS,
+                batch_size=args.batch_size,
+                max_seconds=args.max_seconds,
+            )
+        )
+        print(
+            f"preview-enrichment: attempted={report.attempted} extracted={report.extracted} "
+            f"stored={report.stored} playable={report.playable} no_preview={report.no_preview} "
+            f"blocked_policy={report.blocked_policy} failures={report.failures}"
+        )
+        return
+
+    if args.command == "preview-coverage-stats":
+        stats = preview_coverage_stats()
+        print(
+            f"total={stats.total} stored={stats.stored} playable={stats.playable} "
+            f"stored_percent={stats.stored_percent} playable_percent={stats.playable_percent}"
+        )
+        print("states=" + json.dumps(stats.states, sort_keys=True))
+        for provider, row in stats.providers.items():
+            print(
+                f"{provider}=" + json.dumps(
+                    {"total": row.total, "stored": row.stored, "playable": row.playable},
+                    sort_keys=True,
+                )
+            )
         return
 
     if args.command == "seed-demo":

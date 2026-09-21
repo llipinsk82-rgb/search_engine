@@ -11,7 +11,9 @@ from backend.index import (
     list_content_enrichment_candidates,
     record_content_enrichment_attempt,
     update_content_evidence,
+    update_preview_url,
 )
+from backend.media_policy import media_url_allowed
 from backend.settings import DB_PATH
 
 
@@ -91,6 +93,14 @@ async def enrich_unknown_content(
                 path=path,
             )
             continue
+
+        preview = str(fetched.preview_url) if fetched.preview_url else None
+        if (
+            preview
+            and getattr(provider, "preview_enrichment", False)
+            and media_url_allowed(item.provider, "preview", preview)
+        ):
+            update_preview_url(item.id, preview_url=preview, path=path)
 
         fetched_tags = list(fetched.tags)
         fetched_studio = fetched.studio

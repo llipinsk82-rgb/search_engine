@@ -276,3 +276,33 @@ def test_time_budget_stops_before_starting_next_fetch(tmp_path: Path, monkeypatc
     assert provider.calls == ["a"]
     assert get_item("a", path=db).content_class == "amateur"
     assert get_item("b", path=db).content_class == "unknown"
+
+
+def test_content_enrichment_reuses_fetched_preview_without_second_fetch(tmp_path: Path) -> None:
+    db = tmp_path / "reuse.db"
+    item = SearchItem(
+        id="reuse", provider="bigfuck", title="reuse",
+        url="https://bigfuck.tv/video/reuse", tags=["hd"],
+    )
+    upsert_items([item], path=db)
+
+    class ReuseProvider(FakeProvider):
+        preview_enrichment = True
+        async def enrich_content_evidence(self, item: SearchItem) -> SearchItem:
+            self.calls.append(item.id)
+            return item.model_copy(update={
+                "tags": [*item.tags, "homemade"],
+                "preview_url": "https://icdn05.bigfuck.tv/preview/reuse.mp4",
+            })
+        async def extract_preview(self, item: SearchItem):
+            raise AssertionError("preview-specific second fetch must not run")
+
+    provider = ReuseProvider("bigfuck")
+    report = asyncio.run(
+        enrich_unknown_content([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
+    )
+    stored = get_item("reuse", path=db)
+    assert provider.calls == ["reuse"]
+    assert report.classified_amateur == 1
+    assert stored is not None
+    assert str(stored.preview_url) == "https://icdn05.bigfuck.tv/preview/reuse.mp4"
