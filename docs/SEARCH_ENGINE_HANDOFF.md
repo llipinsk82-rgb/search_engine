@@ -2048,3 +2048,41 @@ Exact next product step:
 - then return to remaining premium-polish backlog (DEV badge, telemetry density, age-check wording, Reset contrast) unless a higher-priority Search task is selected.
 
 Production data requires no manual mass crawl or reclassification at this closeout.
+
+
+## 2026-09-21 — PREMIUM FRONTEND POLISH V30 CLOSEOUT
+
+Production code build:
+`4d82857e966f2db17306018e1f80b38934fbcf14`
+
+Scope completed:
+- removed production `DEV` badge;
+- compacted live-source status from per-provider telemetry to source-count + unavailable-count summary;
+- card age metadata now shows only positive `18+ gate` for `required`;
+- age-check filter labels shortened without changing backend values/semantics;
+- mobile Filters `Reset` upgraded from ghost text to bordered `secondary-action`;
+- duration typo fixed: `10–0 min` -> `10–30 min`;
+- frontend/PWA cache bumped v29 -> v30.
+
+Verification:
+- frontend contract: 39 PASS;
+- final full suite: 343 PASS;
+- only 2 existing FastAPI `on_event` deprecation warnings;
+- compileall PASS;
+- `node --check frontend/app.js` PASS;
+- `git diff --check` PASS;
+- official deploy helper CHECK PASS before deploy;
+- production helper status reports build `4d82857e966f`;
+- `/api/health` PASS on build `4d82857e966f`;
+- deployed files confirm `search-shell-v30`, `/styles.css?v=30`, `/app.js?v=30`, `search.swReload.v30`, compact live-source summary, `18+ gate`, secondary Reset styling, and corrected duration copy.
+
+Visual acceptance:
+- public UI without an authenticated session returns HTTP 403;
+- authenticated visual smoke remains `NOT_VERIFIED`;
+- no authentication bypass was attempted.
+
+Exact next step:
+- authenticated screenshot/browser smoke of v30 on mobile and desktop;
+- after visual PASS, continue only with newly observed UX issues or the next explicitly selected Search Engine product goal.
+
+No API schema, provider behavior, DB schema, search semantics, content classification, or preview resolver behavior changed in this bounded polish slice.
