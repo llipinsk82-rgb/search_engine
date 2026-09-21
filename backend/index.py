@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from backend.content_class import classify_content_evidence
+from backend.content_class import classify_content_evidence, trusted_providers_for_source
 from backend.media_policy import media_url_allowed
 from backend.models import SearchItem, SortMode
 from backend.settings import DB_PATH
@@ -519,6 +519,47 @@ def provider_counts(path: Path = DB_PATH) -> dict[str, int]:
         return {str(row["provider"]): int(row["n"]) for row in rows}
 
 
+def _class_source_clause(content_class: str) -> tuple[str, list[object]]:
+    def source_clause(stored_class: str, source: str) -> tuple[str, list[object]] | None:
+        providers = sorted(trusted_providers_for_source(source))
+        if not providers:
+            return None
+        placeholders = ",".join("?" for _ in providers)
+        return (
+            f"(i.content_class = ? AND i.content_class_source = ? AND i.provider IN ({placeholders}))",
+            [stored_class, source, *providers],
+        )
+
+    amateur = source_clause("amateur", "tag_amateur")
+    studio_parts = [
+        part
+        for part in (
+            source_clause("studio", "studio_label"),
+            source_clause("studio", "tag_studio"),
+        )
+        if part is not None
+    ]
+
+    if content_class == "amateur":
+        return amateur if amateur is not None else ("1 = 0", [])
+    if content_class == "studio":
+        if not studio_parts:
+            return "1 = 0", []
+        return (
+            "(" + " OR ".join(part[0] for part in studio_parts) + ")",
+            [value for part in studio_parts for value in part[1]],
+        )
+    if content_class == "unknown":
+        accepted = ([amateur] if amateur is not None else []) + studio_parts
+        if not accepted:
+            return "1 = 1", []
+        return (
+            "NOT (" + " OR ".join(part[0] for part in accepted) + ")",
+            [value for part in accepted for value in part[1]],
+        )
+    raise ValueError(f"unsupported content class: {content_class!r}")
+
+
 def _where_for_search(
     query: str,
     *,
@@ -558,8 +599,9 @@ def _where_for_search(
         where.append("LOWER(COALESCE(i.quality, '')) = LOWER(?)")
         params.append(quality)
     if content_class:
-        where.append("i.content_class = ?")
-        params.append(content_class)
+        class_clause, class_params = _class_source_clause(content_class)
+        where.append(class_clause)
+        params.extend(class_params)
     if age_check:
         where.append("i.age_check_status = ?")
         params.append(age_check)
@@ -620,6 +662,12 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         ).fetchone()
     if row is None:
         return None
+    tags = json.loads(row["tags_json"] or "[]")
+    classification = classify_content_evidence(
+        provider=str(row["provider"]),
+        tags=list(tags),
+        studio=row["studio"],
+    )
     return SearchItem(
         id=row["id"],
         provider=row["provider"],
@@ -633,8 +681,8 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         rating_percent=row["rating_percent"],
         rating_count=row["rating_count"],
         quality=row["quality"],
-        tags=json.loads(row["tags_json"] or "[]"),
-        content_class=row["content_class"],
+        tags=tags,
+        content_class=classification.content_class,
         studio=row["studio"],
         age_check_status=row["age_check_status"],
         score=0.0,
@@ -989,6 +1037,12 @@ def search_items(
             if tokens
             else 1.0 - (position / total_rows)
         )
+        tags = json.loads(row["tags_json"] or "[]")
+        classification = classify_content_evidence(
+            provider=str(row["provider"]),
+            tags=list(tags),
+            studio=row["studio"],
+        )
         result.append(
             SearchItem(
                 id=row["id"],
@@ -1003,8 +1057,8 @@ def search_items(
                 rating_percent=row["rating_percent"],
                 rating_count=row["rating_count"],
                 quality=row["quality"],
-                tags=json.loads(row["tags_json"] or "[]"),
-                content_class=row["content_class"],
+                tags=tags,
+                content_class=classification.content_class,
                 studio=row["studio"],
                 age_check_status=row["age_check_status"],
                 score=score,

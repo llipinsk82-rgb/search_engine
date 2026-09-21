@@ -59,6 +59,16 @@ def _normalize_provider(value: str) -> str:
     return value.strip().casefold()
 
 
+def trusted_providers_for_source(source: ContentClassSource) -> frozenset[str]:
+    if source == "tag_amateur":
+        return _AMATEUR_TAG_PROVIDERS
+    if source == "tag_studio":
+        return _STUDIO_TAG_PROVIDERS
+    if source == "studio_label":
+        return _STUDIO_LABEL_PROVIDERS
+    return frozenset()
+
+
 def classify_content_evidence(
     *, provider: str, tags: list[str], studio: str | None
 ) -> ContentClassification:
