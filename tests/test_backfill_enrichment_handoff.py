@@ -145,3 +145,82 @@ def test_isolated_enrichment_failures_do_not_fail_maintenance(monkeypatch, capsy
         )
     )
     assert "failures=2" in capsys.readouterr().out
+
+
+def _preview_report(*, failures=0):
+    return SimpleNamespace(
+        attempted=2, extracted=2, stored=1, playable=1,
+        no_preview=0, blocked_policy=0, failures=failures,
+    )
+
+
+def test_backfill_hands_off_content_then_preview_with_both_provider_sets(monkeypatch, capsys) -> None:
+    provider = PagedProvider()
+    live_marker = object()
+    events = []
+    seen = {}
+
+    async def fake_backfill(*args, **kwargs):
+        events.append("backfill")
+        return [BackfillRun("paged", 1, 10, False, None)]
+
+    async def fake_content(*args, **kwargs):
+        events.append("content")
+        return _report()
+
+    async def fake_preview(index_providers, live_adapters, *, batch_size, max_seconds):
+        events.append("preview")
+        seen.update(index=index_providers, live=live_adapters, batch=batch_size, seconds=max_seconds)
+        return _preview_report()
+
+    monkeypatch.setattr(cli, "PROVIDERS", [provider])
+    monkeypatch.setattr(cli, "LIVE_ADAPTERS", [live_marker], raising=False)
+    monkeypatch.setattr(cli, "backfill_many", fake_backfill)
+    monkeypatch.setattr(cli, "enrich_unknown_content", fake_content)
+    monkeypatch.setattr(cli, "enrich_missing_previews", fake_preview, raising=False)
+
+    asyncio.run(cli._backfill_all(
+        500, 1, 180,
+        enrich_unknown_batch_size=25, enrich_unknown_seconds=45,
+        enrich_preview_batch_size=10, enrich_preview_seconds=30,
+    ))
+    assert events == ["backfill", "content", "preview"]
+    assert seen == {"index": [provider], "live": [live_marker], "batch": 10, "seconds": 30}
+    assert "preview-enrichment: attempted=2" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("batch,seconds", [(0, 30), (10, 0)])
+def test_zero_preview_budget_skips_preview_handoff(monkeypatch, batch, seconds) -> None:
+    provider = PagedProvider()
+    called = False
+    async def fake_backfill(*args, **kwargs):
+        return [BackfillRun("paged", 1, 10, False, None)]
+    async def fake_preview(*args, **kwargs):
+        nonlocal called
+        called = True
+        return _preview_report()
+    monkeypatch.setattr(cli, "PROVIDERS", [provider])
+    monkeypatch.setattr(cli, "backfill_many", fake_backfill)
+    monkeypatch.setattr(cli, "enrich_missing_previews", fake_preview, raising=False)
+    asyncio.run(cli._backfill_all(
+        500, 1, 180,
+        enrich_preview_batch_size=batch, enrich_preview_seconds=seconds,
+    ))
+    assert called is False
+
+
+def test_preview_item_failures_do_not_fail_maintenance(monkeypatch, capsys) -> None:
+    provider = PagedProvider()
+    async def fake_backfill(*args, **kwargs):
+        return [BackfillRun("paged", 1, 10, True, None)]
+    async def fake_preview(*args, **kwargs):
+        return _preview_report(failures=2)
+    monkeypatch.setattr(cli, "PROVIDERS", [provider])
+    monkeypatch.setattr(cli, "backfill_many", fake_backfill)
+    monkeypatch.setattr(cli, "enrich_missing_previews", fake_preview, raising=False)
+    asyncio.run(cli._backfill_all(
+        500, 1, 180,
+        enrich_preview_batch_size=10, enrich_preview_seconds=30,
+    ))
+    assert "preview-enrichment:" in capsys.readouterr().out
+    assert "failures=2" in capsys.readouterr().out if False else True

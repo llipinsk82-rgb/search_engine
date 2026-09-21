@@ -28,3 +28,15 @@ def test_backfill_service_includes_bounded_content_enrichment_defaults():
     assert "--enrich-unknown-batch-size \"$SEARCH_CONTENT_ENRICH_BATCH_SIZE\"" in unit
     assert "--enrich-unknown-seconds \"$SEARCH_CONTENT_ENRICH_MAX_SECONDS\"" in unit
     assert unit.count("run-maintenance.sh /run/search_engine/maintenance.lock") == 1
+
+
+def test_backfill_service_includes_bounded_preview_enrichment_defaults():
+    unit=(DEPLOY/"search-engine-backfill.service").read_text()
+    env=(DEPLOY/"search-engine.env.example").read_text()
+    for value in ("SEARCH_PREVIEW_ENRICH_BATCH_SIZE=10", "SEARCH_PREVIEW_ENRICH_MAX_SECONDS=30"):
+        assert value in unit
+        assert value in env
+    assert "--enrich-preview-batch-size \"$SEARCH_PREVIEW_ENRICH_BATCH_SIZE\"" in unit
+    assert "--enrich-preview-seconds \"$SEARCH_PREVIEW_ENRICH_MAX_SECONDS\"" in unit
+    assert unit.count("run-maintenance.sh /run/search_engine/maintenance.lock") == 1
+    assert "TimeoutStartSec=6min" in unit

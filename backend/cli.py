@@ -74,6 +74,8 @@ async def _backfill_all(
     *,
     enrich_unknown_batch_size: int = 0,
     enrich_unknown_seconds: float = 0.0,
+    enrich_preview_batch_size: int = 0,
+    enrich_preview_seconds: float = 0.0,
 ) -> None:
     providers = [
         provider
@@ -113,6 +115,19 @@ async def _backfill_all(
             f"content-enrichment: attempted={report.attempted} enriched={report.enriched} "
             f"amateur={report.classified_amateur} studio={report.classified_studio} "
             f"conflicts={report.conflicts} no_signal={report.no_signal} failures={report.failures}"
+        )
+
+    if enrich_preview_seconds > 0 and enrich_preview_batch_size > 0:
+        report = await enrich_missing_previews(
+            PROVIDERS,
+            LIVE_ADAPTERS,
+            batch_size=enrich_preview_batch_size,
+            max_seconds=enrich_preview_seconds,
+        )
+        print(
+            f"preview-enrichment: attempted={report.attempted} extracted={report.extracted} "
+            f"stored={report.stored} playable={report.playable} no_preview={report.no_preview} "
+            f"blocked_policy={report.blocked_policy} failures={report.failures}"
         )
 
 
@@ -220,6 +235,8 @@ def main() -> None:
     backfill_all.add_argument("--max-seconds", type=float)
     backfill_all.add_argument("--enrich-unknown-batch-size", type=int, default=0)
     backfill_all.add_argument("--enrich-unknown-seconds", type=float, default=0.0)
+    backfill_all.add_argument("--enrich-preview-batch-size", type=int, default=0)
+    backfill_all.add_argument("--enrich-preview-seconds", type=float, default=0.0)
 
     probe = subparsers.add_parser("probe")
     probe.add_argument("provider")
@@ -354,6 +371,8 @@ def main() -> None:
                 args.max_seconds,
                 enrich_unknown_batch_size=args.enrich_unknown_batch_size,
                 enrich_unknown_seconds=args.enrich_unknown_seconds,
+                enrich_preview_batch_size=args.enrich_preview_batch_size,
+                enrich_preview_seconds=args.enrich_preview_seconds,
             )
         )
         return

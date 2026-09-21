@@ -15,13 +15,15 @@ Environment=SEARCH_BACKFILL_BATCHES_PER_PROVIDER=1
 Environment=SEARCH_BACKFILL_MAX_SECONDS=180
 Environment=SEARCH_CONTENT_ENRICH_BATCH_SIZE=25
 Environment=SEARCH_CONTENT_ENRICH_MAX_SECONDS=45
+Environment=SEARCH_PREVIEW_ENRICH_BATCH_SIZE=10
+Environment=SEARCH_PREVIEW_ENRICH_MAX_SECONDS=30
 EnvironmentFile=-/etc/search_engine.env
 StateDirectory=search_engine
 StateDirectoryMode=0750
 RuntimeDirectory=search_engine
 RuntimeDirectoryMode=0750
 RuntimeDirectoryPreserve=yes
-ExecStart=/bin/sh -c '/opt/search_engine/deploy/run-maintenance.sh /run/search_engine/maintenance.lock 15 /opt/search_engine/.venv/bin/python -m backend.cli backfill-all --batch-size "$SEARCH_BACKFILL_BATCH_SIZE" --batches-per-provider "$SEARCH_BACKFILL_BATCHES_PER_PROVIDER" --max-seconds "$SEARCH_BACKFILL_MAX_SECONDS" --enrich-unknown-batch-size "$SEARCH_CONTENT_ENRICH_BATCH_SIZE" --enrich-unknown-seconds "$SEARCH_CONTENT_ENRICH_MAX_SECONDS"'
+ExecStart=/bin/sh -c '/opt/search_engine/deploy/run-maintenance.sh /run/search_engine/maintenance.lock 15 /opt/search_engine/.venv/bin/python -m backend.cli backfill-all --batch-size "$SEARCH_BACKFILL_BATCH_SIZE" --batches-per-provider "$SEARCH_BACKFILL_BATCHES_PER_PROVIDER" --max-seconds "$SEARCH_BACKFILL_MAX_SECONDS" --enrich-unknown-batch-size "$SEARCH_CONTENT_ENRICH_BATCH_SIZE" --enrich-unknown-seconds "$SEARCH_CONTENT_ENRICH_MAX_SECONDS" --enrich-preview-batch-size "$SEARCH_PREVIEW_ENRICH_BATCH_SIZE" --enrich-preview-seconds "$SEARCH_PREVIEW_ENRICH_MAX_SECONDS"'
 TimeoutStartSec=6min
 Nice=10
 CPUWeight=20
