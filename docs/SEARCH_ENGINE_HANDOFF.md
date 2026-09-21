@@ -1634,3 +1634,54 @@ Hard rules remain: no title/provider/domain/image inference, no public enum/API 
 
 Implementation has NOT started.
 Next gate: plan review and execution method selection.
+## 2026-09-21 — CONTENT CLASSIFICATION V2 PRE-RELEASE GATE
+
+Status: implementation complete on isolated branch; production unchanged.
+
+Branch: `feature/content-classification-v2`
+Code HEAD before this docs checkpoint: `810c332002a1bfc6070579f1309af2ff6abaad62`
+
+Implemented:
+- read-only provider evidence audit and explicit `content_class_enrichment` capability;
+- provenance-aware deterministic classifier with no title/provider/domain/image inference;
+- trusted Schema.org `VideoObject.productionCompany` extraction;
+- additive SQLite `content_class_source` and durable enrichment retry state;
+- evidence-safe update path preserving unrelated row fields;
+- bounded dry-run/apply `reclassify-content` plus `content-class-stats`;
+- bounded sequential unknown-content enrichment with failure isolation and retry/backoff;
+- enrichment handoff after successful ordinary backfill inside the existing maintenance lock;
+- systemd defaults: batch 25 / 45 seconds.
+
+Audit-enabled providers:
+`brazzilmoms`, `fpo`, `serviporno`, `sextubespot`, `xcafe`, `xgroovy`, `xnxx`, `xvideos`.
+
+Verification:
+- targeted Content Classification v2 gate: 64 PASS;
+- full suite: 285 PASS;
+- only 2 pre-existing FastAPI `on_event` deprecation warnings;
+- backend compileall: PASS;
+- frontend `node --check`: PASS;
+- `git diff --check`: PASS.
+
+Production baseline before v2 deploy:
+- production build: `75d25430070d`;
+- health: `status=ok`;
+- active indexed rows: 1,152,018;
+- class distribution: amateur 1,722 (0.15%), studio 0, unknown 1,150,296 (99.85%);
+- `content_class_source`: absent;
+- `content_enrichment_state`: absent;
+- representative query `Tiny`: all 8,390 / amateur 79 / studio 0 / unknown 8,311;
+- `search-engine.service`, sync timer, backfill timer: active.
+
+Rollout sequence:
+1. push feature and fast-forward `feature/provider-registry-probe`;
+2. fast-forward canonical sandbox to exact release SHA;
+3. official helper CHECK;
+4. official deploy during a natural free maintenance-lock window;
+5. verify health/schema/API before any data mutation;
+6. run production reclassify dry-run;
+7. apply reclassification only in bounded maintenance-lock chunks;
+8. observe at least two natural backfill+enrichment runs;
+9. record after-distribution, `Tiny`, manual evidence samples and final handoff.
+
+`PRODUCTION_UNCHANGED` at this checkpoint.
