@@ -1,7 +1,8 @@
 from pathlib import Path
+import sqlite3
 
 from backend.content_class_live import filter_live_items
-from backend.index import get_item, search_items, upsert_items
+from backend.index import count_search_items, get_item, search_items, upsert_items
 from backend.models import SearchItem
 
 
@@ -60,6 +61,22 @@ def test_xgroovy_channel_metadata_does_not_pass_cached_studio_filter(tmp_path: P
     )
     assert [row.id for row in search_items("", path=db, content_class="studio")] == ["xc"]
     assert [row.id for row in search_items("", path=db, content_class="unknown")] == ["xg"]
+
+
+def test_stale_legacy_class_is_filtered_by_current_provider_policy(tmp_path: Path) -> None:
+    db = tmp_path / "search.db"
+    upsert_items([item("legacy-xg", "xgroovy", studio="Bratty Sis")], path=db)
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "UPDATE items SET content_class='studio', content_class_source='studio_label' WHERE id='legacy-xg'"
+        )
+
+    assert search_items("", path=db, content_class="studio") == []
+    assert count_search_items("", path=db, content_class="studio") == 0
+    unknown = search_items("", path=db, content_class="unknown")
+    assert [row.id for row in unknown] == ["legacy-xg"]
+    assert unknown[0].content_class == "unknown"
+    assert count_search_items("", path=db, content_class="unknown") == 1
 
 
 def test_live_filter_uses_provider_specific_evidence_policy() -> None:
