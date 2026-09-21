@@ -15,7 +15,9 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
+from backend.media_policy import media_url_allowed
 from backend.models import SearchItem
+from backend.preview_rules import PREVIEW_RULES, extract_preview_url
 from backend.providers.base import SearchProvider
 
 _USER_AGENT = "SearchEngineIndexer/0.5"
@@ -457,6 +459,24 @@ class SitemapProvider(SearchProvider):
         if self.sitemap_child_order not in {"listed", "reverse"}:
             raise ValueError("sitemap_child_order must be 'listed' or 'reverse'")
 
+    @property
+    def preview_enrichment(self) -> bool:
+        rule = PREVIEW_RULES.get(self.name)
+        return rule is not None and getattr(rule, "kind", None) != "live_search_exact"
+
+    async def extract_preview(self, item: SearchItem) -> str | None:
+        if not self.preview_enrichment:
+            return None
+        rule = PREVIEW_RULES[self.name]
+        try:
+            html = await asyncio.to_thread(self._fetch_text, str(item.url))
+        except Exception:
+            return None
+        candidate = extract_preview_url(rule, html, str(item.url))
+        if not candidate or not media_url_allowed(self.name, "preview", candidate):
+            return None
+        return candidate
+
     def _fetch_text(self, url: str, *, timeout_seconds: float | None = None) -> str:
         request = Request(
             url,
@@ -584,11 +604,17 @@ class SitemapProvider(SearchProvider):
     def _fetch_page_item(self, page_url: str) -> SearchItem | None:
         try:
             html = self._fetch_text(page_url)
-            return parse_video_metadata(
+            item = parse_video_metadata(
                 html,
                 provider=self.name,
                 page_url=page_url,
             )
+            rule = PREVIEW_RULES.get(self.name)
+            if item is not None and rule is not None and getattr(rule, "kind", None) != "live_search_exact":
+                candidate = extract_preview_url(rule, html, page_url)
+                if candidate and media_url_allowed(self.name, "preview", candidate):
+                    item = item.model_copy(update={"preview_url": candidate})
+            return item
         except Exception:
             return None
         finally:
@@ -602,6 +628,7 @@ class SitemapProvider(SearchProvider):
         merged_tags = list(dict.fromkeys([*base.tags, *fetched.tags]))
         return base.model_copy(update={
             "thumbnail": base.thumbnail or fetched.thumbnail,
+            "preview_url": base.preview_url or fetched.preview_url,
             "duration_seconds": base.duration_seconds if base.duration_seconds is not None else fetched.duration_seconds,
             "quality": base.quality or fetched.quality,
             "tags": merged_tags,

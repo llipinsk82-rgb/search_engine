@@ -304,6 +304,44 @@ def test_enriched_evidence_unions_tags_and_does_not_replace_existing_studio() ->
     assert str(merged.preview_url) == "https://example.com/p.mp4"
 
 
+
+def test_merge_fills_missing_preview_without_replacing_existing_preview() -> None:
+    base = SearchItem(id="1", provider="example", title="X", url="https://example.com/video/1")
+    fetched = base.model_copy(update={"preview_url": "https://cdn.example/new.mp4"})
+    merged = SitemapProvider._merge_enriched_item(base, fetched)
+    assert str(merged.preview_url) == "https://cdn.example/new.mp4"
+
+    existing = base.model_copy(update={"preview_url": "https://cdn.example/original.mp4"})
+    merged_existing = SitemapProvider._merge_enriched_item(existing, fetched)
+    assert str(merged_existing.preview_url) == "https://cdn.example/original.mp4"
+
+
+def test_fetch_page_item_attaches_only_policy_allowed_preview(monkeypatch) -> None:
+    provider = SitemapProvider(
+        name="example",
+        sitemap_url="https://example.com/sitemap.xml",
+        obey_robots=False,
+        delay_seconds=0,
+    )
+    page_url = "https://example.com/video/1"
+    provider._fetch_text = lambda _url: (
+        '<script type="application/ld+json">'
+        '{"@type":"VideoObject","name":"X","thumbnailUrl":"https://example.com/x.jpg"}'
+        '</script>'
+    )
+    candidate = "https://cdn.example/preview.mp4"
+    monkeypatch.setattr("backend.providers.sitemap.PREVIEW_RULES", {"example": object()}, raising=False)
+    monkeypatch.setattr("backend.providers.sitemap.extract_preview_url", lambda *args, **kwargs: candidate, raising=False)
+    monkeypatch.setattr("backend.providers.sitemap.media_url_allowed", lambda *args, **kwargs: True, raising=False)
+    allowed = provider._fetch_page_item(page_url)
+    assert allowed is not None
+    assert str(allowed.preview_url) == candidate
+
+    monkeypatch.setattr("backend.providers.sitemap.media_url_allowed", lambda *args, **kwargs: False, raising=False)
+    rejected = provider._fetch_page_item(page_url)
+    assert rejected is not None
+    assert rejected.preview_url is None
+
 def test_enrich_content_evidence_returns_original_when_page_fetch_fails() -> None:
     provider = SitemapProvider(
         name="example",

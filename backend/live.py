@@ -20,7 +20,9 @@ except ImportError:
     websocket_connect = None
 
 from backend.index import merge_provider_batches
+from backend.media_policy import media_url_allowed
 from backend.models import SearchItem, SortMode
+from backend.preview_rules import PREVIEW_RULES, select_exact_live_preview
 from backend.settings import DB_PATH
 from backend.source_policy import normalize_trusted_live_item
 
@@ -1488,6 +1490,20 @@ class _HttpLiveAdapter:
 
     def __init__(self, *, timeout_seconds: float = 4.0) -> None:
         self.timeout_seconds = max(0.5, float(timeout_seconds))
+
+    @property
+    def preview_enrichment(self) -> bool:
+        rule = PREVIEW_RULES.get(self.name)
+        return rule is not None and rule.kind == "live_search_exact"
+
+    async def extract_preview(self, item: SearchItem) -> str | None:
+        if not self.preview_enrichment:
+            return None
+        result = await self.search(item.title, page=1, limit=40)
+        candidate = select_exact_live_preview(result.items, str(item.url))
+        if not candidate or not media_url_allowed(self.name, "preview", candidate):
+            return None
+        return candidate
 
     def _fetch_text(self, url: str) -> str:
         request = Request(
