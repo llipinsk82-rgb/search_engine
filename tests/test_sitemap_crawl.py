@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from backend.models import SearchItem
 from backend.providers.sitemap import SitemapProvider, parse_video_metadata
 
 
@@ -235,3 +238,85 @@ class SitemapCrawlerIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+def test_jsonld_production_company_string_sets_studio() -> None:
+    item = parse_video_metadata(
+        '<script type="application/ld+json">'
+        '{"@type":"VideoObject","name":"X","thumbnailUrl":"https://e/x.jpg",'
+        '"productionCompany":"Example Studio"}'
+        '</script>',
+        provider="example",
+        page_url="https://example.com/v/1",
+    )
+    assert item is not None
+    assert item.studio == "Example Studio"
+
+
+def test_jsonld_production_company_object_or_list_sets_studio() -> None:
+    for value in (
+        '{"name":"Object Studio"}',
+        '[{"name":"List Studio"}]',
+    ):
+        item = parse_video_metadata(
+            '<script type="application/ld+json">'
+            f'{{"@type":"VideoObject","name":"X","thumbnailUrl":"https://e/x.jpg","productionCompany":{value}}}'
+            '</script>',
+            provider="example",
+            page_url="https://example.com/v/1",
+        )
+        assert item is not None
+        assert item.studio in {"Object Studio", "List Studio"}
+
+
+def test_publisher_creator_author_do_not_set_studio() -> None:
+    item = parse_video_metadata(
+        '<script type="application/ld+json">'
+        '{"@type":"VideoObject","name":"X","thumbnailUrl":"https://e/x.jpg",'
+        '"publisher":{"name":"Publisher"},"creator":{"name":"Creator"},"author":"Author"}'
+        '</script>',
+        provider="example",
+        page_url="https://example.com/v/1",
+    )
+    assert item is not None
+    assert item.studio is None
+
+
+def test_enriched_evidence_unions_tags_and_does_not_replace_existing_studio() -> None:
+    base = SearchItem(
+        id="1",
+        provider="example",
+        title="Base",
+        url="https://example.com/v/1",
+        thumbnail="https://example.com/base.jpg",
+        preview_url="https://example.com/p.mp4",
+        tags=["hd"],
+        studio="Original Studio",
+    )
+    fetched = base.model_copy(update={
+        "thumbnail": "https://example.com/new.jpg",
+        "tags": ["professional", "hd"],
+        "studio": "Fetched Studio",
+    })
+    merged = SitemapProvider._merge_enriched_item(base, fetched)
+    assert merged.tags == ["hd", "professional"]
+    assert merged.studio == "Original Studio"
+    assert str(merged.thumbnail) == "https://example.com/base.jpg"
+    assert str(merged.preview_url) == "https://example.com/p.mp4"
+
+
+def test_enrich_content_evidence_returns_original_when_page_fetch_fails() -> None:
+    provider = SitemapProvider(
+        name="example",
+        sitemap_url="https://example.com/sitemap.xml",
+        obey_robots=False,
+    )
+    item = SearchItem(
+        id="1",
+        provider="example",
+        title="Base",
+        url="https://example.com/v/1",
+        tags=["hd"],
+    )
+    provider._fetch_page_item = lambda _url: None
+    enriched = asyncio.run(provider.enrich_content_evidence(item))
+    assert enriched == item

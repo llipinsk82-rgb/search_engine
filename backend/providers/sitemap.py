@@ -166,6 +166,20 @@ def _first_string(value: Any) -> str | None:
     return None
 
 
+def _production_company_name(value: Any) -> str | None:
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    if isinstance(value, dict):
+        return _first_string(value.get("name"))
+    if isinstance(value, list):
+        for item in value:
+            name = _production_company_name(item)
+            if name:
+                return name
+    return None
+
+
 def _keywords(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(item).strip() for item in value if str(item).strip()]
@@ -299,6 +313,7 @@ def parse_video_metadata(
         tags.extend(_keywords(video.get("keywords")))
     tags.extend(_keywords(meta.get("keywords")))
     tags = list(dict.fromkeys(tag for tag in tags if tag))
+    studio = _production_company_name(video.get("productionCompany")) if video else None
 
     item_id = hashlib.sha256(f"{provider}:{page_url}".encode("utf-8")).hexdigest()[:24]
     return SearchItem(
@@ -310,6 +325,7 @@ def parse_video_metadata(
         duration_seconds=duration,
         quality=_quality_from_metadata(meta, video, parser.quality_hints),
         tags=tags[:80],
+        studio=studio,
         score=1.0,
     )
 
@@ -583,12 +599,18 @@ class SitemapProvider(SearchProvider):
     def _merge_enriched_item(base: SearchItem, fetched: SearchItem | None) -> SearchItem:
         if fetched is None:
             return base
+        merged_tags = list(dict.fromkeys([*base.tags, *fetched.tags]))
         return base.model_copy(update={
             "thumbnail": base.thumbnail or fetched.thumbnail,
             "duration_seconds": base.duration_seconds if base.duration_seconds is not None else fetched.duration_seconds,
             "quality": base.quality or fetched.quality,
-            "tags": base.tags or fetched.tags,
+            "tags": merged_tags,
+            "studio": base.studio or fetched.studio,
         })
+
+    async def enrich_content_evidence(self, item: SearchItem) -> SearchItem:
+        fetched = await asyncio.to_thread(self._fetch_page_item, str(item.url))
+        return self._merge_enriched_item(item, fetched)
 
     def _needs_core_enrichment(self, item: SearchItem) -> bool:
         return self.enrich_missing_core_metadata and (
