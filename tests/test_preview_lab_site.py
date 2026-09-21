@@ -45,21 +45,13 @@ def test_preview_cards_have_visible_play_button_and_toggle_contract() -> None:
     assert ".preview-play" in css
 
 
-def test_preview_lab_queue_contains_only_remaining_unverified_providers() -> None:
+def test_preview_lab_queue_contains_exactly_active_candidates() -> None:
     app = (SITE / "app.js").read_text(encoding="utf-8")
     block = app.split("const TEST_PROVIDERS = [", 1)[1].split("];", 1)[0]
-    expected = {
-        "xgroovy", "xcafe", "sunporno", "serviporno", "fpo", "sextubespot",
-        "freeporn", "xxxbule", "porngo", "txxx", "sexplex", "voyeurhit",
-        "vxxx", "hdzog", "theyarehuge", "justporn", "bigassporn", "megatube",
-        "tubev", "brazzilmoms", "porndoe", "eporner", "pornone", "hqporner",
-        "milfporn", "yourlust", "zzztube", "bustybus", "redtube", "pornsexvideo",
-        "lexotic", "pornobae", "pornzog",
-    }
-    found = set(re.findall(r'"([a-z0-9]+)"', block))
+    expected = {"xvideos", "xnxx", "xgroovy", "mypornhere", "pussyspace", "porndig", "sexvid", "pornid", "zbporn"}
+    found = set(re.findall(r"\"([a-z0-9]+)\"", block))
     assert found == expected
-    promoted = {"xvideos", "xnxx", "mypornhere", "pussyspace", "porndig", "sexvid", "pornid", "zbporn"}
-    assert promoted.isdisjoint(found)
+    assert len(found) == 9
 
 
 def test_preview_lab_requires_single_provider_selection() -> None:
