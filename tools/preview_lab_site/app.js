@@ -71,7 +71,7 @@ function inferPreviewCandidate(item) {
 async function resolveCurrentPreview(item) {
   if (item.preview_url) return { url: item.preview_url, source: "current" };
   try {
-    const response = await fetch(`/api/preview/${encodeURIComponent(item.id)}`, { cache: "no-store" });
+    const response = await fetch(`/test-api/preview/${encodeURIComponent(item.id)}`, { cache: "no-store" });
     if (!response.ok) return null;
     const payload = await response.json();
     if (payload.preview_url) return { url: payload.preview_url, source: "current" };
@@ -175,7 +175,7 @@ async function runSearch() {
   Object.values(counters).forEach((el) => { el.textContent = "0"; });
 
   try {
-    const response = await fetch(`/api/search?${params.toString()}`, { cache: "no-store" });
+    const response = await fetch(`/test-api/search?${params.toString()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
     const items = Array.isArray(payload.items) ? payload.items : [];
@@ -197,7 +197,7 @@ async function runSearch() {
 
 async function loadProviders() {
   try {
-    const response = await fetch("/api/providers", { cache: "no-store" });
+    const response = await fetch("/test-api/providers", { cache: "no-store" });
     const payload = await response.json();
     for (const name of payload.providers || []) {
       const option = document.createElement("option");

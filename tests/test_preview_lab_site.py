@@ -10,9 +10,9 @@ def test_preview_lab_site_is_isolated_and_read_only() -> None:
     assert 'id="search-form"' in html
     assert 'id="provider"' in html
     assert 'id="results"' in html
-    assert 'fetch("/api/providers"' in app
-    assert 'fetch(`/api/search?' in app
-    assert 'fetch(`/api/preview/${encodeURIComponent(item.id)}`' in app
+    assert 'fetch("/test-api/providers"' in app
+    assert 'fetch(`/test-api/search?' in app
+    assert 'fetch(`/test-api/preview/${encodeURIComponent(item.id)}`' in app
     assert 'method: "POST"' not in app
     assert 'method: "PUT"' not in app
     assert 'method: "DELETE"' not in app
@@ -37,3 +37,11 @@ def test_preview_lab_site_exposes_only_verified_new_candidates() -> None:
     app = (SITE / "app.js").read_text(encoding="utf-8")
     for provider in ("sexvid", "pornid", "zbporn"):
         assert provider in app
+
+
+def test_preview_lab_uses_unauthenticated_test_api_only() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    assert "/test-api/" in app
+    assert "`/api/preview/" not in app
+    assert "`/api/search?" not in app
+    assert 'fetch("/api/providers"' not in app
