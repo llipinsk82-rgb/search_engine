@@ -52,3 +52,21 @@ def test_xgroovy_infers_bucketed_item_preview() -> None:
 def test_unknown_provider_has_no_inferred_preview() -> None:
     from tools.preview_lab import infer_preview_candidate
     assert infer_preview_candidate("xcafe", {"thumbnail": "https://i.example/a.jpg", "url": "https://example.com/1"}) is None
+
+
+def test_pussyspace_uses_thumbnail_directory_preview() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    row = {"thumbnail": "https://thumb-cdn.example/uuid/6/xv_15_p.avif", "url": "https://www.pussyspace.com/vid-6162641-example/"}
+    assert infer_preview_candidate("pussyspace", row) == "https://thumb-cdn.example/uuid/6/preview.mp4"
+
+
+def test_mypornhere_uses_bucketed_preview_file() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    row = {"thumbnail": "https://www.mypornhere.com/contents/videos_screenshots/354000/354893/preview.jpg", "url": "https://www.mypornhere.com/videos/354893/example/"}
+    assert infer_preview_candidate("mypornhere", row) == "https://www.mypornhere.com/contents/videos/354000/354893/354893_preview.mp4"
+
+
+def test_porndig_infers_previewclip_from_thumbnail_path() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    row = {"thumbnail": "https://image-cdn.porndig.com/thumbs/2014/08/59523/400x225/18.jpg", "url": "https://www.porndig.com/videos/26321/example.html"}
+    assert infer_preview_candidate("porndig", row) == "https://image-cdn.porndig.com/previewclips/2014/08/59523/59523_1.mp4"

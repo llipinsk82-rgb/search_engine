@@ -52,10 +52,21 @@ def infer_preview_candidate(provider: str, item: dict) -> str | None:
     name = provider.strip().lower()
     thumbnail = str(item.get("thumbnail") or "").strip()
     page_url = str(item.get("url") or "").strip()
-    if name in {"xvideos", "xnxx"} and thumbnail:
+    if name in {"xvideos", "xnxx", "pussyspace"} and thumbnail:
         parsed = urlparse(thumbnail)
         if parsed.scheme in {"http", "https"} and parsed.netloc and "/" in parsed.path:
             return parsed._replace(path=parsed.path.rsplit("/", 1)[0] + "/preview.mp4", query="", fragment="").geturl()
+    if name == "porndig" and thumbnail:
+        match = re.search(r"/thumbs/(\d{4})/(\d{2})/(\d+)/", thumbnail)
+        if match:
+            year, month, internal_id = match.groups()
+            return f"https://image-cdn.porndig.com/previewclips/{year}/{month}/{internal_id}/{internal_id}_1.mp4"
+    if name == "mypornhere" and page_url:
+        match = re.search(r"/videos/(\d+)(?:/|$)", page_url)
+        if match:
+            item_id = int(match.group(1))
+            bucket = (item_id // 1000) * 1000
+            return f"https://www.mypornhere.com/contents/videos/{bucket}/{item_id}/{item_id}_preview.mp4"
     if name == "xgroovy" and page_url:
         match = re.search(r"/videos/(\d+)(?:/|$)", page_url)
         if match:
