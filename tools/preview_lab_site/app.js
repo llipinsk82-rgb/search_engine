@@ -11,6 +11,18 @@ const counters = {
   error: document.querySelector("#count-error"),
 };
 
+const TEST_PROVIDERS = [
+  "xvideos",
+  "xnxx",
+  "xgroovy",
+  "mypornhere",
+  "pussyspace",
+  "porndig",
+  "sexvid",
+  "pornid",
+  "zbporn",
+];
+
 function thumbnailDirectoryPreview(thumbnail) {
   try {
     const u = new URL(thumbnail);
@@ -183,22 +195,55 @@ function recount() {
   counters.error.textContent = cards.filter((card) => card.dataset.previewError).length;
 }
 
-async function runSearch() {
+async function fetchProviderSearch(provider, sampleLimit) {
   const params = new URLSearchParams();
   params.set("q", qInput.value.trim());
-  params.set("limit", limitSelect.value);
+  params.set("limit", String(sampleLimit));
   params.set("offset", "0");
-  if (providerSelect.value) params.set("provider", providerSelect.value);
+  params.set("provider", provider);
+
+  const response = await fetch(`/test-api/search?${params.toString()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${provider}: HTTP ${response.status}`);
+  return response.json();
+}
+
+function roundRobinSamples(payloads, sampleLimit) {
+  const queues = payloads.map((payload) => [...(Array.isArray(payload.items) ? payload.items : [])]);
+  const items = [];
+  while (items.length < sampleLimit && queues.some((queue) => queue.length)) {
+    for (const queue of queues) {
+      if (queue.length && items.length < sampleLimit) items.push(queue.shift());
+    }
+  }
+  return items;
+}
+
+async function runSearch() {
+  const sampleLimit = Number(limitSelect.value);
 
   statusEl.textContent = "Loading…";
   results.replaceChildren();
   Object.values(counters).forEach((el) => { el.textContent = "0"; });
 
   try {
-    const response = await fetch(`/test-api/search?${params.toString()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
-    const items = Array.isArray(payload.items) ? payload.items : [];
+    let items = [];
+    let total = 0;
+
+    if (providerSelect.value) {
+      const payload = await fetchProviderSearch(providerSelect.value, sampleLimit);
+      items = Array.isArray(payload.items) ? payload.items : [];
+      total = Number(payload.total || 0);
+    } else {
+      const payloads = await Promise.all(TEST_PROVIDERS.map(async (provider) => {
+        try {
+          return await fetchProviderSearch(provider, sampleLimit);
+        } catch (_) {
+          return { provider, total: 0, items: [] };
+        }
+      }));
+      total = payloads.reduce((sum, payload) => sum + Number(payload.total || 0), 0);
+      items = roundRobinSamples(payloads, sampleLimit);
+    }
 
     for (const item of items) {
       let preview = await resolveCurrentPreview(item);
@@ -209,23 +254,19 @@ async function runSearch() {
       results.appendChild(buildCard(item, preview));
     }
     recount();
-    statusEl.textContent = `${items.length} samples · total ${payload.total ?? "?"}`;
+    statusEl.textContent = `${items.length} samples · total ${total}`;
   } catch (error) {
     statusEl.textContent = `Error: ${error.message}`;
   }
 }
 
-async function loadProviders() {
-  try {
-    const response = await fetch("/test-api/providers", { cache: "no-store" });
-    const payload = await response.json();
-    for (const name of payload.providers || []) {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      providerSelect.appendChild(option);
-    }
-  } catch (_) {}
+function loadProviders() {
+  for (const name of TEST_PROVIDERS) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    providerSelect.appendChild(option);
+  }
 }
 
 form.addEventListener("submit", (event) => {
@@ -233,4 +274,5 @@ form.addEventListener("submit", (event) => {
   runSearch();
 });
 
-loadProviders().then(runSearch);
+loadProviders();
+runSearch();

@@ -10,7 +10,7 @@ def test_preview_lab_site_is_isolated_and_read_only() -> None:
     assert 'id="search-form"' in html
     assert 'id="provider"' in html
     assert 'id="results"' in html
-    assert 'fetch("/test-api/providers"' in app
+    assert 'const TEST_PROVIDERS = [' in app
     assert 'fetch(`/test-api/search?' in app
     assert 'fetch(`/test-api/preview/${encodeURIComponent(item.id)}`' in app
     assert 'method: "POST"' not in app
@@ -56,3 +56,23 @@ def test_preview_cards_have_visible_play_button_and_toggle_contract() -> None:
     assert 'playButton.addEventListener("click"' in app
     assert 'event.stopPropagation()' in app
     assert ".preview-play" in css
+
+def test_provider_dropdown_is_limited_to_preview_lab_candidates() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    html = (SITE / "index.html").read_text(encoding="utf-8")
+    expected = (
+        "xvideos", "xnxx", "xgroovy", "mypornhere", "pussyspace",
+        "porndig", "sexvid", "pornid", "zbporn",
+    )
+    assert 'const TEST_PROVIDERS = [' in app
+    for provider in expected:
+        assert f'"{provider}"' in app
+    assert 'fetch("/test-api/providers"' not in app
+    assert '<option value="">All test candidates</option>' in html
+    assert 'All providers' not in html
+
+
+def test_all_candidates_searches_only_test_providers() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    assert "Promise.all(TEST_PROVIDERS.map" in app
+    assert 'params.set("provider", provider)' in app
