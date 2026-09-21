@@ -171,8 +171,10 @@ def test_content_class_filter_state_and_payload_contract() -> None:
     start = html.index('id="content-class"')
     end = html.index('</select>', start)
     selector = html[start:end]
-    for value in ("", "amateur", "studio", "unknown"):
+    for value in ("", "amateur", "studio"):
         assert f'value="{value}"' in selector
+    assert 'value="unknown"' not in selector
+    assert '<option value="studio">Production</option>' in selector
     assert 'const contentClassSelect = document.querySelector("#content-class");' in app
     assert 'if (contentClassSelect.value) params.set("content_class", contentClassSelect.value);' in app
     assert 'const contentClass = params.get("content_class") || "";' in app
@@ -322,21 +324,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v30() -> None:
+def test_frontend_assets_are_v31() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=30" in html
-    assert "/app.js?v=30" in html
-    assert 'register("/sw.js?v=30", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v30";' in sw
-    assert '"/styles.css?v=30"' in sw
-    assert '"/app.js?v=30"' in sw
+    assert "/styles.css?v=31" in html
+    assert "/app.js?v=31" in html
+    assert 'register("/sw.js?v=31", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v31";' in sw
+    assert '"/styles.css?v=31"' in sw
+    assert '"/app.js?v=31"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v30";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v31";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -380,11 +382,11 @@ def test_on_demand_preview_resolution_is_click_driven_and_no_store() -> None:
 def test_on_demand_preview_frontend_bumps_shell_cache() -> None:
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    assert 'search-shell-v30' in sw
-    assert '/app.js?v=30' in sw
-    assert '/styles.css?v=30' in sw
-    assert 'app.js?v=30' in html
-    assert 'styles.css?v=30' in html
+    assert 'search-shell-v31' in sw
+    assert '/app.js?v=31' in sw
+    assert '/styles.css?v=31' in sw
+    assert 'app.js?v=31' in html
+    assert 'styles.css?v=31' in html
 
 def test_premium_polish_removes_dev_badge() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
