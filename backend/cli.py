@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 from pathlib import Path
 
+from backend.content_reclassify import content_class_stats, reclassify_content
 from backend.importer import load_jsonl
 from backend.index import (
     count_items,
@@ -157,6 +159,14 @@ def main() -> None:
     subparsers.add_parser("providers")
     subparsers.add_parser("stats")
 
+    reclassify = subparsers.add_parser("reclassify-content")
+    reclassify.add_argument("--apply", action="store_true")
+    reclassify.add_argument("--batch-size", type=int, default=5000)
+    reclassify.add_argument("--after-id")
+    reclassify.add_argument("--max-rows", type=int)
+
+    subparsers.add_parser("content-class-stats")
+
     seed = subparsers.add_parser("seed-demo")
     seed.add_argument("--limit", type=int, default=1000)
 
@@ -212,6 +222,36 @@ def main() -> None:
         print(f"items={count_items()}")
         for provider, count in counts.items():
             print(f"{provider}={count}")
+        return
+
+    if args.command == "reclassify-content":
+        report = reclassify_content(
+            apply=args.apply,
+            batch_size=args.batch_size,
+            after_id=args.after_id,
+            max_rows=args.max_rows,
+        )
+        complete = "true" if report.complete else "false"
+        print(
+            f"scanned={report.scanned} changed={report.changed} "
+            f"conflicts={report.conflicts} complete={complete} "
+            f"next_after_id={report.next_after_id or ''}"
+        )
+        print("before=" + json.dumps(report.before, sort_keys=True))
+        print("after=" + json.dumps(report.after, sort_keys=True))
+        print("sources=" + json.dumps(report.sources, sort_keys=True))
+        return
+
+    if args.command == "content-class-stats":
+        stats = content_class_stats()
+        print(
+            f"total={stats.total} amateur={stats.class_counts.get('amateur', 0)} "
+            f"studio={stats.class_counts.get('studio', 0)} "
+            f"unknown={stats.class_counts.get('unknown', 0)} conflicts={stats.conflicts}"
+        )
+        print("sources=" + json.dumps(stats.source_counts, sort_keys=True))
+        for provider, row in stats.providers.items():
+            print(f"{provider}=" + json.dumps(row, sort_keys=True))
         return
 
     if args.command == "seed-demo":
