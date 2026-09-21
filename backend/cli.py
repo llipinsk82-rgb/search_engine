@@ -68,6 +68,9 @@ async def _backfill_all(
     batch_size: int,
     batches_per_provider: int,
     max_seconds: float | None,
+    *,
+    enrich_unknown_batch_size: int = 0,
+    enrich_unknown_seconds: float = 0.0,
 ) -> None:
     providers = [
         provider
@@ -96,6 +99,18 @@ async def _backfill_all(
         )
     if failures:
         raise SystemExit(1)
+
+    if enrich_unknown_seconds > 0 and enrich_unknown_batch_size > 0:
+        report = await enrich_unknown_content(
+            PROVIDERS,
+            batch_size=enrich_unknown_batch_size,
+            max_seconds=enrich_unknown_seconds,
+        )
+        print(
+            f"content-enrichment: attempted={report.attempted} enriched={report.enriched} "
+            f"amateur={report.classified_amateur} studio={report.classified_studio} "
+            f"conflicts={report.conflicts} no_signal={report.no_signal} failures={report.failures}"
+        )
 
 
 async def _probe_one(provider: SearchProvider, limit: int) -> None:
@@ -194,6 +209,8 @@ def main() -> None:
     backfill_all.add_argument("--batch-size", type=int, default=5000)
     backfill_all.add_argument("--batches-per-provider", type=int, default=1)
     backfill_all.add_argument("--max-seconds", type=float)
+    backfill_all.add_argument("--enrich-unknown-batch-size", type=int, default=0)
+    backfill_all.add_argument("--enrich-unknown-seconds", type=float, default=0.0)
 
     probe = subparsers.add_parser("probe")
     probe.add_argument("provider")
@@ -294,6 +311,8 @@ def main() -> None:
                 args.batch_size,
                 args.batches_per_provider,
                 args.max_seconds,
+                enrich_unknown_batch_size=args.enrich_unknown_batch_size,
+                enrich_unknown_seconds=args.enrich_unknown_seconds,
             )
         )
         return

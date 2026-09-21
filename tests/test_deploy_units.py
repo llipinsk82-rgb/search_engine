@@ -17,3 +17,14 @@ class DeployUnitTests(unittest.TestCase):
         env=(DEPLOY/'search-engine.env.example').read_text()
         for x in ('SEARCH_BACKFILL_BATCH_SIZE=500','SEARCH_BACKFILL_BATCHES_PER_PROVIDER=1','SEARCH_BACKFILL_MAX_SECONDS=180'): self.assertIn(x,env)
 if __name__=='__main__': unittest.main()
+
+
+def test_backfill_service_includes_bounded_content_enrichment_defaults():
+    unit=(DEPLOY/"search-engine-backfill.service").read_text()
+    env=(DEPLOY/"search-engine.env.example").read_text()
+    for value in ("SEARCH_CONTENT_ENRICH_BATCH_SIZE=25", "SEARCH_CONTENT_ENRICH_MAX_SECONDS=45"):
+        assert value in unit
+        assert value in env
+    assert "--enrich-unknown-batch-size \"$SEARCH_CONTENT_ENRICH_BATCH_SIZE\"" in unit
+    assert "--enrich-unknown-seconds \"$SEARCH_CONTENT_ENRICH_MAX_SECONDS\"" in unit
+    assert unit.count("run-maintenance.sh /run/search_engine/maintenance.lock") == 1
