@@ -2199,3 +2199,76 @@ Exact next step:
 - deploy exact verified code SHA `671d9d57c993f8f51273efbf7a7d174852bbdc01` through the official deploy helper;
 - run one bounded enrichment cycle under the existing maintenance lock;
 - collect the same global/source/query measurements and accept only attributable `studio_label` increases.
+
+## 2026-09-21 — CONTENT CLASSIFICATION V2.1 PRODUCTION CLOSEOUT
+
+Production code build:
+`671d9d57c993f8f51273efbf7a7d174852bbdc01`
+
+Release branch:
+`feature/content-classification-v2-1`
+
+Scope delivered:
+- audited all 31 configured sitemap providers against current production Unknown samples;
+- added deterministic provider studio-evidence rule loader/extractor;
+- confirmed rules for xgroovy JSON-LD `productionCompany`, xcafe scoped microdata `productionCompany/name`, and porndoe JSON-LD `producer/name`;
+- rule-backed providers become scheduled content-enrichment eligible even without an explicit provider JSON flag;
+- existing studio always wins;
+- no title/provider/uploader/channel/category/recommendation inference was introduced;
+- ambiguous xvideos/xxxbule/sexplex evidence remains rejected.
+
+Verification before deploy:
+- full suite: 360 PASS;
+- compileall PASS;
+- `node --check frontend/app.js` PASS;
+- `git diff --check` PASS;
+- official helper CHECK PASS on exact code SHA.
+
+Production deploy:
+- official helper DEPLOY PASS on exact code build `671d9d57c993`;
+- `/api/health` PASS;
+- service active;
+- sync and backfill timers active;
+- post-deploy normal sync completed `Result=success`, `ExecMainStatus=0` before manual bounded enrichment.
+
+Bounded rollout acceptance:
+- maintenance lock acquired normally;
+- attempted=25;
+- enriched=21;
+- amateur=2;
+- studio=7;
+- conflicts=0;
+- no_signal=16;
+- failures=0.
+
+Before -> after evidence counts:
+- studio/studio_label: 131 -> 138 (+7);
+- amateur/tag_amateur: 98,781 -> 98,783 (+2);
+- unknown/conflict: 3 -> 3;
+- non-empty studio: 131 -> 138.
+
+Post-cycle `studio_label` attribution:
+- xgroovy=131;
+- porndoe=5;
+- xcafe=2.
+
+The +7 global `studio_label` delta exactly matches the bounded-cycle `classified_studio=7`, so the production change is attributable to explicit item-bound evidence from the approved rules.
+
+Cached query split before -> after (all / amateur / studio / unknown):
+- Tiny: 8516/1767/8/6741 -> 8516/1767/8/6741;
+- Sis: 4329/651/4/3674 -> 4329/651/4/3674;
+- Babe: 89408/17462/40/71906 -> 89411/17462/40/71909; the +3 rows are normal sync growth and remain Unknown.
+
+Important remaining limitation:
+- Studio coverage remains sparse because most providers expose no trustworthy item-bound studio/producer field under the accepted evidence policy;
+- this release proves and expands the safe pipeline but does not make the filter visually balanced immediately;
+- scheduled bounded enrichment will continue processing eligible Unknown rows naturally;
+- no mass crawl and no heuristic title/provider classification should be introduced to make the numbers look better.
+
+Preview status remains separate from this branch:
+- current production preview coverage is still constrained primarily by source/index coverage, not the card UI;
+- the previous Preview Coverage v2 audit remains authoritative; no preview policy was weakened by Classification v2.1.
+
+Exact next product step:
+- let scheduled content enrichment continue and re-measure Studio coverage after natural cycles;
+- separately run Preview Coverage v3 only as a fresh audit of previously AMBIGUOUS/live providers, accepting new preview support only when canonical item binding and safe playback are proven.

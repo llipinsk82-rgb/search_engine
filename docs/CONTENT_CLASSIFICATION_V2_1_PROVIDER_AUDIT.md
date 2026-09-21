@@ -68,3 +68,41 @@ Cached query splits (all / amateur / studio / unknown):
 - Tiny: 8516 / 1767 / 8 / 6741;
 - Sis: 4329 / 651 / 4 / 3674;
 - Babe: 89408 / 17462 / 40 / 71906.
+
+## Production rollout acceptance
+
+Deployed code build: `671d9d57c993`.
+
+Official helper deploy: PASS. Production health: PASS. Service and sync/backfill timers: active.
+
+One bounded content-enrichment cycle was run through the existing maintenance lock after the post-deploy sync completed:
+- attempted: 25;
+- enriched: 21;
+- classified amateur: 2;
+- classified studio: 7;
+- conflicts: 0;
+- no_signal: 16;
+- failures: 0.
+
+Immediate post-cycle production measurements:
+- active rows: 1,204,429;
+- unknown/none: 1,105,476;
+- unknown/conflict: 3;
+- amateur/tag_amateur: 98,783;
+- studio/studio_label: 138;
+- studio/tag_studio: 29;
+- non-empty studio: 138.
+
+`studio_label` attribution by provider:
+- xgroovy: 131;
+- porndoe: 5;
+- xcafe: 2.
+
+The exact `studio_label` delta is +7 (131 -> 138), matching the bounded-cycle `classified_studio=7` report. This verifies that the new porndoe/xcafe rules create only explicit `studio_label` evidence. No conflict increase occurred.
+
+Cached query splits after the cycle (all / amateur / studio / unknown):
+- Tiny: 8516 / 1767 / 8 / 6741;
+- Sis: 4329 / 651 / 4 / 3674;
+- Babe: 89411 / 17462 / 40 / 71909.
+
+The sample queries did not gain Studio hits in this first bounded cycle; Babe gained three new Unknown rows from the intervening normal sync. v2.1 is therefore production-verified as an evidence pipeline improvement, not as an immediate large-scale reclassification. Scheduled bounded enrichment continues naturally. A mass crawl remains explicitly out of scope.
