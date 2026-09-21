@@ -70,8 +70,8 @@ def _state(db: Path, item_id: str):
 
 def test_explicit_studio_upgrades_unknown_to_studio(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "p"))
-    provider = FakeProvider("p", studio="Example Studio")
+    _seed(db, ("a", "xcafe"))
+    provider = FakeProvider("xcafe", studio="Example Studio")
 
     report = asyncio.run(
         enrich_unknown_content([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
@@ -93,8 +93,8 @@ def test_explicit_studio_upgrades_unknown_to_studio(tmp_path: Path) -> None:
 
 def test_explicit_amateur_upgrades_unknown_to_amateur(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "p"))
-    provider = FakeProvider("p", tags=["homemade"])
+    _seed(db, ("a", "xvideos"))
+    provider = FakeProvider("xvideos", tags=["homemade"])
 
     report = asyncio.run(
         enrich_unknown_content([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
@@ -106,8 +106,8 @@ def test_explicit_amateur_upgrades_unknown_to_amateur(tmp_path: Path) -> None:
 
 def test_conflict_stays_unknown_with_conflict_source(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "p"))
-    provider = FakeProvider("p", tags=["homemade"], studio="Studio")
+    _seed(db, ("a", "xcafe"))
+    provider = FakeProvider("xcafe", tags=["homemade"], studio="Studio")
 
     report = asyncio.run(
         enrich_unknown_content([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
@@ -144,9 +144,9 @@ def test_no_signal_records_thirty_day_backoff(tmp_path: Path) -> None:
 
 def test_failure_is_isolated_and_uses_exponential_backoff(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "bad"), ("b", "good"))
+    _seed(db, ("a", "bad"), ("b", "xvideos"))
     bad = FakeProvider("bad", error=RuntimeError("boom"))
-    good = FakeProvider("good", tags=["homemade"])
+    good = FakeProvider("xvideos", tags=["homemade"])
 
     report = asyncio.run(
         enrich_unknown_content([bad, good], batch_size=10, max_seconds=10, path=db, now=NOW)
@@ -185,11 +185,11 @@ def test_failure_backoff_grows_and_is_capped(tmp_path: Path) -> None:
 
 def test_future_retry_is_skipped_then_becomes_eligible(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "p"))
-    provider = FakeProvider("p", tags=["homemade"])
+    _seed(db, ("a", "xvideos"))
+    provider = FakeProvider("xvideos", tags=["homemade"])
     record_content_enrichment_attempt(
         "a",
-        provider="p",
+        provider="xvideos",
         status="no_signal",
         failure_count=0,
         last_attempt_at=NOW,
@@ -232,7 +232,7 @@ def test_provider_without_capability_is_never_called(tmp_path: Path) -> None:
 
 def test_enrichment_preserves_unrelated_fields_and_existing_studio(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "p"))
+    _seed(db, ("a", "xcafe"))
     initialize(db)
     with sqlite3.connect(db) as conn:
         conn.execute(
@@ -243,7 +243,7 @@ def test_enrichment_preserves_unrelated_fields_and_existing_studio(tmp_path: Pat
             WHERE id='a'
             """
         )
-    provider = FakeProvider("p", tags=["professional"], studio="Replacement Studio")
+    provider = FakeProvider("xcafe", tags=["professional"], studio="Replacement Studio")
 
     asyncio.run(
         enrich_unknown_content([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
@@ -270,8 +270,8 @@ def test_enrichment_preserves_unrelated_fields_and_existing_studio(tmp_path: Pat
 
 def test_time_budget_stops_before_starting_next_fetch(tmp_path: Path, monkeypatch) -> None:
     db = tmp_path / "search.db"
-    _seed(db, ("a", "p"), ("b", "p"))
-    provider = FakeProvider("p", tags=["homemade"])
+    _seed(db, ("a", "xvideos"), ("b", "xvideos"))
+    provider = FakeProvider("xvideos", tags=["homemade"])
     ticks = iter([0.0, 0.5, 2.5])
     monkeypatch.setattr(content_enrichment, "monotonic", lambda: next(ticks))
 
@@ -310,6 +310,7 @@ def test_content_enrichment_reuses_fetched_preview_without_second_fetch(tmp_path
     )
     stored = get_item("reuse", path=db)
     assert provider.calls == ["reuse"]
-    assert report.classified_amateur == 1
+    assert report.classified_amateur == 0
     assert stored is not None
+    assert stored.content_class == "unknown"
     assert str(stored.preview_url) == "https://icdn05.bigfuck.tv/preview/reuse.mp4"

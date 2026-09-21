@@ -9,7 +9,7 @@ def test_update_content_evidence_is_additive_and_preserves_unrelated_fields(tmp_
     db = tmp_path / "search.db"
     item = SearchItem(
         id="evidence-1",
-        provider="demo",
+        provider="xcafe",
         title="Original title",
         url="https://example.com/watch/1",
         thumbnail="https://example.com/thumb.jpg",

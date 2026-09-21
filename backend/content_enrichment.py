@@ -147,6 +147,7 @@ async def enrich_unknown_content(
             continue
 
         classification = classify_content_evidence(
+            provider=stored.provider,
             tags=stored.tags,
             studio=stored.studio,
         )

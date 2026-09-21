@@ -81,7 +81,7 @@ def reclassify_content(
             limit = batch_size if remaining is None else min(batch_size, remaining)
             rows = conn.execute(
                 """
-                SELECT id, tags_json, studio, content_class, content_class_source
+                SELECT id, provider, tags_json, studio, content_class, content_class_source
                 FROM items
                 WHERE active = 1 AND id > ?
                 ORDER BY id
@@ -102,6 +102,7 @@ def reclassify_content(
 
                 tags = json.loads(row["tags_json"] or "[]")
                 classification = classify_content_evidence(
+                    provider=str(row["provider"]),
                     tags=list(tags),
                     studio=row["studio"],
                 )
