@@ -23,7 +23,7 @@ class ContentClassification:
 
 
 _AMATEUR_TOKENS = frozenset({"amateur", "homemade", "user generated"})
-_STUDIO_TOKENS = frozenset({"studio", "professional", "production"})
+_STUDIO_TOKENS = frozenset({"professional", "production"})
 _SPACE_RE = re.compile(r"\s+")
 
 

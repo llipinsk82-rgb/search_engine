@@ -21,6 +21,10 @@ def test_explicit_studio_metadata_tag() -> None:
     assert classify_content(tags=["professional"], studio=None) == "studio"
 
 
+def test_bare_studio_tag_is_ambiguous_and_stays_unknown() -> None:
+    assert classify_content(tags=["studio"], studio=None) == "unknown"
+
+
 def test_unrelated_tags_stay_unknown() -> None:
     assert classify_content(tags=["stepmom", "hd"], studio=None) == "unknown"
 
