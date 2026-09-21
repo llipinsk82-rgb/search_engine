@@ -54,6 +54,96 @@
     "storage_mode": "stable"
   },
   {
+    "provider": "mypornhere",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.mypornhere.com/videos/153917/sislovesme-naive-step-sis-tied-up-and-fucked-sis-loves-me/",
+    "preview_hosts": [
+      "www.mypornhere.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "mypornhere.com"
+    ],
+    "storage_mode": "stable"
+  },
+  {
+    "provider": "porndig",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.porndig.com/videos/123704/lana-rhoades-my-sis-wants-me.html",
+    "preview_hosts": [
+      "image-cdn.porndig.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "image-cdn.porndig.com"
+    ],
+    "storage_mode": "stable"
+  },
+  {
+    "provider": "pornid",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.pornid.xxx/the-tits-of-a-busty-teen-are-fucked-before-he-licks-her-pussy.html",
+    "preview_hosts": [
+      "pr1.pornid.xxx"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "pr1.pornid.xxx"
+    ],
+    "storage_mode": "stable"
+  },
+  {
+    "provider": "pussyspace",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.pussyspace.com/vid-6064257-virgin-step-sis-spring-break-mistake/",
+    "preview_hosts": [
+      "thumbs-gcore.xvideos-cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xvideos-cdn.com"
+    ],
+    "storage_mode": "stable"
+  },
+  {
+    "provider": "sexvid",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.sexvid.xxx/sensual-lesbian-pussy-licking-escapade-in-the-bath.html",
+    "preview_hosts": [
+      "pr1.sexvid.xxx"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "pr1.sexvid.xxx"
+    ],
+    "storage_mode": "stable"
+  },
+  {
     "provider": "spankbang",
     "rule_kind": "live_search_exact",
     "target_attribute": null,
@@ -148,6 +238,42 @@
     "storage_mode": "stable"
   },
   {
+    "provider": "xnxx",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.xnxx.com/video-15uc9vff/horny_step_sis_teasing_spying_--_napping_step_sis",
+    "preview_hosts": [
+      "thumb-cdn77.xnxx-cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xnxx-cdn.com"
+    ],
+    "storage_mode": "stable"
+  },
+  {
+    "provider": "xvideos",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.xvideos.com/video.hlbplfk351e/stepbrother_fucking_with_sensational_step-sis",
+    "preview_hosts": [
+      "thumb-cdn77.xvideos-cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xvideos-cdn.com"
+    ],
+    "storage_mode": "stable"
+  },
+  {
     "provider": "youjizz",
     "rule_kind": "live_search_exact",
     "target_attribute": null,
@@ -164,5 +290,23 @@
       ".youjizz.com"
     ],
     "storage_mode": "ephemeral"
+  },
+  {
+    "provider": "zbporn",
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://zbporn.com/videos/682348/ella-nova-is-getting-manhandled-by-a-tattooed-dude/",
+    "preview_hosts": [
+      "pr1.zbporn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "pr1.zbporn.com"
+    ],
+    "storage_mode": "stable"
   }
 ]

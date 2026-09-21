@@ -53,6 +53,64 @@ def select_exact_live_preview(items:list[Any],canonical_url:str)->str|None:
         if preview and normalize_canonical_url(preview):return preview
     return None
 
+def _host_matches_suffix(host: str, suffix: str) -> bool:
+    normalized=suffix.strip().lower().lstrip(".")
+    return bool(normalized) and (host==normalized or host.endswith("."+normalized))
+
+def _thumbnail_directory_preview(value: str, suffix: str) -> str|None:
+    p=urlsplit(str(value or "").strip())
+    host=(p.hostname or "").lower()
+    if p.scheme.lower()!="https" or not host or not _host_matches_suffix(host,suffix) or "/" not in p.path:
+        return None
+    path=p.path.rsplit("/",1)[0]+"/preview.mp4"
+    return urlunsplit(("https",p.netloc,path,"",""))
+
+def derive_custom_preview(provider: str, item: Any) -> str|None:
+    name=str(provider or "").strip().lower()
+    thumbnail=_get(item,"thumbnail") or ""
+    page_url=_get(item,"url") or ""
+
+    if name=="xvideos":
+        return _thumbnail_directory_preview(thumbnail,".xvideos-cdn.com")
+    if name=="xnxx":
+        return _thumbnail_directory_preview(thumbnail,".xnxx-cdn.com")
+    if name=="pussyspace":
+        return _thumbnail_directory_preview(thumbnail,".xvideos-cdn.com")
+
+    if name=="mypornhere":
+        page=urlsplit(page_url)
+        host=(page.hostname or "").lower()
+        match=re.search(r"/videos/(\d+)(?:/|$)",page.path)
+        if page.scheme.lower()!="https" or not _host_matches_suffix(host,"mypornhere.com") or not match:
+            return None
+        item_id=int(match.group(1)); bucket=(item_id//1000)*1000
+        return f"https://www.mypornhere.com/contents/videos/{bucket}/{item_id}/{item_id}_preview.mp4"
+
+    if name=="porndig":
+        thumb=urlsplit(thumbnail)
+        if (thumb.hostname or "").lower()!="image-cdn.porndig.com":
+            return None
+        match=re.search(r"/thumbs/(\d{4})/(\d{2})/(\d+)/",thumb.path)
+        if not match:return None
+        year,month,item_id=match.groups()
+        return f"https://image-cdn.porndig.com/previewclips/{year}/{month}/{item_id}/{item_id}_1.mp4"
+
+    shapes={
+        "sexvid":(".sexvid.xxx","https://pr1.sexvid.xxx","_short_preview.mp4"),
+        "pornid":(".pornid.xxx","https://pr1.pornid.xxx","_short_preview_480x270.mp4"),
+        "zbporn":(".zbporn.com","https://pr1.zbporn.com","_short_preview.mp4"),
+    }
+    shape=shapes.get(name)
+    if shape:
+        suffix,base,ending=shape
+        thumb=urlsplit(thumbnail); host=(thumb.hostname or "").lower()
+        if thumb.scheme.lower()!="https" or not _host_matches_suffix(host,suffix):return None
+        match=re.search(r"/contents/videos_screenshots/(\d+)/(\d+)/",thumb.path)
+        if not match:return None
+        bucket,item_id=match.groups()
+        return f"{base}/contents/videos/{bucket}/{item_id}/{item_id}{ending}"
+    return None
+
 def _attrs(tag:str)->dict[str,str]:
     return {m.group(1).lower():m.group(3) for m in re.finditer(r"""([\w:-]+)\s*=\s*(['"])(.*?)\2""",tag,re.S)}
 

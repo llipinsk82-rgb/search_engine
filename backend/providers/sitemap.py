@@ -18,7 +18,7 @@ from xml.etree import ElementTree
 from backend.content_evidence_rules import extract_studio_evidence, has_content_evidence_rule
 from backend.media_policy import media_url_allowed
 from backend.models import SearchItem
-from backend.preview_rules import PREVIEW_RULES, extract_preview_url
+from backend.preview_rules import PREVIEW_RULES, derive_custom_preview, extract_preview_url
 from backend.providers.base import SearchProvider
 
 _USER_AGENT = "SearchEngineIndexer/0.5"
@@ -474,11 +474,14 @@ class SitemapProvider(SearchProvider):
         if not self.preview_resolution:
             return None
         rule = PREVIEW_RULES[self.name]
-        try:
-            html = await asyncio.to_thread(self._fetch_text, str(item.url))
-        except Exception:
-            return None
-        candidate = extract_preview_url(rule, html, str(item.url))
+        if rule.kind == "custom":
+            candidate = derive_custom_preview(self.name, item)
+        else:
+            try:
+                html = await asyncio.to_thread(self._fetch_text, str(item.url))
+            except Exception:
+                return None
+            candidate = extract_preview_url(rule, html, str(item.url))
         if not candidate or not media_url_allowed(self.name, "preview", candidate):
             return None
         return candidate
