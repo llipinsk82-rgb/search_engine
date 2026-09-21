@@ -99,12 +99,29 @@ def test_content_class_columns_are_added_without_losing_existing_rows(tmp_path: 
 
     with sqlite3.connect(db) as conn:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(items)")}
-        assert {"content_class", "studio"} <= columns
+        assert {"content_class", "studio", "content_class_source"} <= columns
         row = conn.execute(
-            "SELECT title, content_class, studio FROM items WHERE id='legacy'"
+            "SELECT title, content_class, studio, content_class_source FROM items WHERE id='legacy'"
         ).fetchone()
-        assert row == ("Legacy Amateur Title", "unknown", None)
+        assert row == ("Legacy Amateur Title", "unknown", None, "none")
         marker = conn.execute(
             "SELECT state_value FROM provider_state WHERE provider='__system__' AND state_key='migration:content_class_index_v1'"
         ).fetchone()
         assert marker == ("done",)
+
+def test_content_enrichment_state_schema_is_additive(tmp_path: Path):
+    db = tmp_path / "content-enrichment.db"
+    index._initialized_paths.discard(str(db.resolve()))
+    index.initialize(db)
+    with sqlite3.connect(db) as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(content_enrichment_state)")}
+        assert columns == {
+            "item_id", "provider", "status", "failure_count",
+            "last_attempt_at", "next_attempt_at",
+        }
+        pk = [
+            row
+            for row in conn.execute("PRAGMA table_info(content_enrichment_state)")
+            if row[5] == 1
+        ]
+        assert [row[1] for row in pk] == ["item_id"]

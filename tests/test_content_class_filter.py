@@ -23,7 +23,7 @@ def ids(rows):
 
 def test_index_filter_none_returns_all_and_explicit_values_are_exact(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    upsert_items([item("a", content_class="amateur"), item("s", content_class="studio", studio="Example Studio"), item("u")], path=db)
+    upsert_items([item("a", tags=["homemade"]), item("s", studio="Example Studio"), item("u")], path=db)
     assert set(ids(search_items("", path=db, content_class=None))) == {"a", "s", "u"}
     assert ids(search_items("", path=db, content_class="amateur")) == ["a"]
     assert ids(search_items("", path=db, content_class="studio")) == ["s"]

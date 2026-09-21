@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from backend.content_class import classify_content
+from backend.content_class import classify_content_evidence
 from backend.models import SearchItem, SortMode
 from backend.settings import DB_PATH
 
@@ -59,6 +59,7 @@ def initialize(path: Path = DB_PATH) -> None:
                     rating_count INTEGER,
                     quality TEXT,
                     content_class TEXT NOT NULL DEFAULT 'unknown',
+                    content_class_source TEXT NOT NULL DEFAULT 'none',
                     studio TEXT,
                     age_check_status TEXT NOT NULL DEFAULT 'unknown',
                     tags_json TEXT NOT NULL DEFAULT '[]',
@@ -84,6 +85,15 @@ def initialize(path: Path = DB_PATH) -> None:
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (provider, state_key)
                 );
+
+                CREATE TABLE IF NOT EXISTS content_enrichment_state (
+                    item_id TEXT PRIMARY KEY,
+                    provider TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    failure_count INTEGER NOT NULL DEFAULT 0,
+                    last_attempt_at TEXT NOT NULL,
+                    next_attempt_at TEXT
+                );
                 """
             )
             columns = {
@@ -99,6 +109,7 @@ def initialize(path: Path = DB_PATH) -> None:
                 "rating_percent": "REAL",
                 "rating_count": "INTEGER",
                 "content_class": "TEXT NOT NULL DEFAULT 'unknown'",
+                "content_class_source": "TEXT NOT NULL DEFAULT 'none'",
                 "studio": "TEXT",
             }
             for name, ddl in additions.items():
@@ -155,6 +166,22 @@ def initialize(path: Path = DB_PATH) -> None:
                     ("__system__", content_class_index_key),
                 )
 
+            content_enrichment_index_key = "migration:content_enrichment_index_v1"
+            content_enrichment_index_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", content_enrichment_index_key),
+            ).fetchone()
+            if content_enrichment_index_done is None:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_content_enrichment_next_attempt "
+                    "ON content_enrichment_state(next_attempt_at)"
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) "
+                    "VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", content_enrichment_index_key),
+                )
+
             # Older indexed Beeg rows used /-0/<id>, while the accepted public
             # route is /-0<id>. Run the data migration once instead of scanning
             # the full production index on every API worker startup.
@@ -189,18 +216,16 @@ def _upsert_item_row(
     source_order: int = 0,
 ) -> None:
     tags_json = json.dumps(item.tags, ensure_ascii=False)
-    content_class = (
-        item.content_class
-        if item.content_class != "unknown"
-        else classify_content(tags=item.tags, studio=item.studio)
-    )
+    classification = classify_content_evidence(tags=item.tags, studio=item.studio)
+    content_class = classification.content_class
+    content_class_source = classification.source
     conn.execute(
         """
         INSERT INTO items (
             id, provider, title, url, thumbnail, preview_url, duration_seconds,
             published_at, views, rating_percent, rating_count, quality,
-            content_class, studio, age_check_status, tags_json, indexed_at, source_order, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
+            content_class, content_class_source, studio, age_check_status, tags_json, indexed_at, source_order, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 1)
         ON CONFLICT(id) DO UPDATE SET
             provider=excluded.provider,
             title=excluded.title,
@@ -214,6 +239,7 @@ def _upsert_item_row(
             rating_count=excluded.rating_count,
             quality=excluded.quality,
             content_class=excluded.content_class,
+            content_class_source=excluded.content_class_source,
             studio=excluded.studio,
             age_check_status=CASE
                 WHEN excluded.age_check_status = 'unknown'
@@ -239,6 +265,7 @@ def _upsert_item_row(
             item.rating_count,
             item.quality,
             content_class,
+            content_class_source,
             item.studio,
             item.age_check_status,
             tags_json,
@@ -586,6 +613,170 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         age_check_status=row["age_check_status"],
         score=0.0,
     )
+
+
+
+@dataclass(frozen=True)
+class ContentEnrichmentCandidate:
+    item: SearchItem
+    failure_count: int = 0
+
+
+def update_content_evidence(
+    item_id: str,
+    *,
+    tags: list[str],
+    studio: str | None,
+    path: Path = DB_PATH,
+) -> bool:
+    initialize(path)
+    with _connect(path) as conn:
+        row = conn.execute(
+            """
+            SELECT id, provider, title, url, thumbnail, preview_url,
+                   duration_seconds, published_at, views, rating_percent, rating_count,
+                   quality, content_class, content_class_source, studio,
+                   age_check_status, tags_json, source_order
+            FROM items
+            WHERE id = ? AND active = 1
+            """,
+            (item_id,),
+        ).fetchone()
+        if row is None:
+            return False
+
+        current_tags = json.loads(row["tags_json"] or "[]")
+        merged_tags = list(dict.fromkeys([*current_tags, *tags]))
+        current_studio = row["studio"]
+        incoming_studio = (studio or "").strip() or None
+        merged_studio = current_studio or incoming_studio
+        classification = classify_content_evidence(
+            tags=merged_tags,
+            studio=merged_studio,
+        )
+
+        tags_changed = merged_tags != current_tags
+        changed = (
+            tags_changed
+            or merged_studio != current_studio
+            or classification.content_class != row["content_class"]
+            or classification.source != row["content_class_source"]
+        )
+        if not changed:
+            return False
+
+        conn.execute(
+            """
+            UPDATE items
+            SET tags_json = ?,
+                studio = ?,
+                content_class = ?,
+                content_class_source = ?,
+                indexed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                json.dumps(merged_tags, ensure_ascii=False),
+                merged_studio,
+                classification.content_class,
+                classification.source,
+                item_id,
+            ),
+        )
+        if tags_changed:
+            conn.execute("DELETE FROM items_fts WHERE id = ?", (item_id,))
+            conn.execute(
+                "INSERT INTO items_fts(id, title, tags, provider) VALUES (?, ?, ?, ?)",
+                (item_id, row["title"], " ".join(merged_tags), row["provider"]),
+            )
+        return True
+
+
+def record_content_enrichment_attempt(
+    item_id: str,
+    *,
+    provider: str,
+    status: str,
+    failure_count: int,
+    last_attempt_at: datetime,
+    next_attempt_at: datetime | None,
+    path: Path = DB_PATH,
+) -> None:
+    initialize(path)
+    last_value = last_attempt_at.astimezone(timezone.utc).isoformat()
+    next_value = (
+        next_attempt_at.astimezone(timezone.utc).isoformat()
+        if next_attempt_at is not None
+        else None
+    )
+    with _connect(path) as conn:
+        conn.execute(
+            """
+            INSERT INTO content_enrichment_state(
+                item_id, provider, status, failure_count, last_attempt_at, next_attempt_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET
+                provider=excluded.provider,
+                status=excluded.status,
+                failure_count=excluded.failure_count,
+                last_attempt_at=excluded.last_attempt_at,
+                next_attempt_at=excluded.next_attempt_at
+            """,
+            (
+                item_id,
+                provider,
+                status,
+                max(0, int(failure_count)),
+                last_value,
+                next_value,
+            ),
+        )
+
+
+def list_content_enrichment_candidates(
+    provider_names: set[str] | list[str] | tuple[str, ...],
+    *,
+    limit: int,
+    now: datetime,
+    path: Path = DB_PATH,
+) -> list[ContentEnrichmentCandidate]:
+    initialize(path)
+    names = sorted({name.strip() for name in provider_names if name.strip()})
+    if not names or limit < 1:
+        return []
+
+    placeholders = ",".join("?" for _ in names)
+    now_value = now.astimezone(timezone.utc).isoformat()
+    sql = f"""
+        SELECT i.id, COALESCE(s.failure_count, 0) AS failure_count
+        FROM items i
+        LEFT JOIN content_enrichment_state s ON s.item_id = i.id
+        WHERE i.active = 1
+          AND i.content_class = 'unknown'
+          AND i.content_class_source = 'none'
+          AND i.url LIKE 'https://%'
+          AND i.provider IN ({placeholders})
+          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= ?)
+        ORDER BY i.id
+        LIMIT ?
+    """
+    with _connect(path) as conn:
+        rows = conn.execute(
+            sql,
+            [*names, now_value, max(1, int(limit))],
+        ).fetchall()
+
+    result: list[ContentEnrichmentCandidate] = []
+    for row in rows:
+        item = get_item(str(row["id"]), path=path)
+        if item is not None:
+            result.append(
+                ContentEnrichmentCandidate(
+                    item=item,
+                    failure_count=int(row["failure_count"] or 0),
+                )
+            )
+    return result
 
 
 def update_item_thumbnail(
