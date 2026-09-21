@@ -109,19 +109,39 @@ function buildCard(item, preview) {
     video.src = preview.url;
     media.appendChild(video);
 
+    const playButton = document.createElement("button");
+    playButton.type = "button";
+    playButton.className = "preview-play";
+    playButton.textContent = "▶";
+    playButton.setAttribute("aria-label", "Play preview");
+    media.appendChild(playButton);
+
     const start = () => {
       media.classList.add("playing");
-      video.play().catch(() => {});
+      playButton.textContent = "❚❚";
+      playButton.setAttribute("aria-label", "Stop preview");
+      video.play().catch(() => {
+        playButton.textContent = "▶";
+        playButton.setAttribute("aria-label", "Play preview");
+        media.classList.remove("playing");
+      });
     };
     const stop = () => {
       video.pause();
       video.currentTime = 0;
       media.classList.remove("playing");
+      playButton.textContent = "▶";
+      playButton.setAttribute("aria-label", "Play preview");
     };
     media.addEventListener("mouseenter", start);
     media.addEventListener("mouseleave", stop);
+    playButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      video.paused ? start() : stop();
+    });
     media.addEventListener("click", () => video.paused ? start() : stop());
     video.addEventListener("error", () => {
+      playButton.hidden = true;
       card.dataset.previewError = "1";
       const sourceBadge = card.querySelector(".badge.current, .badge.candidate");
       if (sourceBadge) {

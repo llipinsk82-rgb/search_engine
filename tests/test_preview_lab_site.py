@@ -45,3 +45,14 @@ def test_preview_lab_uses_unauthenticated_test_api_only() -> None:
     assert "`/api/preview/" not in app
     assert "`/api/search?" not in app
     assert 'fetch("/api/providers"' not in app
+
+
+def test_preview_cards_have_visible_play_button_and_toggle_contract() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    css = (SITE / "styles.css").read_text(encoding="utf-8")
+    assert 'className = "preview-play"' in app
+    assert 'textContent = "▶"' in app
+    assert 'setAttribute("aria-label", "Play preview")' in app
+    assert 'playButton.addEventListener("click"' in app
+    assert 'event.stopPropagation()' in app
+    assert ".preview-play" in css
