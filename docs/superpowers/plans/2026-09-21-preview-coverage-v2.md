@@ -41,8 +41,8 @@
 **Files:**
 - Create: `docs/PREVIEW_COVERAGE_V2_PROVIDER_AUDIT.md`
 - Create: `tests/fixtures/preview_audit_manifest.json`
-- Create directory/files: `tests/fixtures/preview_pages/<provider>-positive.html`
-- Create directory/files when needed: `tests/fixtures/preview_pages/<provider>-negative.html`
+- Create one positive fixture per `PLAYBACK_CONFIRMED` provider under `tests/fixtures/preview_pages/`, named `${provider}-positive.html`
+- Create one negative fixture per `PLAYBACK_CONFIRMED` provider under `tests/fixtures/preview_pages/`, named `${provider}-negative.html`
 - Create: `tests/test_preview_provider_audit.py`
 - No product-code changes in this task.
 
@@ -58,6 +58,7 @@ Manifest schema:
   "status": "PLAYBACK_CONFIRMED",
   "sample_count": 3,
   "attribute_names": ["data-preview"],
+  "json_fields": [],
   "preview_hosts": ["cdn.example"],
   "media_type": "video/mp4",
   "playback_mode": "direct",
@@ -118,11 +119,12 @@ def test_playback_confirmed_rows_have_reduced_fixture_and_policy_evidence():
         if row["status"] != "PLAYBACK_CONFIRMED":
             continue
         assert row["sample_count"] >= 1
-        assert row["attribute_names"]
+        assert row["attribute_names"] or row["json_fields"]
         assert row["preview_hosts"]
         assert row["playback_mode"] in {"direct", "proxy"}
         assert row["policy_host_suffixes"]
         assert (ROOT / row["fixture"]).is_file()
+        assert (ROOT / row["negative_fixture"]).is_file()
 
 
 def test_policy_blocked_rows_do_not_claim_playback():
@@ -191,10 +193,13 @@ git commit -m "docs: audit preview provider evidence"
 **Interfaces:**
 - Consumes: Task 1 manifest and reduced fixtures.
 - Produces:
-  - `extract_preview_url(provider: str, html: str, page_url: str) -> str | None`
+  - `extract_preview_url(html: str, page_url: str, *, attribute_names: tuple[str, ...], json_fields: tuple[str, ...]) -> str | None`
   - `SitemapProvider.preview_enrichment: bool`
-  - `async SitemapProvider.enrich_preview(item: SearchItem) -> SearchItem`
-  - `_merge_enriched_item()` that preserves an existing preview and fills a missing preview from fetched evidence.
+  - `SitemapProvider.preview_attribute_names: tuple[str, ...]`
+  - `SitemapProvider.preview_json_fields: tuple[str, ...]`
+  - `async SitemapProvider.extract_preview(item: SearchItem) -> str | None`
+  - `_fetch_page_item()` that strips any extracted preview rejected by media policy before returning a `SearchItem`
+  - `_merge_enriched_item()` that preserves an existing preview and fills a missing policy-allowed preview from fetched evidence.
 
 - [ ] **Step 1: Add failing capability tests**
 
@@ -228,11 +233,19 @@ def test_production_preview_capabilities_equal_playback_confirmed_audit():
     audit = _rows(MANIFEST)
     configured = _rows(CATALOG)
     expected = {
-        row["provider"] for row in audit
+        row["provider"]: (
+            tuple(row["attribute_names"]),
+            tuple(row["json_fields"]),
+        )
+        for row in audit
         if row["status"] == "PLAYBACK_CONFIRMED"
     }
     enabled = {
-        row["name"] for row in configured
+        row["name"]: (
+            tuple(row.get("preview_attribute_names", [])),
+            tuple(row.get("preview_json_fields", [])),
+        )
+        for row in configured
         if row.get("preview_enrichment") is True
     }
     assert enabled == expected
@@ -262,9 +275,10 @@ def test_every_playback_confirmed_fixture_extracts_exact_audited_preview():
             continue
         html = (ROOT / row["fixture"]).read_text()
         preview = extract_preview_url(
-            row["provider"],
             html,
             f"https://{row['provider']}.invalid/video/1",
+            attribute_names=tuple(row["attribute_names"]),
+            json_fields=tuple(row["json_fields"]),
         )
         assert preview is not None
         assert preview.startswith("https://")
@@ -277,9 +291,10 @@ def test_negative_fixtures_do_not_extract_preview():
             continue
         html = (ROOT / path).read_text()
         assert extract_preview_url(
-            row["provider"],
             html,
             f"https://{row['provider']}.invalid/video/1",
+            attribute_names=tuple(row["attribute_names"]),
+            json_fields=tuple(row["json_fields"]),
         ) is None
 
 
@@ -292,7 +307,12 @@ def test_generic_full_video_fields_are_not_preview_evidence():
       </script>
       <video src="https://cdn.example/arbitrary.mp4"></video>
     """
-    assert extract_preview_url("unknown", html, "https://example/video/1") is None
+    assert extract_preview_url(
+        html,
+        "https://example/video/1",
+        attribute_names=(),
+        json_fields=(),
+    ) is None
 ```
 
 The extraction implementation must use only exact attribute/field names recorded in the Task 1 manifest. It must not search arbitrary media URLs.
@@ -321,6 +341,34 @@ def test_merge_fills_missing_preview_without_replacing_existing_preview():
     assert str(merged_existing.preview_url) == "https://cdn.example/original.mp4"
 ```
 
+Add a page-fetch policy test:
+
+```python
+def test_page_fetch_strips_preview_rejected_by_media_policy(monkeypatch):
+    provider = SitemapProvider(
+        name="example",
+        sitemap_url="https://example.com/sitemap.xml",
+        obey_robots=False,
+        preview_attribute_names=("data-preview",),
+    )
+    monkeypatch.setattr(
+        provider,
+        "_fetch_text",
+        lambda _url: (
+            '<meta property="og:title" content="X">'
+            '<meta property="og:image" content="https://example.com/x.jpg">'
+            '<div data-preview="https://evil.example/preview.mp4"></div>'
+        ),
+    )
+    monkeypatch.setattr(
+        "backend.providers.sitemap.media_url_allowed",
+        lambda *_args: False,
+    )
+    fetched = provider._fetch_page_item("https://example.com/video/1")
+    assert fetched is not None
+    assert fetched.preview_url is None
+```
+
 - [ ] **Step 4: Run tests and verify RED**
 
 ```bash
@@ -335,19 +383,15 @@ Expected: FAIL because capability/extraction/merge support is absent.
 
 - [ ] **Step 5: Implement `backend/preview_extraction.py`**
 
-Use one provider-scoped registry derived from Task 1 evidence. The implementation shape is:
+The extractor receives only the exact rule names supplied by the audited provider configuration; it has no provider-name fallback and no broad media scan.
 
 ```python
 from __future__ import annotations
 
 import html
+import json
 import re
 from urllib.parse import urljoin
-
-
-_PROVIDER_ATTRIBUTES: dict[str, tuple[str, ...]] = {
-    # populate exactly from Task 1 PLAYBACK_CONFIRMED manifest rows
-}
 
 
 def _attribute_url(source: str, name: str) -> str | None:
@@ -359,10 +403,45 @@ def _attribute_url(source: str, name: str) -> str | None:
     return html.unescape(match.group("url")).strip() if match else None
 
 
-def extract_preview_url(provider: str, html_source: str, page_url: str) -> str | None:
-    names = _PROVIDER_ATTRIBUTES.get(provider.strip().lower(), ())
-    for name in names:
-        value = _attribute_url(html_source, name)
+def _json_field_url(source: str, field_names: tuple[str, ...]) -> str | None:
+    if not field_names:
+        return None
+    script_re = re.compile(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        re.IGNORECASE | re.DOTALL,
+    )
+    for raw in script_re.findall(source):
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        stack = payload if isinstance(payload, list) else [payload]
+        for obj in stack:
+            if not isinstance(obj, dict):
+                continue
+            for field in field_names:
+                value = obj.get(field)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+    return None
+
+
+def extract_preview_url(
+    html_source: str,
+    page_url: str,
+    *,
+    attribute_names: tuple[str, ...],
+    json_fields: tuple[str, ...],
+) -> str | None:
+    values = [
+        *(
+            value
+            for name in attribute_names
+            if (value := _attribute_url(html_source, name))
+        ),
+        _json_field_url(html_source, json_fields),
+    ]
+    for value in values:
         if not value:
             continue
         resolved = urljoin(page_url, value)
@@ -371,7 +450,7 @@ def extract_preview_url(provider: str, html_source: str, page_url: str) -> str |
     return None
 ```
 
-If Task 1 proves a JSON field rather than an HTML attribute for a provider, add one provider-scoped extractor function for that exact field and fixture; do not broaden the generic extractor.
+The caller supplies only Task 1 audited names. Therefore `contentUrl`, `embedUrl`, arbitrary `<video src>`, and unlisted JSON keys are invisible to this function.
 
 - [ ] **Step 6: Wire provider capability and extraction**
 
@@ -379,18 +458,47 @@ In `SitemapProvider.__init__()` add:
 
 ```python
 preview_enrichment: bool = False
+preview_attribute_names: tuple[str, ...] = ()
+preview_json_fields: tuple[str, ...] = ()
+
 self.preview_enrichment = bool(preview_enrichment)
+self.preview_attribute_names = tuple(preview_attribute_names)
+self.preview_json_fields = tuple(preview_json_fields)
 ```
 
-Pass `preview_enrichment=bool(row.get("preview_enrichment", False))` from `backend/providers/__init__.py`.
-
-In `parse_video_metadata()`:
+Pass from `backend/providers/__init__.py`:
 
 ```python
-preview_url = extract_preview_url(provider, html, page_url)
+preview_enrichment=bool(row.get("preview_enrichment", False)),
+preview_attribute_names=tuple(row.get("preview_attribute_names", [])),
+preview_json_fields=tuple(row.get("preview_json_fields", [])),
 ```
 
-and pass `preview_url=preview_url` to `SearchItem`.
+Extend `parse_video_metadata()` with keyword-only `preview_attribute_names` and `preview_json_fields`, call:
+
+```python
+preview_url = extract_preview_url(
+    html,
+    page_url,
+    attribute_names=preview_attribute_names,
+    json_fields=preview_json_fields,
+)
+```
+
+and pass the raw explicit candidate as `preview_url` to `SearchItem`.
+
+In `SitemapProvider._fetch_page_item()`, pass `self.preview_attribute_names` and `self.preview_json_fields` into `parse_video_metadata()`. Before returning the parsed item, enforce the storage invariant:
+
+```python
+if (
+    parsed is not None
+    and parsed.preview_url is not None
+    and not media_url_allowed(self.name, "preview", str(parsed.preview_url))
+):
+    parsed = parsed.model_copy(update={"preview_url": None})
+```
+
+Thus ordinary sync/core/content page-fetch paths can only persist policy-playable previews.
 
 In `_merge_enriched_item()` add:
 
@@ -398,17 +506,35 @@ In `_merge_enriched_item()` add:
 "preview_url": base.preview_url or fetched.preview_url,
 ```
 
-Add:
+Add a raw preview-only fetch path for the dedicated enrichment engine so it can distinguish `blocked_policy` from `no_preview`:
 
 ```python
-async def enrich_preview(self, item: SearchItem) -> SearchItem:
-    fetched = await asyncio.to_thread(self._fetch_page_item, str(item.url))
-    return self._merge_enriched_item(item, fetched)
+def _extract_preview_sync(self, page_url: str) -> str | None:
+    try:
+        html_source = self._fetch_text(page_url)
+        return extract_preview_url(
+            html_source,
+            page_url,
+            attribute_names=self.preview_attribute_names,
+            json_fields=self.preview_json_fields,
+        )
+    finally:
+        if self.delay_seconds:
+            time.sleep(self.delay_seconds)
+
+
+async def extract_preview(self, item: SearchItem) -> str | None:
+    return await asyncio.to_thread(self._extract_preview_sync, str(item.url))
 ```
 
 - [ ] **Step 7: Enable only audited production providers**
 
-In `deploy/search-engine-providers.example.json`, set `"preview_enrichment": true` only for names whose Task 1 manifest status is exactly `PLAYBACK_CONFIRMED`.
+In `deploy/search-engine-providers.example.json`, for every Task 1 row whose status is exactly `PLAYBACK_CONFIRMED`:
+- set `preview_enrichment` to `true`;
+- set `preview_attribute_names` to the exact `attribute_names` array from that manifest row;
+- set `preview_json_fields` to the exact `json_fields` array from that manifest row.
+
+The catalog-contract test compares these values byte-for-byte with the committed manifest, so execution cannot invent or broaden a rule. Providers with any other audit status have no `preview_enrichment: true` flag.
 
 - [ ] **Step 8: Run extraction/capability suites**
 
@@ -504,7 +630,7 @@ Assert:
 - only `preview_url` changes in the item row;
 - `indexed_at`, FTS, content class/source, source order, age state, tags, studio, thumbnail, title and URL remain unchanged.
 
-Also assert empty/non-HTTPS input raises `ValueError`.
+Also assert empty/non-HTTPS input raises `ValueError`, and an HTTPS URL rejected by `media_url_allowed(stored_provider, "preview", url)` raises `ValueError` without changing the row.
 
 - [ ] **Step 3: Add failing candidate-selection tests**
 
@@ -583,8 +709,10 @@ def update_preview_url(
 Rules:
 - trim the URL;
 - require `https://`;
-- select active row;
-- return `False` when row missing or already has any non-empty preview;
+- select the active row including its stored provider;
+- return `False` when row is missing or already has any non-empty preview;
+- require `media_url_allowed(row["provider"], "preview", preview_url)` before any write;
+- raise `ValueError` on a rejected candidate so policy cannot be bypassed by a future caller;
 - update only `preview_url`;
 - do not modify `indexed_at` or FTS.
 
@@ -668,13 +796,14 @@ git commit -m "feat: persist bounded preview enrichment state"
 
 **Interfaces:**
 - Consumes:
-  - providers with `preview_enrichment=True` and callable `enrich_preview()`;
+  - providers with `preview_enrichment=True` and callable `extract_preview()`;
   - Task 3 candidate/state/update helpers;
   - `media_url_allowed()`.
 - Produces:
   - `PreviewEnrichmentReport`
   - `async enrich_missing_previews(providers, *, batch_size, max_seconds, path=DB_PATH, now=None) -> PreviewEnrichmentReport`
   - CLI `enrich-previews`
+  - CLI `preview-coverage-stats`
   - opportunistic persistence of a policy-playable preview already returned by Content Classification page enrichment, without a second page request.
 
 - [ ] **Step 1: Add failing preview-engine tests**
@@ -731,6 +860,14 @@ Assert exact arguments and one summary line containing:
 preview-enrichment: attempted=... extracted=... stored=... playable=... no_preview=... blocked_policy=... failures=...
 ```
 
+Add a second CLI test for:
+
+```text
+search-engine preview-coverage-stats
+```
+
+Patch `preview_coverage_stats()` and assert output includes total/stored/playable percentages plus provider/state summaries.
+
 - [ ] **Step 4: Run tests and verify RED**
 
 ```bash
@@ -762,12 +899,12 @@ Use the same `_failure_delay()` formula as content enrichment.
 
 Algorithm:
 
-1. build eligible map from providers with `preview_enrichment=True` and callable `enrich_preview`;
+1. build eligible map from providers with `preview_enrichment=True` and callable `extract_preview`;
 2. list at most `batch_size` eligible candidates;
 3. stop before starting a request once monotonic deadline is reached;
-4. call `await provider.enrich_preview(item)`;
-5. if no returned `preview_url`, record `no_preview` +30d;
-6. increment `extracted` when explicit preview exists;
+4. call `await provider.extract_preview(item)`;
+5. if it returns no URL, record `no_preview` +30d;
+6. increment `extracted` when an explicit candidate URL exists;
 7. validate `media_url_allowed(item.provider, "preview", url)`;
 8. if rejected, record `blocked_policy` +30d and do not write;
 9. if allowed, call `update_preview_url`;
@@ -791,7 +928,7 @@ if (
 
 Do not mark preview retry state from this opportunistic path; successful stored previews are naturally excluded. A rejected preview remains for the dedicated preview engine to classify as `blocked_policy`.
 
-- [ ] **Step 8: Add CLI command**
+- [ ] **Step 8: Add CLI commands**
 
 `backend/cli.py`:
 
@@ -799,9 +936,16 @@ Do not mark preview retry state from this opportunistic path; successful stored 
 enrich-previews
   --batch-size 10
   --max-seconds 30
+
+preview-coverage-stats
 ```
 
-Run `asyncio.run(enrich_missing_previews(PROVIDERS, ...))` and print the deterministic report line.
+`enrich-previews` runs `asyncio.run(enrich_missing_previews(PROVIDERS, ...))` and prints the deterministic report line.
+
+`preview-coverage-stats` calls `preview_coverage_stats()` and prints:
+- one global `total/stored/playable/stored_percent/playable_percent` line;
+- one `states=` JSON line;
+- one deterministic provider line per provider.
 
 - [ ] **Step 9: Run enrichment/CLI suites**
 
