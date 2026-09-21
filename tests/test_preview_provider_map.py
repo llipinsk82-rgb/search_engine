@@ -41,7 +41,11 @@ def test_real_live_persistent_capabilities_follow_audited_storage_mode():
     live = {adapter.name: adapter for adapter in LIVE_ADAPTERS}
     for name, adapter in live.items():
         rule = rules.get(name)
-        expected = rule is not None and rule.storage_mode == "stable"
+        expected = (
+            rule is not None
+            and rule.kind == "live_search_exact"
+            and rule.storage_mode == "stable"
+        )
         assert adapter.preview_enrichment is expected
 
 
@@ -71,8 +75,30 @@ def test_resolution_capability_includes_ephemeral_rules():
     rules = importlib.import_module("backend.preview_rules").PREVIEW_RULES
     live = {adapter.name: adapter for adapter in LIVE_ADAPTERS}
     for name, adapter in live.items():
-        assert adapter.preview_resolution is (name in rules)
+        rule = rules.get(name)
+        expected = rule is not None and rule.kind == "live_search_exact"
+        assert adapter.preview_resolution is expected
     assert live["tube8"].preview_resolution is True
     assert live["tube8"].preview_enrichment is False
     assert live["bigfuck"].preview_resolution is True
     assert live["bigfuck"].preview_enrichment is True
+
+
+def test_custom_rules_enable_sitemap_provider_not_same_named_live_adapter():
+    rules = importlib.import_module("backend.preview_rules").PREVIEW_RULES
+    for name in ("xvideos", "xnxx"):
+        assert rules[name].kind == "custom"
+        index = SitemapProvider(
+            name=name,
+            sitemap_url=f"https://www.{name}.com/sitemap.xml",
+            obey_robots=False,
+        )
+        live = next((adapter for adapter in LIVE_ADAPTERS if adapter.name == name), None)
+        assert index.preview_resolution is True
+        assert index.preview_enrichment is True
+        if live is not None:
+            assert live.preview_resolution is False
+            assert live.preview_enrichment is False
+            assert _map([index], [live])[name] is index
+        else:
+            assert _map([index], [])[name] is index

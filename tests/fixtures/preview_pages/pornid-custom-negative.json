@@ -1,0 +1,9 @@
+{
+  "item": {
+    "provider": "pornid",
+    "title": "Sample",
+    "url": "https://www.pornid.xxx/sample.html",
+    "thumbnail": "https://evil.example/contents/videos_screenshots/84000/84633/preview.jpg"
+  },
+  "expected_preview": null
+}

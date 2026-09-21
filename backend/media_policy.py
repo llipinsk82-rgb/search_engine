@@ -35,6 +35,14 @@ _PREVIEW_SUFFIXES: dict[str, tuple[str, ...]] = {
     "xhamster": (".xhcdn.com",),
     "pornhub": (".phncdn.com",),
     "tube8": (".t8cdn.com",),
+    "xvideos": (".xvideos-cdn.com",),
+    "xnxx": (".xnxx-cdn.com",),
+    "mypornhere": ("mypornhere.com",),
+    "pussyspace": (".xvideos-cdn.com",),
+    "porndig": ("image-cdn.porndig.com",),
+    "sexvid": ("pr1.sexvid.xxx",),
+    "pornid": ("pr1.pornid.xxx",),
+    "zbporn": ("pr1.zbporn.com",),
 }
 
 

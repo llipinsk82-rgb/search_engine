@@ -85,5 +85,7 @@ def test_playback_confirmed_rows_declare_storage_mode():
         "thumbzilla", "tnaflix", "tube8", "youjizz"
     }
     assert {name for name, mode in modes.items() if mode == "stable"} == {
-        "bigfuck", "drtuber", "hqporn", "spankbang", "xhamster"
+        "bigfuck", "drtuber", "hqporn", "spankbang", "xhamster",
+        "xvideos", "xnxx", "mypornhere", "pussyspace", "porndig",
+        "sexvid", "pornid", "zbporn",
     }

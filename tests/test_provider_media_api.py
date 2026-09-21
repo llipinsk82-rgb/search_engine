@@ -17,7 +17,8 @@ def test_provider_api_matches_audited_preview_modes():
     import json
     from pathlib import Path
     rules = json.loads((Path(__file__).resolve().parents[1] / "deploy" / "search-engine-preview-rules.json").read_text())
-    with patch("backend.app.indexed_providers", return_value=[]):
+    rule_names = sorted({rule["provider"] for rule in rules})
+    with patch("backend.app.indexed_providers", return_value=rule_names):
         payload = asyncio.run(providers())
     rows = {row["name"]: row for row in payload["media_policies"]}
     for rule in rules:

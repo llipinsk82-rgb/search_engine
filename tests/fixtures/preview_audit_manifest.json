@@ -168,17 +168,49 @@
   },
   {
     "provider": "mypornhere",
-    "status": "AMBIGUOUS",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.mypornhere.com/videos/153917/sislovesme-naive-step-sis-tied-up-and-fucked-sis-loves-me/",
+    "preview_hosts": [
+      "www.mypornhere.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "mypornhere.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/mypornhere-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/mypornhere-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "porndig",
-    "status": "NO_SIGNAL",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "no explicit canonical-bound preview field in sampled pages"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.porndig.com/videos/123704/lana-rhoades-my-sis-wants-me.html",
+    "preview_hosts": [
+      "image-cdn.porndig.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "image-cdn.porndig.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/porndig-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/porndig-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "porndoe",
@@ -217,10 +249,26 @@
   },
   {
     "provider": "pornid",
-    "status": "AMBIGUOUS",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.pornid.xxx/the-tits-of-a-busty-teen-are-fucked-before-he-licks-her-pussy.html",
+    "preview_hosts": [
+      "pr1.pornid.xxx"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "pr1.pornid.xxx"
+    ],
+    "fixture": "tests/fixtures/preview_pages/pornid-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/pornid-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "pornobae",
@@ -252,10 +300,26 @@
   },
   {
     "provider": "pussyspace",
-    "status": "NO_SIGNAL",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "no explicit canonical-bound preview field in sampled pages"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.pussyspace.com/vid-6064257-virgin-step-sis-spring-break-mistake/",
+    "preview_hosts": [
+      "thumbs-gcore.xvideos-cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xvideos-cdn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/pussyspace-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/pussyspace-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "redtube",
@@ -287,10 +351,26 @@
   },
   {
     "provider": "sexvid",
-    "status": "AMBIGUOUS",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.sexvid.xxx/sensual-lesbian-pussy-licking-escapade-in-the-bath.html",
+    "preview_hosts": [
+      "pr1.sexvid.xxx"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "pr1.sexvid.xxx"
+    ],
+    "fixture": "tests/fixtures/preview_pages/sexvid-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/sexvid-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "spankbang",
@@ -469,17 +549,49 @@
   },
   {
     "provider": "xnxx",
-    "status": "NO_SIGNAL",
-    "source_kind": "both",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "no explicit canonical-bound preview field in sampled pages"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.xnxx.com/video-15uc9vff/horny_step_sis_teasing_spying_--_napping_step_sis",
+    "preview_hosts": [
+      "thumb-cdn77.xnxx-cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xnxx-cdn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/xnxx-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/xnxx-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "xvideos",
-    "status": "NO_SIGNAL",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "no explicit canonical-bound preview field in sampled pages"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.xvideos.com/video.hlbplfk351e/stepbrother_fucking_with_sensational_step-sis",
+    "preview_hosts": [
+      "thumb-cdn77.xvideos-cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xvideos-cdn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/xvideos-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/xvideos-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "xxxbule",
@@ -520,10 +632,26 @@
   },
   {
     "provider": "zbporn",
-    "status": "AMBIGUOUS",
+    "status": "PLAYBACK_CONFIRMED",
     "source_kind": "sitemap",
     "sample_count": 3,
-    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+    "rule_kind": "custom",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://zbporn.com/videos/682348/ella-nova-is-getting-manhandled-by-a-tattooed-dude/",
+    "preview_hosts": [
+      "pr1.zbporn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      "pr1.zbporn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/zbporn-custom-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/zbporn-custom-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "zzztube",
