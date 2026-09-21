@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>BlackServ Preview Lab</title>
+  <link rel="stylesheet" href="/test/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">BlackServ Search Engine</p>
+        <h1>Preview Lab</h1>
+        <p class="sub">Read-only live test. Nothing here writes to the production database.</p>
+      </div>
+      <span class="lab-badge">TEST</span>
+    </header>
+
+    <form id="search-form" class="toolbar">
+      <label>
+        <span>Query</span>
+        <input id="q" name="q" value="Sis" autocomplete="off">
+      </label>
+      <label>
+        <span>Provider</span>
+        <select id="provider" name="provider">
+          <option value="">All providers</option>
+        </select>
+      </label>
+      <label>
+        <span>Samples</span>
+        <select id="limit" name="limit">
+          <option>6</option>
+          <option selected>12</option>
+          <option>20</option>
+        </select>
+      </label>
+      <button type="submit">Run test</button>
+    </form>
+
+    <section class="summary" aria-live="polite">
+      <span id="status">Ready</span>
+      <div class="counters">
+        <span>Current <strong id="count-current">0</strong></span>
+        <span>Lab candidate <strong id="count-candidate">0</strong></span>
+        <span>None <strong id="count-none">0</strong></span>
+        <span>Error <strong id="count-error">0</strong></span>
+      </div>
+    </section>
+
+    <section id="results" class="grid" aria-live="polite"></section>
+  </main>
+  <script src="/test/app.js" defer></script>
+</body>
+</html>
