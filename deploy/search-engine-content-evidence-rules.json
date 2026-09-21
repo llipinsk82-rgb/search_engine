@@ -1,0 +1,5 @@
+[
+  {"provider":"xgroovy","rule_kind":"jsonld_path","jsonld_type":"VideoObject","path":["productionCompany",0,"name"],"canonical_fixture_url":"https://xgroovy.com/videos/117/mom-blows-daughter-s-bf-while-studying/"},
+  {"provider":"xcafe","rule_kind":"meta_name","scope_attribute":"itemprop","scope_value":"productionCompany","target_tag":"meta","target_attribute":"itemprop","target_value":"name","value_attribute":"content","canonical_fixture_url":"https://xcafe.com/366143/"},
+  {"provider":"porndoe","rule_kind":"jsonld_path","jsonld_type":"VideoObject","path":["producer","name"],"canonical_fixture_url":"https://porndoe.com/watch/pd6f9o1e7z7v"}
+]
