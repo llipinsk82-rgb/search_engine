@@ -34,6 +34,14 @@ function inferPreviewCandidate(item) {
     return thumbnailDirectoryPreview(thumbnail);
   }
 
+  if (provider === "sexvid" || provider === "pornid" || provider === "zbporn") {
+    const m = thumbnail.match(/\/contents\/videos_screenshots\/(\d+)\/(\d+)\//);
+    if (!m) return null;
+    const [, bucket, id] = m;
+    if (provider === "sexvid") return `https://pr1.sexvid.xxx/contents/videos/${bucket}/${id}/${id}_short_preview.mp4`;
+    if (provider === "pornid") return `https://pr1.pornid.xxx/contents/videos/${bucket}/${id}/${id}_short_preview_480x270.mp4`;
+    return `https://pr1.zbporn.com/contents/videos/${bucket}/${id}/${id}_short_preview.mp4`;
+  }
   if (provider === "xgroovy") {
     const m = page.match(/\/videos\/(\d+)(?:\/|$)/);
     if (!m) return null;

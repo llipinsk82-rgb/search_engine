@@ -61,6 +61,15 @@ def infer_preview_candidate(provider: str, item: dict) -> str | None:
         if match:
             year, month, internal_id = match.groups()
             return f"https://image-cdn.porndig.com/previewclips/{year}/{month}/{internal_id}/{internal_id}_1.mp4"
+    if name in {"sexvid", "pornid", "zbporn"} and thumbnail:
+        match = re.search(r"/contents/videos_screenshots/(\d+)/(\d+)/", thumbnail)
+        if match:
+            bucket, item_id = match.groups()
+            if name == "sexvid":
+                return f"https://pr1.sexvid.xxx/contents/videos/{bucket}/{item_id}/{item_id}_short_preview.mp4"
+            if name == "pornid":
+                return f"https://pr1.pornid.xxx/contents/videos/{bucket}/{item_id}/{item_id}_short_preview_480x270.mp4"
+            return f"https://pr1.zbporn.com/contents/videos/{bucket}/{item_id}/{item_id}_short_preview.mp4"
     if name == "mypornhere" and page_url:
         match = re.search(r"/videos/(\d+)(?:/|$)", page_url)
         if match:

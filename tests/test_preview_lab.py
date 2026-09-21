@@ -70,3 +70,21 @@ def test_porndig_infers_previewclip_from_thumbnail_path() -> None:
     from tools.preview_lab import infer_preview_candidate
     row = {"thumbnail": "https://image-cdn.porndig.com/thumbs/2014/08/59523/400x225/18.jpg", "url": "https://www.porndig.com/videos/26321/example.html"}
     assert infer_preview_candidate("porndig", row) == "https://image-cdn.porndig.com/previewclips/2014/08/59523/59523_1.mp4"
+
+
+def test_sexvid_infers_short_preview_from_thumbnail_path() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    row = {"thumbnail": "https://cdn1.sexvid.xxx/contents/videos_screenshots/98000/98793/preview.jpg", "url": "https://www.sexvid.xxx/example.html"}
+    assert infer_preview_candidate("sexvid", row) == "https://pr1.sexvid.xxx/contents/videos/98000/98793/98793_short_preview.mp4"
+
+
+def test_pornid_infers_short_preview_from_thumbnail_path() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    row = {"thumbnail": "https://cdn.pornid.xxx/contents/videos_screenshots/87000/87864/preview.jpg", "url": "https://www.pornid.xxx/example.html"}
+    assert infer_preview_candidate("pornid", row) == "https://pr1.pornid.xxx/contents/videos/87000/87864/87864_short_preview_480x270.mp4"
+
+
+def test_zbporn_infers_short_preview_from_thumbnail_path() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    row = {"thumbnail": "https://cdnth.zbporn.com/contents/videos_screenshots/682000/682348/preview.mp4.jpg", "url": "https://zbporn.com/videos/682348/example/"}
+    assert infer_preview_candidate("zbporn", row) == "https://pr1.zbporn.com/contents/videos/682000/682348/682348_short_preview.mp4"

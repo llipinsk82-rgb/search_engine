@@ -31,3 +31,9 @@ def test_preview_lab_uses_external_assets_not_inline_script() -> None:
     assert '<script src="/test/app.js" defer></script>' in html
     assert '<link rel="stylesheet" href="/test/styles.css">' in html
     assert '<script>' not in html
+
+
+def test_preview_lab_site_exposes_only_verified_new_candidates() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    for provider in ("sexvid", "pornid", "zbporn"):
+        assert provider in app
