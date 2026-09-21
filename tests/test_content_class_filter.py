@@ -26,7 +26,7 @@ def test_index_filter_none_returns_all_and_explicit_values_are_exact(tmp_path: P
     upsert_items([item("a", tags=["homemade"]), item("s", studio="Example Studio"), item("u")], path=db)
     assert set(ids(search_items("", path=db, content_class=None))) == {"a", "s", "u"}
     assert ids(search_items("", path=db, content_class="amateur")) == ["a"]
-    assert ids(search_items("", path=db, content_class="studio")) == ["s"]
+    assert ids(search_items("", path=db, content_class="studio")) == ["s", "u"]
     assert ids(search_items("", path=db, content_class="unknown")) == ["u"]
     assert count_search_items("", path=db, content_class="unknown") == 1
 
@@ -85,7 +85,7 @@ def run_live(content_class: str):
 
 def test_live_results_are_classified_before_content_filtering_and_cache() -> None:
     amateur=run_live("amateur"); assert ids(amateur.items)==["amateur-tag"]; assert amateur.items[0].content_class=="amateur"
-    studio=run_live("studio"); assert ids(studio.items)==["studio-tag","studio-label"]; assert all(row.content_class=="studio" for row in studio.items)
+    studio=run_live("studio"); assert ids(studio.items)==["studio-tag","studio-label","title-only"]; assert [row.content_class for row in studio.items]==["studio","studio","unknown"]
     unknown=run_live("unknown"); assert ids(unknown.items)==["title-only"]; assert unknown.items[0].content_class=="unknown"
 
 def test_filtered_live_response_caches_full_classified_batch() -> None:

@@ -19,4 +19,6 @@ def filter_live_items(
     normalized = [classify_live_item(item) for item in items]
     if content_class is None:
         return normalized
+    if content_class == "studio":
+        return [item for item in normalized if item.content_class != "amateur"]
     return [item for item in normalized if item.content_class == content_class]

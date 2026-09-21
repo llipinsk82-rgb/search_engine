@@ -557,7 +557,10 @@ def _where_for_search(
     if quality:
         where.append("LOWER(COALESCE(i.quality, '')) = LOWER(?)")
         params.append(quality)
-    if content_class:
+    if content_class == "studio":
+        where.append("i.content_class != ?")
+        params.append("amateur")
+    elif content_class:
         where.append("i.content_class = ?")
         params.append(content_class)
     if age_check:
