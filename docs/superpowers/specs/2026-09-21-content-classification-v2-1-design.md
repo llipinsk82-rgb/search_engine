@@ -1,6 +1,6 @@
 # Content Classification v2.1 — Provider Evidence Enrichment
 
-Status: proposed for owner review
+Status: approved by owner
 Date: 2026-09-21
 Base: `4df78a1ff4779c7f7ecd7805b9d1e378a3e386cf`
 
