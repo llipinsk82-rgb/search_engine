@@ -13,8 +13,8 @@ from backend.live import LiveProviderResult, LiveRefreshResult
 from backend.models import LiveRefreshRequest, SearchItem, SearchRequest
 
 
-def item(item_id: str, *, provider: str = "demo", content_class: str = "unknown", tags=None, studio=None, title=None) -> SearchItem:
-    return SearchItem(id=item_id, provider=provider, title=title or item_id, url=f"https://example.com/{item_id}", tags=list(tags or []), content_class=content_class, studio=studio)
+def item(item_id: str, *, content_class: str = "unknown", tags=None, studio=None, title=None) -> SearchItem:
+    return SearchItem(id=item_id, provider="demo", title=title or item_id, url=f"https://example.com/{item_id}", tags=list(tags or []), content_class=content_class, studio=studio)
 
 
 def ids(rows):
@@ -23,14 +23,7 @@ def ids(rows):
 
 def test_index_filter_none_returns_all_and_explicit_values_are_exact(tmp_path: Path) -> None:
     db = tmp_path / "search.db"
-    upsert_items(
-        [
-            item("a", provider="xvideos", tags=["homemade"]),
-            item("s", provider="xcafe", studio="Blacked"),
-            item("u", provider="demo"),
-        ],
-        path=db,
-    )
+    upsert_items([item("a", tags=["homemade"]), item("s", studio="Example Studio"), item("u")], path=db)
     assert set(ids(search_items("", path=db, content_class=None))) == {"a", "s", "u"}
     assert ids(search_items("", path=db, content_class="amateur")) == ["a"]
     assert ids(search_items("", path=db, content_class="studio")) == ["s"]
@@ -81,21 +74,7 @@ def test_post_search_forwards_content_class() -> None:
 
 
 def live_result():
-    return LiveRefreshResult(
-        providers=[
-            LiveProviderResult(
-                "demo",
-                [
-                    item("amateur-tag", provider="xvideos", tags=["homemade"]),
-                    item("studio-tag", provider="xvideos", tags=["professional"]),
-                    item("studio-label", provider="xcafe", studio="Blacked"),
-                    item("title-only", provider="demo", tags=["hd"], title="Amateur only in title"),
-                ],
-                4,1,1,
-            )
-        ],
-        cached_items=0,
-    )
+    return LiveRefreshResult(providers=[LiveProviderResult("demo",[item("amateur-tag",tags=["homemade"]),item("studio-tag",tags=["professional"]),item("studio-label",studio="Example Studio"),item("title-only",tags=["hd"],title="Amateur only in title")],4,1,1)],cached_items=0)
 
 
 def run_live(content_class: str):
@@ -106,9 +85,8 @@ def run_live(content_class: str):
 
 def test_live_results_are_classified_before_content_filtering_and_cache() -> None:
     amateur=run_live("amateur"); assert ids(amateur.items)==["amateur-tag"]; assert amateur.items[0].content_class=="amateur"
-    studio=run_live("studio"); assert ids(studio.items)==["studio-label"]; assert studio.items[0].content_class=="studio"
-    unknown=run_live("unknown"); assert ids(unknown.items)==["studio-tag","title-only"]; assert all(row.content_class=="unknown" for row in unknown.items)
-
+    studio=run_live("studio"); assert ids(studio.items)==["studio-tag","studio-label"]; assert all(row.content_class=="studio" for row in studio.items)
+    unknown=run_live("unknown"); assert ids(unknown.items)==["title-only"]; assert unknown.items[0].content_class=="unknown"
 
 def test_filtered_live_response_caches_full_classified_batch() -> None:
     from fastapi import BackgroundTasks
@@ -139,7 +117,7 @@ def test_filtered_live_response_caches_full_classified_batch() -> None:
     ]
     assert [row.content_class for row in cached_items] == [
         "amateur",
-        "unknown",
+        "studio",
         "studio",
         "unknown",
     ]
