@@ -102,7 +102,7 @@ Accepted categories may include, after audit/test proof:
 - explicit HTML attributes such as `data-preview`, `data-trailer`, `data-webm`, `data-mediabook`, or equivalent provider-specific attributes
 - provider JSON/JSON-LD fields explicitly representing a trailer/preview
 - provider page metadata explicitly naming preview/trailer media
-- existing live-parser preview rules when the same canonical page markup is proven compatible
+- an existing live search/listing adapter result when that returned card URL normalizes exactly to the indexed canonical item URL and the returned preview field is explicit
 
 Do not accept:
 
@@ -124,7 +124,7 @@ For every currently indexed provider with active rows missing preview, record:
 - provider name
 - source kind: configured sitemap provider, live adapter, both, or index-only
 - sample size and canonical sample URLs
-- whether a safe canonical-page fetch path exists
+- whether a safe evidence fetch path exists: canonical item page and/or existing live search/listing adapter
 - explicit preview field/attribute observed
 - how the preview candidate is bound to the exact canonical item URL; related/recommended-card candidates for a different target URL are rejected
 - preview media type: MP4/WebM/other
@@ -135,7 +135,7 @@ For every currently indexed provider with active rows missing preview, record:
 - whether the field is absent, ambiguous, or unstable
 - final capability decision: OFF / extract-only / playable-direct / playable-proxy
 
-The audit must not classify a provider as preview-capable solely because a live search parser contains a regex or because a canonical page contains preview attributes for related cards. The exact candidate must be demonstrably bound to the current canonical item URL. Providers with indexed rows but no safe canonical fetch/binding path are `FETCH_UNAVAILABLE` or `AMBIGUOUS`, not preview-capable.
+The audit must not classify a provider as preview-capable solely because a live search parser contains a regex or because a canonical page contains preview attributes for related cards. The exact candidate must be demonstrably bound to the current canonical item URL. A live search/listing adapter is valid evidence only after an actual bounded search returns a card whose normalized URL equals the indexed canonical URL. Providers with indexed rows but no safe page or exact-search binding path are `FETCH_UNAVAILABLE` or `AMBIGUOUS`, not preview-capable.
 
 The audit artifact should be committed under `docs/` and should distinguish:
 
@@ -163,6 +163,7 @@ The runtime-facing capability remains:
 but its truth value is derived from the presence of an audited rule rather than inferred from provider identity or a broad class default.
 
 Each rule must encode a canonical-item-bound extraction strategy. Allowed v2 strategies are deliberately narrow:
+- `live_search_exact`: call an existing audited live adapter with the indexed item title, then accept a preview only from a returned card whose normalized URL equals the indexed canonical URL;
 - a linked element/card where both target canonical URL and preview attribute are captured and the normalized target equals the item URL;
 - a page-level JSON/metadata field whose containing object is proven to identify the current canonical URL.
 
@@ -183,7 +184,7 @@ Extend `parse_video_metadata()` conservatively.
 
 Preferred design:
 - one central audited rule registry for sitemap and live providers
-- canonical-item-bound extraction; the extractor must compare the normalized captured item URL/object identity with `page_url`
+- canonical-item-bound extraction; page extractors compare captured item URL/object identity with `page_url`, while `live_search_exact` compares the returned card URL with the indexed item URL
 - one central media-policy validation path
 - return/store `SearchItem.preview_url` only when semantics and canonical binding are explicit
 
@@ -401,13 +402,13 @@ Tube8 is the clearest coverage gap:
 - live search/listing parser already knows a `data-mediabook` preview pattern
 - existing media policy allows Tube8 preview host suffixes
 
-Do not assume the live search/listing regex works on canonical indexed item pages. Audit real Tube8 item pages and require exact canonical-item binding. If the item page exposes only previews for related cards, Tube8 remains capability-OFF in v2 rather than deriving a preview URL from listing markup, item id, or thumbnail.
+The canonical-page audit found only unrelated/recommended-card previews for Tube8, so those page attributes are rejected. A separate bounded live-search audit on 2026-09-21 matched 3/3 sampled indexed Tube8 URLs exactly and returned explicit preview URLs. Combined with the authoritative 2026-09-19 bounded playback audit (`206 video/mp4` on `.t8cdn.com`), Tube8 qualifies for the `live_search_exact` strategy.
 
-If canonical binding and playback are confirmed, Tube8 becomes a strong candidate for bounded preview enrichment, not a one-shot full crawl.
+Tube8 therefore becomes a strong candidate for bounded preview enrichment, not a one-shot full crawl. No URL is derived from item id, thumbnail, or unrelated listing card.
 
 ## Existing live providers
 
-Live-result preview extraction remains as-is unless audit finds a concrete parser defect.
+Existing live-result preview extraction remains as-is. Preview Coverage v2 may reuse an audited live adapter as an enrichment evidence source only through `live_search_exact`, which requires an exact normalized canonical URL match before accepting its preview.
 
 Preview Coverage v2 should not regress providers already near 100% preview coverage in live/indexed rows.
 

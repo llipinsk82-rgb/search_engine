@@ -1,0 +1,159 @@
+[
+  {
+    "provider": "bigfuck",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://bigfuck.tv/video/722831/sis-loves-me-sloppy-fucking-starring-stepsis/",
+    "preview_hosts": [
+      "icdn05.bigfuck.tv"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".bigfuck.tv"
+    ]
+  },
+  {
+    "provider": "drtuber",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.drtuber.com/video/10053733/tiny-tyler-fucking-anal",
+    "preview_hosts": [
+      "g4.drtst.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".drtst.com"
+    ]
+  },
+  {
+    "provider": "hqporn",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://hqporn.xxx/baberotica-karma-rx-in-her-lingerie-teasing-big-ass_20468869.html",
+    "preview_hosts": [
+      "icdn05.hqporn.xxx"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".hqporn.xxx"
+    ]
+  },
+  {
+    "provider": "spankbang",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://spankbang.com/a54dc/video/this+big+tis+latina+said+she+knew+a+trick+she+made+me+cum+in+her+mouth+in+record+time",
+    "preview_hosts": [
+      "tbv.sb-cd.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".sb-cd.com"
+    ]
+  },
+  {
+    "provider": "thumbzilla",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.thumbzilla.com/watch/200909821/",
+    "preview_hosts": [
+      "ev-ph.ypncdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "proxy",
+    "policy_host_suffixes": [
+      ".ypncdn.com"
+    ]
+  },
+  {
+    "provider": "tnaflix",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.tnaflix.com/anal-porn/Surprise-Buttsex/video4732660",
+    "preview_hosts": [
+      "cdnl.tnaflix.com",
+      "fck-cl37.tnaflix.com",
+      "sl111.tnaflix.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".tnaflix.com"
+    ]
+  },
+  {
+    "provider": "tube8",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.tube8.com/porn-video/265710551/",
+    "preview_hosts": [
+      "ev-ph.t8cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".t8cdn.com"
+    ]
+  },
+  {
+    "provider": "xhamster",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://xhamster.com/videos/using-my-realistic-fuck-doll-xhwRqIN",
+    "preview_hosts": [
+      "thumb-v4.xhcdn.com",
+      "thumb-v6.xhcdn.com",
+      "thumb-v7.xhcdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xhcdn.com"
+    ]
+  },
+  {
+    "provider": "youjizz",
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.youjizz.com/videos/two-girls-are-better-than-one-jessa-rhodes-and-scarlet-red-40937921.html",
+    "preview_hosts": [
+      "cdne-mobile.youjizz.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".youjizz.com"
+    ]
+  }
+]

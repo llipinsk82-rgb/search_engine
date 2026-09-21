@@ -133,7 +133,7 @@ def test_playback_confirmed_rows_have_reduced_fixture_and_policy_evidence():
         if row["status"] != "PLAYBACK_CONFIRMED":
             continue
         assert row["sample_count"] >= 1
-        assert row["rule_kind"] in {"linked_attribute", "page_json", "custom"}
+        assert row["rule_kind"] in {"linked_attribute", "page_json", "custom", "live_search_exact"}
         assert row["preview_hosts"]
         assert row["playback_mode"] in {"direct", "proxy"}
         assert row["policy_host_suffixes"]
@@ -220,7 +220,8 @@ git commit -m "docs: audit preview provider evidence"
 - Consumes: Task 1 full audit manifest, `deploy/search-engine-preview-rules.json`, and reduced positive/negative fixtures.
 - Produces:
   - `PreviewRule` and `PREVIEW_RULES`, containing only `PLAYBACK_CONFIRMED` providers;
-  - `extract_preview_url(rule, html, page_url) -> str | None`, which returns only a candidate bound to the exact normalized canonical URL;
+  - `extract_preview_url(rule, html, page_url) -> str | None` for canonical-page rules;
+  - `select_exact_live_preview(items, canonical_url) -> str | None` for `live_search_exact`, which accepts only a returned card whose normalized URL equals the indexed canonical URL;
   - `preview_enrichment` and `async extract_preview(item)` on `SitemapProvider` and `_HttpLiveAdapter`, derived from `PREVIEW_RULES`;
   - `preview_provider_map(PROVIDERS, LIVE_ADAPTERS)` with configured sitemap providers winning duplicate names;
   - ordinary page-fetch paths that never persist a policy-rejected preview;
@@ -234,7 +235,7 @@ Create `tests/test_preview_rules.py`:
 import json
 from pathlib import Path
 
-from backend.preview_rules import PREVIEW_RULES, extract_preview_url
+from backend.preview_rules import PREVIEW_RULES, extract_preview_url, select_exact_live_preview
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tests" / "fixtures" / "preview_audit_manifest.json"
@@ -257,8 +258,10 @@ def test_rule_registry_exactly_matches_confirmed_manifest():
         assert rule.preview_host_suffixes == tuple(row["policy_host_suffixes"])
 
 
-def test_confirmed_positive_fixtures_bind_to_exact_item():
+def test_confirmed_page_fixtures_bind_to_exact_item():
     for name, row in _confirmed().items():
+        if row["rule_kind"] == "live_search_exact":
+            continue
         html = (ROOT / row["fixture"]).read_text()
         preview = extract_preview_url(
             PREVIEW_RULES[name], html, row["canonical_fixture_url"]
@@ -267,11 +270,17 @@ def test_confirmed_positive_fixtures_bind_to_exact_item():
         assert preview.startswith("https://")
 
 
-def test_related_card_negative_fixtures_are_rejected():
+def test_live_search_fixtures_require_exact_canonical_match():
     for name, row in _confirmed().items():
-        html = (ROOT / row["negative_fixture"]).read_text()
-        assert extract_preview_url(
-            PREVIEW_RULES[name], html, row["canonical_fixture_url"]
+        if row["rule_kind"] != "live_search_exact":
+            continue
+        positive = json.loads((ROOT / row["fixture"]).read_text())
+        negative = json.loads((ROOT / row["negative_fixture"]).read_text())
+        assert select_exact_live_preview(
+            [positive["result"]], positive["canonical_url"]
+        ) == positive["result"]["preview_url"]
+        assert select_exact_live_preview(
+            [negative["result"]], negative["canonical_url"]
         ) is None
 ```
 
@@ -366,7 +375,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-RuleKind = Literal["linked_attribute", "page_json", "custom"]
+RuleKind = Literal["linked_attribute", "page_json", "custom", "live_search_exact"]
 
 
 @dataclass(frozen=True)
@@ -416,7 +425,9 @@ For `linked_attribute`, inspect only the audited element/block, capture both tar
 
 For `page_json`, require audited identity and preview fields in the same JSON object and require identity to normalize to `page_url`.
 
-`custom` is permitted only when Task 1 committed a provider-specific positive fixture plus related-card-negative fixture and the two generic strategies cannot model the page safely.
+For `live_search_exact`, do not parse arbitrary HTML in `preview_rules.py`. `select_exact_live_preview()` receives returned items from the provider's existing live adapter and returns a preview only when one returned item URL normalizes exactly to the indexed canonical URL.
+
+`custom` is permitted only when Task 1 committed a provider-specific positive fixture plus related-card-negative fixture and the generic strategies cannot model the source safely.
 
 Never return the first preview-looking attribute globally.
 
@@ -437,9 +448,9 @@ async def extract_preview(self, item: SearchItem) -> str | None:
     ...
 ```
 
-using their existing provider-safe fetch method and the rule for `self.name`.
+For `SitemapProvider`, canonical-page rules use the existing provider-safe page fetch. For `_HttpLiveAdapter` with `live_search_exact`, call the existing `search(item.title, page=1, limit=40)` and pass its returned items through `select_exact_live_preview()`; never accept a preview from a non-matching URL.
 
-If a live adapter cannot safely fetch canonical item pages, Task 1 leaves it out of `PREVIEW_RULES`; the engine never calls it.
+If a provider has neither a safe canonical-page rule nor an audited exact live-search rule, Task 1 leaves it out of `PREVIEW_RULES`; the engine never calls it.
 
 For `SitemapProvider._fetch_page_item()`, when a rule exists, extract the candidate but attach it to the returned `SearchItem` only when:
 

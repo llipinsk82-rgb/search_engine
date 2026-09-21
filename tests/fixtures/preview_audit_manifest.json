@@ -1,0 +1,526 @@
+[
+  {
+    "provider": "anyporn",
+    "status": "BLOCKED_BY_POLICY",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "2026-09-19 bounded media audit: public preview redirects left the provider allowlist; current policy remains disabled"
+  },
+  {
+    "provider": "beeg",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "bigassporn",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "bigfuck",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 3,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://bigfuck.tv/video/722831/sis-loves-me-sloppy-fucking-starring-stepsis/",
+    "preview_hosts": [
+      "icdn05.bigfuck.tv"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".bigfuck.tv"
+    ],
+    "fixture": "tests/fixtures/preview_pages/bigfuck-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/bigfuck-negative.json"
+  },
+  {
+    "provider": "brazzilmoms",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "bustybus",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "drtuber",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 1,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.drtuber.com/video/10053733/tiny-tyler-fucking-anal",
+    "preview_hosts": [
+      "g4.drtst.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".drtst.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/drtuber-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/drtuber-negative.json"
+  },
+  {
+    "provider": "eporner",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "fpo",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "freeporn",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "hdzog",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "hqporn",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 3,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://hqporn.xxx/baberotica-karma-rx-in-her-lingerie-teasing-big-ass_20468869.html",
+    "preview_hosts": [
+      "icdn05.hqporn.xxx"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".hqporn.xxx"
+    ],
+    "fixture": "tests/fixtures/preview_pages/hqporn-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/hqporn-negative.json"
+  },
+  {
+    "provider": "hqporner",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 2,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "justporn",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "lexotic",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "megatube",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "milfporn",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "mypornhere",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "porndig",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "porndoe",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "porndr",
+    "status": "BLOCKED_BY_POLICY",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "2026-09-19 bounded media audit: public preview redirects left the provider allowlist; current policy remains disabled"
+  },
+  {
+    "provider": "porngo",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "pornhat",
+    "status": "BLOCKED_BY_POLICY",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "2026-09-19 bounded media audit: public preview redirects left the provider allowlist; current policy remains disabled"
+  },
+  {
+    "provider": "pornhub",
+    "status": "AMBIGUOUS",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "pornid",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "pornobae",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "pornone",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "pornsexvideo",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "pornzog",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "pussyspace",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "redtube",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "serviporno",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "sexplex",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "sextubespot",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "sexvid",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "spankbang",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 2,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://spankbang.com/a54dc/video/this+big+tis+latina+said+she+knew+a+trick+she+made+me+cum+in+her+mouth+in+record+time",
+    "preview_hosts": [
+      "tbv.sb-cd.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".sb-cd.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/spankbang-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/spankbang-negative.json"
+  },
+  {
+    "provider": "sunporno",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "theyarehuge",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "thumbzilla",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 2,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.thumbzilla.com/watch/200909821/",
+    "preview_hosts": [
+      "ev-ph.ypncdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "proxy",
+    "policy_host_suffixes": [
+      ".ypncdn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/thumbzilla-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/thumbzilla-negative.json"
+  },
+  {
+    "provider": "tnaflix",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 3,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.tnaflix.com/anal-porn/Surprise-Buttsex/video4732660",
+    "preview_hosts": [
+      "cdnl.tnaflix.com",
+      "fck-cl37.tnaflix.com",
+      "sl111.tnaflix.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".tnaflix.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/tnaflix-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/tnaflix-negative.json"
+  },
+  {
+    "provider": "tube8",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 3,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.tube8.com/porn-video/265710551/",
+    "preview_hosts": [
+      "ev-ph.t8cdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".t8cdn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/tube8-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/tube8-negative.json"
+  },
+  {
+    "provider": "tubev",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "txxx",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "voyeurhit",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "vxxx",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "xcafe",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "xgroovy",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "xhamster",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 3,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://xhamster.com/videos/using-my-realistic-fuck-doll-xhwRqIN",
+    "preview_hosts": [
+      "thumb-v4.xhcdn.com",
+      "thumb-v6.xhcdn.com",
+      "thumb-v7.xhcdn.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".xhcdn.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/xhamster-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/xhamster-negative.json"
+  },
+  {
+    "provider": "xnxx",
+    "status": "NO_SIGNAL",
+    "source_kind": "both",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "xvideos",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "xxxbule",
+    "status": "NO_SIGNAL",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "youjizz",
+    "status": "PLAYBACK_CONFIRMED",
+    "source_kind": "live",
+    "sample_count": 3,
+    "rule_kind": "live_search_exact",
+    "target_attribute": null,
+    "preview_attribute": null,
+    "json_identity_field": null,
+    "json_preview_field": null,
+    "canonical_fixture_url": "https://www.youjizz.com/videos/two-girls-are-better-than-one-jessa-rhodes-and-scarlet-red-40937921.html",
+    "preview_hosts": [
+      "cdne-mobile.youjizz.com"
+    ],
+    "media_type": "video/mp4",
+    "playback_mode": "direct",
+    "policy_host_suffixes": [
+      ".youjizz.com"
+    ],
+    "fixture": "tests/fixtures/preview_pages/youjizz-positive.json",
+    "negative_fixture": "tests/fixtures/preview_pages/youjizz-negative.json"
+  },
+  {
+    "provider": "yourlust",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  },
+  {
+    "provider": "zbporn",
+    "status": "AMBIGUOUS",
+    "source_kind": "sitemap",
+    "sample_count": 3,
+    "reason": "preview-looking evidence exists only on unrelated/unbound cards"
+  },
+  {
+    "provider": "zzztube",
+    "status": "NO_SIGNAL",
+    "source_kind": "live",
+    "sample_count": 3,
+    "reason": "no explicit canonical-bound preview field in sampled pages"
+  }
+]
