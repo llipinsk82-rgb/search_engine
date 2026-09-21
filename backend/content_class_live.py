@@ -7,7 +7,7 @@ from backend.models import SearchItem
 def classify_live_item(item: SearchItem) -> SearchItem:
     if item.content_class != "unknown":
         return item
-    content_class = classify_content(tags=item.tags, studio=item.studio)
+    content_class = classify_content(provider=item.provider, tags=item.tags, studio=item.studio)
     if content_class == item.content_class:
         return item
     return item.model_copy(update={"content_class": content_class})

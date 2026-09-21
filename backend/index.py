@@ -242,7 +242,7 @@ def _upsert_item_row(
     source_order: int = 0,
 ) -> None:
     tags_json = json.dumps(item.tags, ensure_ascii=False)
-    classification = classify_content_evidence(tags=item.tags, studio=item.studio)
+    classification = classify_content_evidence(provider=item.provider, tags=item.tags, studio=item.studio)
     content_class = classification.content_class
     content_class_source = classification.source
     conn.execute(
@@ -777,6 +777,7 @@ def update_content_evidence(
         incoming_studio = (studio or "").strip() or None
         merged_studio = current_studio or incoming_studio
         classification = classify_content_evidence(
+            provider=str(row["provider"]),
             tags=merged_tags,
             studio=merged_studio,
         )
