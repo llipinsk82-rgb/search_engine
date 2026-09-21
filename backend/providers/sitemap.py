@@ -15,6 +15,7 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
+from backend.content_evidence_rules import extract_studio_evidence, has_content_evidence_rule
 from backend.media_policy import media_url_allowed
 from backend.models import SearchItem
 from backend.preview_rules import PREVIEW_RULES, extract_preview_url
@@ -442,7 +443,7 @@ class SitemapProvider(SearchProvider):
         )
         self.backfill_priority = int(backfill_priority)
         self.enrich_missing_core_metadata = bool(enrich_missing_core_metadata)
-        self.content_class_enrichment = bool(content_class_enrichment)
+        self.content_class_enrichment = bool(content_class_enrichment) or has_content_evidence_rule(self.name)
         self.backfill_max_records = (
             max(1, int(backfill_max_records))
             if backfill_max_records is not None
@@ -614,6 +615,10 @@ class SitemapProvider(SearchProvider):
                 provider=self.name,
                 page_url=page_url,
             )
+            if item is not None and not (item.studio and item.studio.strip()):
+                studio = extract_studio_evidence(self.name, html, page_url)
+                if studio:
+                    item = item.model_copy(update={"studio": studio})
             rule = PREVIEW_RULES.get(self.name)
             if (
                 item is not None
