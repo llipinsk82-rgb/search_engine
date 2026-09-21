@@ -1934,3 +1934,117 @@ Rollout sequence:
 10. record before/after coverage and final handoff.
 
 At this checkpoint production is intentionally unchanged.
+
+## 2026-09-21 — PREVIEW COVERAGE V2 FINAL CLOSEOUT
+
+Status: DONE.
+
+Feature branch: `feature/preview-coverage-v2`
+Production code build: `1224c0f966e9c66571f70978f1e891464e86066e`
+Release branch: `feature/provider-registry-probe`
+
+Final implementation:
+- provider audit covers 55-provider configured/live universe;
+- exact canonical binding is mandatory; related-card preview is rejected;
+- runtime rule file: `deploy/search-engine-preview-rules.json`;
+- preview persistence/retry/state/stats implemented;
+- bounded preview enrichment shares the existing maintenance lock;
+- media-policy remains allowlist-driven; PornHat / PornDr / AnyPorn remain disabled;
+- PWA/frontend shell is v29.
+
+### Final storage model
+
+Stable / persistent preview providers:
+- `bigfuck`
+- `drtuber`
+- `hqporn`
+- `spankbang`
+- `xhamster`
+
+Ephemeral / on-demand preview providers:
+- `thumbzilla`
+- `tnaflix`
+- `tube8`
+- `youjizz`
+
+Reason:
+- production acceptance proved Tube8 signed URLs expire: an old URL with expired `validto` returned HTTP 472;
+- Thumbzilla and YouJizz use the same signed validity pattern;
+- TNAFlix uses signed `secure=...,timestamp` URLs;
+- old stable-provider preview samples continued to return bounded HTTP 206.
+
+Persistence safeguards:
+- preview enrichment persists only `storage_mode=stable`;
+- ordinary sitemap page-fetch also refuses to attach `storage_mode=ephemeral`;
+- `update_preview_url()` remains narrow and policy-guarded;
+- existing preview is never replaced by enrichment;
+- ephemeral resolution is read-only and never writes SQLite.
+
+### On-demand resolver
+
+Endpoint:
+`GET /api/preview/{item_id}`
+
+Frontend/API capability contract:
+- Tube8 / Thumbzilla / TNAFlix / YouJizz: `preview_resolution_mode=on_demand`, `preview_storage_mode=ephemeral`;
+- BigFuck / DrTuber / HQPorn / SpankBang / XHamster: `preview_resolution_mode=stored`, `preview_storage_mode=stable`;
+- Pornhub and non-audited stored-preview providers remain `stored`.
+
+Frontend:
+- manual preview only; no autoplay-on-hover/intersection behavior;
+- fresh ephemeral URL fetched only after pressing ▶;
+- fetch uses `cache: no-store`;
+- Thumbzilla routes the fresh URL through existing strict preview proxy;
+- PWA assets/cache guard bumped v28 -> v29;
+- failed-preview session key bumped v1 -> v2 so stale failures do not hide new resolver capability.
+
+### Verified production acceptance
+
+Production build:
+`1224c0f966e9`
+
+Health:
+PASS.
+
+Final code verification:
+- targeted resolver/media/frontend gate: 68 PASS;
+- full suite: 338 PASS;
+- only 2 existing FastAPI `on_event` deprecation warnings;
+- compileall PASS;
+- `node --check frontend/app.js` PASS;
+- `git diff --check` PASS.
+
+Stable scheduler acceptance:
+- natural run 1: attempted=10, extracted=4, stored=4, playable=4, no_preview=6, failures=0;
+- natural run 2: attempted=6, extracted=2, stored=2, playable=2, no_preview=4, failures=0;
+- later natural run: attempted=0, failures=0;
+- Tube8 stored count did not increase after stable-only hotfix.
+
+Ephemeral E2E:
+- Tube8: fresh URL differs from legacy DB URL; bounded HTTP 206 `video/mp4`, 1024 B; DB unchanged;
+- Thumbzilla: fresh URL through strict proxy; bounded HTTP 206 `video/mp4`; DB unchanged;
+- TNAFlix: one transient resolver timeout observed, immediate subsequent production retry PASS with bounded HTTP 206; no parser/policy defect found;
+- YouJizz: fresh direct resolver PASS with bounded HTTP 206; DB unchanged.
+
+Final corrected coverage sample after hotfix deploy:
+- active: 1,182,230
+- stored preview rows: 6,221 (0.53%)
+- persistently playable stored previews: 2,782 (0.24%)
+- preview enrichment state: `success=16`, `no_preview=13`
+- legacy ephemeral stored URLs are intentionally excluded from `playable`.
+
+Earlier read-only scope count for audited ephemeral providers:
+- resolver-eligible rows: about 249,637 at the sampled index size;
+- this is capability coverage, not a claim that every individual old indexed URL will still resolve at click time.
+
+Known non-blocking residue:
+- legacy signed preview URLs already stored before the TTL correction remain in SQLite (including historical Tube8 rows);
+- frontend ignores them for ephemeral playback and requests a fresh URL;
+- telemetry does not count them as persistently playable;
+- no direct SQL cleanup was performed.
+
+Exact next product step:
+- authenticated visual smoke of v29 manual preview UX on mobile and desktop, especially Tube8 and Thumbzilla;
+- then return to remaining premium-polish backlog (DEV badge, telemetry density, age-check wording, Reset contrast) unless a higher-priority Search task is selected.
+
+Production data requires no manual mass crawl or reclassification at this closeout.

@@ -1323,3 +1323,37 @@ git log -1 --oneline
 ```
 
 Require feature and canonical trees clean. Production should remain on the exact Preview Coverage v2 code build, not the later docs-only commit.
+
+## Execution ruling addendum — TTL discovery and resolver rollout (2026-09-21)
+
+During Task 7 production acceptance, a real stale-token failure invalidated the original assumption that every `PLAYBACK_CONFIRMED` URL could be persisted.
+
+Observed evidence:
+- a newly resolved Tube8 preview returned bounded HTTP 206 `video/mp4`;
+- an older Tube8 URL with expired `validto` returned HTTP 472;
+- old non-signed previews for BigFuck, DrTuber, HQPorn, SpankBang and XHamster still returned bounded HTTP 206;
+- Thumbzilla, TNAFlix, Tube8 and YouJizz URLs carry signed/expiring parameters.
+
+Execution was corrected before allowing further mass persistence:
+
+1. Added `storage_mode` to committed audit/runtime rules.
+2. Limited `preview_enrichment=True` to stable providers only.
+3. Prevented ordinary sitemap page-fetch from attaching ephemeral preview URLs.
+4. Added read-only `/api/preview/{item_id}` fresh resolution for audited rules.
+5. Exposed frontend `on_demand` only for ephemeral providers.
+6. Bumped frontend/PWA shell to v29 and reset the failed-preview session key.
+7. Corrected `preview-coverage-stats` so ephemeral stored URLs are not counted as persistently playable.
+
+Final execution semantics:
+- stable persistence: BigFuck, DrTuber, HQPorn, SpankBang, XHamster;
+- ephemeral on-demand: Thumbzilla, TNAFlix, Tube8, YouJizz;
+- policy-disabled remains unchanged: PornHat, PornDr, AnyPorn.
+
+Production E2E acceptance:
+- Tube8 fresh direct resolver: HTTP 206 `video/mp4`, 1024-byte bounded probe, DB unchanged;
+- Thumbzilla fresh resolver through strict proxy: HTTP 206 `video/mp4`, bounded, DB unchanged;
+- TNAFlix direct resolver: PASS after one transient upstream timeout and retry;
+- YouJizz direct resolver: PASS;
+- two natural stable-only scheduler runs succeeded with zero item failures before final resolver closeout.
+
+The original rollout acceptance item "stored/playable growth for a sparse provider" is superseded for ephemeral providers by "fresh on-demand playback succeeds without persisting the signed URL". Stable providers retain the original stored-growth criterion.

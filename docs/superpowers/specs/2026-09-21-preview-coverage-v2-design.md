@@ -550,3 +550,55 @@ After this written spec is committed:
 3. create the task-by-task TDD implementation plan;
 4. user reviews the plan and selects execution method;
 5. only then begin implementation.
+
+## Production acceptance addendum — storage lifetime and on-demand resolution (2026-09-21)
+
+Production acceptance changed one architectural assumption without changing the product goal.
+
+### Signed preview lifetime
+
+A preview URL can be correctly canonical-bound, policy-allowed, and immediately playable while still being unsafe to persist. Production probing proved that Tube8 signed preview URLs include short-lived `validfrom` / `validto` / `hash` parameters. A previously stored Tube8 URL whose `validto` was in the past returned HTTP 472. The same pattern exists for Thumbzilla and YouJizz, while TNAFlix uses a signed `secure=...,timestamp` trailer URL.
+
+Therefore `PLAYBACK_CONFIRMED` is no longer equivalent to `safe to persist`.
+
+Runtime preview rules now declare:
+
+- `storage_mode="stable"` — preview URL may be persisted and enriched in the background;
+- `storage_mode="ephemeral"` — preview URL may be resolved for playback but must not be persisted by preview enrichment or ordinary sitemap page-fetch paths.
+
+Audited stable providers:
+`bigfuck`, `drtuber`, `hqporn`, `spankbang`, `xhamster`.
+
+Audited ephemeral providers:
+`thumbzilla`, `tnaflix`, `tube8`, `youjizz`.
+
+Historical stored URLs for those four ephemeral providers are treated as legacy data and are excluded from persistent-playable telemetry. No direct production SQL cleanup is part of this rollout.
+
+### On-demand resolution
+
+Ephemeral providers use a read-only on-demand resolver:
+
+`GET /api/preview/{item_id}`
+
+The resolver:
+
+- loads the indexed item;
+- uses only an audited exact-binding provider implementation;
+- obtains a fresh preview candidate;
+- re-applies media-policy host validation;
+- returns the fresh URL with API `no-store` response semantics;
+- never writes the resolved URL back to SQLite.
+
+The frontend exposes `on_demand` only for `storage_mode="ephemeral"`. Stable providers remain `stored` in UI capability metadata because a stable record missing a stored preview is not guaranteed to be rediscoverable by live exact search.
+
+For an ephemeral provider, the preview URL is fetched only after the user presses the manual preview button. The frontend ignores any legacy stored signed preview for playback and requests a fresh URL. Thumbzilla continues through the existing strict bounded preview proxy; Tube8, TNAFlix and YouJizz use their audited direct media path.
+
+### Telemetry semantics
+
+Coverage now distinguishes:
+
+- `stored` — any active row with a stored preview URL;
+- `persistently playable` — stored URL that passes media policy and belongs to a stable provider;
+- `resolver eligible` — active rows belonging to an audited ephemeral provider that can request a fresh preview on demand.
+
+This prevents expired signed URLs from inflating the playable count.
