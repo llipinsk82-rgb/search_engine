@@ -321,21 +321,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v28() -> None:
+def test_frontend_assets_are_v29() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=28" in html
-    assert "/app.js?v=28" in html
-    assert 'register("/sw.js?v=28", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v28";' in sw
-    assert '"/styles.css?v=28"' in sw
-    assert '"/app.js?v=28"' in sw
+    assert "/styles.css?v=29" in html
+    assert "/app.js?v=29" in html
+    assert 'register("/sw.js?v=29", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v29";' in sw
+    assert '"/styles.css?v=29"' in sw
+    assert '"/app.js?v=29"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v28";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v29";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -362,3 +362,25 @@ def test_premium_body_selector_applies_page_surface() -> None:
     assert "margin: 0" in body
     assert "min-height: 100vh" in body
     assert "var(--bg-page)" in body
+
+
+def test_on_demand_preview_resolution_is_click_driven_and_no_store() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'policy.preview_resolution_mode === "on_demand"' in app
+    assert 'policy.preview_storage_mode === "ephemeral"' in app
+    assert "const needsOnDemand =" in app
+    assert 'async function resolvePreviewForPlayback(item)' in app
+    assert "/api/preview/" in app
+    assert "search.failedPreviewIds.v2" in app
+    assert 'cache: "no-store"' in app
+    assert 'previewToggle.addEventListener("click", async (event)' in app
+
+
+def test_on_demand_preview_frontend_bumps_shell_cache() -> None:
+    sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert 'search-shell-v29' in sw
+    assert '/app.js?v=29' in sw
+    assert '/styles.css?v=29' in sw
+    assert 'app.js?v=29' in html
+    assert 'styles.css?v=29' in html

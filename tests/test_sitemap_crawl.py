@@ -358,3 +358,29 @@ def test_enrich_content_evidence_returns_original_when_page_fetch_fails() -> Non
     provider._fetch_page_item = lambda _url: None
     enriched = asyncio.run(provider.enrich_content_evidence(item))
     assert enriched == item
+
+
+def test_fetch_page_item_never_attaches_ephemeral_preview(monkeypatch) -> None:
+    class Rule:
+        kind = "linked_attribute"
+        storage_mode = "ephemeral"
+
+    provider = SitemapProvider(
+        name="example",
+        sitemap_url="https://example.com/sitemap.xml",
+        obey_robots=False,
+        delay_seconds=0,
+    )
+    page_url = "https://example.com/video/1"
+    provider._fetch_text = lambda _url: (
+        '<script type="application/ld+json">'
+        '{"@type":"VideoObject","name":"X","thumbnailUrl":"https://example.com/x.jpg"}'
+        '</script>'
+    )
+    candidate = "https://cdn.example/preview.mp4"
+    monkeypatch.setattr("backend.providers.sitemap.PREVIEW_RULES", {"example": Rule()}, raising=False)
+    monkeypatch.setattr("backend.providers.sitemap.extract_preview_url", lambda *args, **kwargs: candidate, raising=False)
+    monkeypatch.setattr("backend.providers.sitemap.media_url_allowed", lambda *args, **kwargs: True, raising=False)
+    item = provider._fetch_page_item(page_url)
+    assert item is not None
+    assert item.preview_url is None

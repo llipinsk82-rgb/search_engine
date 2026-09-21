@@ -113,7 +113,7 @@ function trapFilterSheetFocus(event) {
 }
 const providerMediaPolicies = new Map();
 const failedPreviewIds = new Set();
-const FAILED_PREVIEW_STORAGE_KEY = "search.failedPreviewIds.v1";
+const FAILED_PREVIEW_STORAGE_KEY = "search.failedPreviewIds.v2";
 const FAILED_PREVIEW_LIMIT = 100;
 
 try {
@@ -138,6 +138,8 @@ function mediaPolicyFor(provider) {
     preview_mode: "disabled",
     thumbnail_host_suffixes: [],
     preview_host_suffixes: [],
+    preview_resolution_mode: "stored",
+    preview_storage_mode: "stable",
   };
 }
 
@@ -156,9 +158,12 @@ function resolveThumbnailUrl(item) {
 }
 
 function previewEligible(item) {
-  if (!item?.id || !item.preview_url || failedPreviewIds.has(item.id)) return false;
+  if (!item?.id || failedPreviewIds.has(item.id)) return false;
   const policy = mediaPolicyFor(item.provider);
-  if (!['direct', 'proxy'].includes(policy.preview_mode)) return false;
+  if (!["direct", "proxy"].includes(policy.preview_mode)) return false;
+  const needsOnDemand = policy.preview_resolution_mode === "on_demand" && (policy.preview_storage_mode === "ephemeral" || !item.preview_url);
+  if (needsOnDemand) return true;
+  if (!item.preview_url) return false;
   try {
     const parsed = new URL(item.preview_url);
     if (parsed.protocol !== "https:") return false;
@@ -169,12 +174,26 @@ function previewEligible(item) {
   }
 }
 
-function resolvePreviewUrl(item) {
+function resolvePreviewUrl(item, previewUrl = item.preview_url) {
   const policy = mediaPolicyFor(item.provider);
   if (policy.preview_mode === "proxy") {
-    return `/api/preview-proxy?provider=${encodeURIComponent(item.provider)}&url=${encodeURIComponent(item.preview_url)}`;
+    return "/api/preview-proxy?provider=" + encodeURIComponent(item.provider) + "&url=" + encodeURIComponent(previewUrl);
   }
-  return item.preview_url;
+  return previewUrl;
+}
+
+async function resolvePreviewForPlayback(item) {
+  const policy = mediaPolicyFor(item.provider);
+  const needsFresh = policy.preview_resolution_mode === "on_demand" && (!item.preview_url || policy.preview_storage_mode === "ephemeral");
+  let previewUrl = item.preview_url || "";
+  if (needsFresh) {
+    const response = await fetch("/api/preview/" + encodeURIComponent(item.id), { cache: "no-store", headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("preview resolution failed: " + response.status);
+    const payload = await response.json();
+    previewUrl = String(payload?.preview_url || "");
+  }
+  if (!previewUrl) throw new Error("preview unavailable");
+  return resolvePreviewUrl(item, previewUrl);
 }
 
 function setPreviewToggle(toggle, playing) {
@@ -376,8 +395,6 @@ function resultCard(item) {
   }
 
   if (previewEligible(item)) {
-    const resolvedPreview = resolvePreviewUrl(item);
-    motion.dataset.previewUrl = resolvedPreview;
     motion.preload = "none";
     motion.referrerPolicy = "no-referrer";
     if (item.thumbnail) motion.poster = preview.src;
@@ -394,13 +411,24 @@ function resultCard(item) {
     motion.addEventListener("error", () => {
       failMotionPreview(item.id, motion, preview, previewToggle);
     });
-    previewToggle.addEventListener("click", (event) => {
+    previewToggle.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (activeMotionPreview?.motion === motion && !motion.paused) {
         stopMotionPreview(motion, preview, previewToggle);
-      } else {
+        return;
+      }
+      previewToggle.disabled = true;
+      previewToggle.setAttribute("aria-busy", "true");
+      try {
+        const resolvedPreview = await resolvePreviewForPlayback(item);
+        motion.dataset.previewUrl = resolvedPreview;
         startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id);
+      } catch (_) {
+        failMotionPreview(item.id, motion, preview, previewToggle);
+      } finally {
+        previewToggle.disabled = false;
+        previewToggle.removeAttribute("aria-busy");
       }
     });
   } else {
@@ -926,7 +954,7 @@ async function boot() {
 boot();
 
 if ("serviceWorker" in navigator) {
-  const SW_RELOAD_GUARD = "search.swReload.v28";
+  const SW_RELOAD_GUARD = "search.swReload.v29";
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     try {
@@ -944,7 +972,7 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=28", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=29", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

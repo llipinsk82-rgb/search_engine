@@ -6,6 +6,7 @@ from pathlib import Path
 
 from backend.index import initialize
 from backend.media_policy import media_url_allowed
+from backend.preview_rules import PREVIEW_RULES
 from backend.settings import DB_PATH
 
 
@@ -50,7 +51,9 @@ def preview_coverage_stats(path: Path = DB_PATH) -> PreviewCoverageStats:
             continue
         stored += 1
         values[1] += 1
-        if media_url_allowed(provider, "preview", preview):
+        rule = PREVIEW_RULES.get(provider)
+        persistable = rule is None or rule.storage_mode == "stable"
+        if persistable and media_url_allowed(provider, "preview", preview):
             playable += 1
             values[2] += 1
 

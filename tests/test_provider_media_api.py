@@ -22,3 +22,15 @@ def test_provider_api_matches_audited_preview_modes():
     rows = {row["name"]: row for row in payload["media_policies"]}
     for rule in rules:
         assert rows[rule["provider"]]["preview_mode"] == rule["playback_mode"]
+
+
+def test_provider_api_exposes_preview_resolution_storage_modes():
+    with patch("backend.app.indexed_providers", return_value=[]):
+        payload = asyncio.run(providers())
+    rows = {row["name"]: row for row in payload["media_policies"]}
+    assert rows["tube8"]["preview_resolution_mode"] == "on_demand"
+    assert rows["tube8"]["preview_storage_mode"] == "ephemeral"
+    assert rows["bigfuck"]["preview_resolution_mode"] == "on_demand"
+    assert rows["bigfuck"]["preview_storage_mode"] == "stable"
+    assert rows["pornhub"]["preview_resolution_mode"] == "stored"
+    assert rows["pornhub"]["preview_storage_mode"] == "stable"

@@ -460,12 +460,17 @@ class SitemapProvider(SearchProvider):
             raise ValueError("sitemap_child_order must be 'listed' or 'reverse'")
 
     @property
+    def preview_resolution(self) -> bool:
+        rule = PREVIEW_RULES.get(self.name)
+        return rule is not None and getattr(rule, "kind", None) != "live_search_exact"
+
+    @property
     def preview_enrichment(self) -> bool:
         rule = PREVIEW_RULES.get(self.name)
-        return rule is not None and getattr(rule, "kind", None) != "live_search_exact" and getattr(rule, "storage_mode", "stable") == "stable"
+        return self.preview_resolution and rule is not None and getattr(rule, "storage_mode", "stable") == "stable"
 
     async def extract_preview(self, item: SearchItem) -> str | None:
-        if not self.preview_enrichment:
+        if not self.preview_resolution:
             return None
         rule = PREVIEW_RULES[self.name]
         try:
@@ -610,7 +615,12 @@ class SitemapProvider(SearchProvider):
                 page_url=page_url,
             )
             rule = PREVIEW_RULES.get(self.name)
-            if item is not None and rule is not None and getattr(rule, "kind", None) != "live_search_exact":
+            if (
+                item is not None
+                and rule is not None
+                and getattr(rule, "kind", None) != "live_search_exact"
+                and getattr(rule, "storage_mode", "stable") == "stable"
+            ):
                 candidate = extract_preview_url(rule, html, page_url)
                 if candidate and media_url_allowed(self.name, "preview", candidate):
                     item = item.model_copy(update={"preview_url": candidate})

@@ -65,3 +65,14 @@ def test_ephemeral_live_rules_are_resolution_only_not_persistent_enrichment():
         assert live[name].preview_enrichment is False
     for name in ("bigfuck", "drtuber", "hqporn", "spankbang", "xhamster"):
         assert live[name].preview_enrichment is True
+
+
+def test_resolution_capability_includes_ephemeral_rules():
+    rules = importlib.import_module("backend.preview_rules").PREVIEW_RULES
+    live = {adapter.name: adapter for adapter in LIVE_ADAPTERS}
+    for name, adapter in live.items():
+        assert adapter.preview_resolution is (name in rules)
+    assert live["tube8"].preview_resolution is True
+    assert live["tube8"].preview_enrichment is False
+    assert live["bigfuck"].preview_resolution is True
+    assert live["bigfuck"].preview_enrichment is True

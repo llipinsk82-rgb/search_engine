@@ -1492,12 +1492,17 @@ class _HttpLiveAdapter:
         self.timeout_seconds = max(0.5, float(timeout_seconds))
 
     @property
+    def preview_resolution(self) -> bool:
+        rule = PREVIEW_RULES.get(self.name)
+        return rule is not None and rule.kind == "live_search_exact"
+
+    @property
     def preview_enrichment(self) -> bool:
         rule = PREVIEW_RULES.get(self.name)
-        return rule is not None and rule.kind == "live_search_exact" and rule.storage_mode == "stable"
+        return self.preview_resolution and rule is not None and rule.storage_mode == "stable"
 
     async def extract_preview(self, item: SearchItem) -> str | None:
-        if not self.preview_enrichment:
+        if not self.preview_resolution:
             return None
         result = await self.search(item.title, page=1, limit=40)
         candidate = select_exact_live_preview(result.items, str(item.url))

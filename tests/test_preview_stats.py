@@ -30,3 +30,19 @@ def test_preview_coverage_reconciles_stored_and_playable(tmp_path):
     assert sum(v.total for v in stats.providers.values()) == stats.total
     assert sum(v.stored for v in stats.providers.values()) == stats.stored
     assert sum(v.playable for v in stats.providers.values()) == stats.playable
+
+
+def test_ephemeral_stored_preview_is_not_counted_as_playable(tmp_path):
+    db = tmp_path / "ephemeral-stats.db"
+    _insert(
+        db,
+        "tube8-old",
+        "tube8",
+        "https://ev-ph.t8cdn.com/videos/example.mp4?validto=1&hash=expired",
+    )
+    stats = preview_coverage_stats(path=db)
+    assert stats.total == 1
+    assert stats.stored == 1
+    assert stats.playable == 0
+    assert stats.providers["tube8"].stored == 1
+    assert stats.providers["tube8"].playable == 0

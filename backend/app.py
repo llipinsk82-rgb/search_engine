@@ -32,6 +32,7 @@ from backend.models import (
 )
 from backend.providers import PROVIDERS
 from backend.providers.sitemap import SitemapProvider
+from backend.preview_rules import PREVIEW_RULES
 from backend.search import search_all
 from backend.settings import get_build_id
 from backend.source_policy import (
@@ -207,11 +208,50 @@ async def providers() -> dict[str, object]:
         name for name in trusted_provider_names() if is_searchable_provider(name)
     }
     names = sorted(available & searchable)
+    media_rows = media_policy_rows(set(names))
+    for row in media_rows:
+        name = str(row["name"])
+        rule = PREVIEW_RULES.get(name)
+        row["preview_resolution_mode"] = "on_demand" if rule is not None else "stored"
+        row["preview_storage_mode"] = rule.storage_mode if rule is not None else "stable"
     return {
         "providers": names,
         "policies": provider_policy_rows(set(names)),
-        "media_policies": media_policy_rows(set(names)),
+        "media_policies": media_rows,
     }
+
+
+@app.get("/api/preview/{item_id}", include_in_schema=False)
+async def resolve_preview(item_id: str) -> dict[str, str]:
+    item = get_item(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="preview item not found")
+
+    provider = next(
+        (
+            candidate
+            for candidate in [*PROVIDERS, *LIVE_ADAPTERS]
+            if candidate.name == item.provider
+            and getattr(candidate, "preview_resolution", False)
+            and callable(getattr(candidate, "extract_preview", None))
+        ),
+        None,
+    )
+    if provider is None:
+        raise HTTPException(status_code=404, detail="preview resolution unavailable")
+
+    try:
+        candidate = await asyncio.wait_for(provider.extract_preview(item), timeout=6.0)
+    except Exception as exc:
+        logger.warning("preview resolution upstream failure for %s", item.provider, exc_info=True)
+        raise HTTPException(status_code=502, detail="preview upstream unavailable") from exc
+
+    if not candidate:
+        raise HTTPException(status_code=404, detail="preview not found")
+    value = str(candidate)
+    if not media_url_allowed(item.provider, "preview", value):
+        raise HTTPException(status_code=502, detail="preview media rejected")
+    return {"preview_url": value}
 
 
 @app.get("/api/stats")
