@@ -45,13 +45,15 @@ Representative current stored coverage:
 | porndr | 101 | 101 | 100% stored, policy disabled |
 | anyporn | 77 | 77 | 100% stored, policy disabled |
 
-The exact counts are expected to move with normal sync/backfill activity; the architectural conclusion is stable: preview coverage is sparse mainly because indexed sitemap rows do not receive preview enrichment.
+The exact counts are expected to move with normal sync/backfill activity; the architectural conclusion is stable: preview coverage is sparse because most indexed rows do not have a safe canonical-item preview acquisition path. The provider population is not limited to configured sitemap providers; live adapters and index-only rows must be included in the audit.
 
 ## Hard rules
 
 - Never synthesize a preview URL from provider identity, item id, page URL, thumbnail URL, or guessed path patterns.
 - Never treat a full-video `contentUrl` as a preview merely to increase coverage.
 - Accept preview evidence only from a field/attribute/pattern verified for that provider or from a conservative generic metadata field whose semantics are explicitly preview/trailer.
+- Preview evidence must be bound to the exact canonical item being enriched. A preview found on a related/recommended card whose target URL differs from the item URL is invalid evidence.
+- Never take the first `data-preview`, `data-mediabook`, trailer, MP4, or WebM hit from a canonical page unless the audited extractor proves that hit belongs to the current item.
 - Every stored preview must pass provider media policy validation before being considered playable.
 - Existing valid `preview_url` is preserved unless a later design explicitly introduces replacement validation.
 - Missing or failed preview extraction must not damage thumbnail, title, URL, tags, studio, content classification, age-check state, FTS, or provider cursors.
@@ -63,7 +65,8 @@ The exact counts are expected to move with normal sync/backfill activity; the ar
 
 ## Existing architecture to preserve
 
-- live preview extraction: `backend/live.py`
+- live preview extraction/adapters: `backend/live.py` and `LIVE_ADAPTERS`
+- configured index providers: `backend/providers/__init__.py::PROVIDERS`
 - generic page parser: `backend/providers/sitemap.py::parse_video_metadata`
 - sitemap XML parser: `parse_sitemap_video_metadata`
 - page fetch path: `SitemapProvider._fetch_page_item`
@@ -74,7 +77,7 @@ The exact counts are expected to move with normal sync/backfill activity; the ar
 - bounded maintenance orchestration: existing backfill service/timer and maintenance lock
 - durable retry pattern: Content Classification v2 enrichment state model
 
-Do not create a second generic crawler when the existing page-fetch path can be extended safely.
+Do not create a second generic crawler when an existing provider fetch path can be extended safely. Preview enrichment needs one audited rule registry shared by sitemap providers and live adapters; provider names that occur in both populations are deduplicated, with the configured sitemap provider preferred because it already carries canonical fetch/robots settings.
 
 ## Target pipeline
 
@@ -116,12 +119,14 @@ Do not accept:
 
 Implementation starts with a read-only audit.
 
-For each configured sitemap provider, record:
+For every currently indexed provider with active rows missing preview, record:
 
 - provider name
+- source kind: configured sitemap provider, live adapter, both, or index-only
 - sample size and canonical sample URLs
-- whether page fetch succeeds with existing fetch path
+- whether a safe canonical-page fetch path exists
 - explicit preview field/attribute observed
+- how the preview candidate is bound to the exact canonical item URL; related/recommended-card candidates for a different target URL are rejected
 - preview media type: MP4/WebM/other
 - preview host(s)
 - whether URL is HTTPS
@@ -130,7 +135,7 @@ For each configured sitemap provider, record:
 - whether the field is absent, ambiguous, or unstable
 - final capability decision: OFF / extract-only / playable-direct / playable-proxy
 
-The audit must not classify a provider as preview-capable solely because a live search parser for that provider contains a regex. The canonical page/source used by indexed rows must be probed.
+The audit must not classify a provider as preview-capable solely because a live search parser contains a regex or because a canonical page contains preview attributes for related cards. The exact candidate must be demonstrably bound to the current canonical item URL. Providers with indexed rows but no safe canonical fetch/binding path are `FETCH_UNAVAILABLE` or `AMBIGUOUS`, not preview-capable.
 
 The audit artifact should be committed under `docs/` and should distinguish:
 
@@ -143,18 +148,32 @@ The audit artifact should be committed under `docs/` and should distinguish:
 
 Only providers with `PLAYBACK_CONFIRMED` evidence are enabled for preview enrichment. `EXTRACT_CONFIRMED` without proven playback remains capability-OFF; it is an audit finding, not permission to crawl.
 
-## Provider capability
+The audit also writes `deploy/search-engine-preview-rules.json` as the deterministic runtime projection of only `PLAYBACK_CONFIRMED` canonical-bound rules. Runtime extraction code loads this committed file; it never derives capability from provider identity or from test fixtures.
 
-Add an explicit provider capability, default OFF:
+## Provider capability and audited rule registry
 
-`preview_enrichment: bool = False`
+Add one central audited preview-rule registry shared by configured sitemap providers and live adapters.
 
-It is configured only for providers whose extraction semantics and playback path are both proven by the audit.
+Each rule exists only for a provider whose audit status is `PLAYBACK_CONFIRMED`. Absence from the registry means capability OFF.
+
+The runtime-facing capability remains:
+
+`preview_enrichment: bool`
+
+but its truth value is derived from the presence of an audited rule rather than inferred from provider identity or a broad class default.
+
+Each rule must encode a canonical-item-bound extraction strategy. Allowed v2 strategies are deliberately narrow:
+- a linked element/card where both target canonical URL and preview attribute are captured and the normalized target equals the item URL;
+- a page-level JSON/metadata field whose containing object is proven to identify the current canonical URL.
+
+A provider-specific custom extractor is allowed only when the audit fixture and tests prove exact canonical binding and neither narrow strategy can represent it.
+
+The eligible runtime map combines configured sitemap providers and live adapters. Duplicate names are deduplicated; configured sitemap providers win because they already carry canonical fetch/robots settings. Index-only providers without a safe runtime fetcher remain capability OFF.
 
 This capability means:
-- page enrichment is allowed to look for preview evidence for this provider
-- it does not by itself make any URL trusted
-- final URL must still pass extraction semantics and media policy validation
+- page enrichment is allowed to look for preview evidence for this provider;
+- it does not by itself make any URL trusted;
+- final URL must still pass canonical binding and media policy validation.
 
 Do not conflate this capability with Content Classification v2's `content_class_enrichment`.
 
@@ -163,16 +182,18 @@ Do not conflate this capability with Content Classification v2's `content_class_
 Extend `parse_video_metadata()` conservatively.
 
 Preferred design:
-- provider-specific extraction helpers for fields proven by audit
-- one central validation path
-- return `SearchItem.preview_url` only when semantics are explicit
+- one central audited rule registry for sitemap and live providers
+- canonical-item-bound extraction; the extractor must compare the normalized captured item URL/object identity with `page_url`
+- one central media-policy validation path
+- return/store `SearchItem.preview_url` only when semantics and canonical binding are explicit
 
-If a conservative generic trailer field is found during audit, support it with dedicated tests. Do not add broad MP4 scraping.
+If a conservative generic trailer field is found during audit, support it with dedicated tests only when its metadata object is proven to represent the current canonical item. Do not add broad MP4 scraping. Do not accept the first preview-looking attribute from related/recommended cards.
 
 Any provider-specific extractor must have:
 - fixture or real captured markup reduced to a deterministic test case
-- positive test
-- negative/ambiguity test where practical
+- positive test that binds preview to the exact canonical URL
+- negative test where an otherwise valid preview belongs to a related/recommended URL and must be rejected
+- negative/ambiguity test for full-video/unrelated fields where practical
 - HTTPS normalization rules if needed
 - host validation in policy tests
 
@@ -306,7 +327,7 @@ Required report counters:
 - failures
 
 Execution:
-1. build eligible provider map from explicit capability
+1. build one deduplicated eligible provider map from configured sitemap providers plus live adapters; configured sitemap provider wins duplicate names; only audited-rule providers are eligible
 2. fetch bounded candidate list
 3. before each request, check wall-clock deadline
 4. call existing provider page-fetch/extraction path
@@ -376,12 +397,13 @@ This avoids converting normal index backfill into an expensive crawl.
 Tube8 is the clearest coverage gap:
 - about 245k active indexed rows
 - only about 586 stored previews
-- live parser already knows a `data-mediabook` preview pattern
+- Tube8 is a `Tube8LiveAdapter`, not one of the configured `SitemapProvider` instances
+- live search/listing parser already knows a `data-mediabook` preview pattern
 - existing media policy allows Tube8 preview host suffixes
 
-Do not assume the live regex works on canonical indexed pages. The audit must probe real Tube8 item pages first.
+Do not assume the live search/listing regex works on canonical indexed item pages. Audit real Tube8 item pages and require exact canonical-item binding. If the item page exposes only previews for related cards, Tube8 remains capability-OFF in v2 rather than deriving a preview URL from listing markup, item id, or thumbnail.
 
-If confirmed, Tube8 becomes a strong candidate for bounded preview enrichment, not a one-shot full crawl.
+If canonical binding and playback are confirmed, Tube8 becomes a strong candidate for bounded preview enrichment, not a one-shot full crawl.
 
 ## Existing live providers
 
@@ -439,6 +461,8 @@ At minimum:
 - audited providers only enabled
 - positive preview extraction fixture
 - ambiguous/full-video field negative test
+- related/recommended-card preview for a different canonical URL negative test
+- live-adapter and configured-provider deduplication test
 - merge preserves existing preview
 - DB preview update touches only preview-related state
 - candidate selection excludes existing-preview rows

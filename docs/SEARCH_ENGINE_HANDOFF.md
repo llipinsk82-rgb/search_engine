@@ -1816,3 +1816,50 @@ Approved architecture:
 Hard gate:
 - user must review/approve the written spec before implementation planning
 - implementation has NOT started
+
+
+## 2026-09-21 — PREVIEW COVERAGE V2 IMPLEMENTATION PLAN CHECKPOINT
+
+Status: written spec approved; implementation plan complete and self-reviewed; product implementation NOT started.
+
+Branch: `feature/preview-coverage-v2`
+Spec: `docs/superpowers/specs/2026-09-21-preview-coverage-v2-design.md`
+Plan: `docs/superpowers/plans/2026-09-21-preview-coverage-v2.md`
+
+Read-only planning audit confirmed two critical design constraints:
+- preview-looking attributes on canonical pages can belong to related/recommended cards, so any preview evidence must bind to the exact canonical item URL;
+- the provider universe is not sitemap-only: e.g. Tube8 is a `LiveAdapter`, so Preview Coverage must audit/dedupe configured sitemap providers, live adapters, and active index-only provider names.
+
+Plan decomposition: 7 tasks.
+1. Provider preview evidence audit + full audit manifest + deterministic runtime rule projection.
+2. Central canonical-bound preview rules across sitemap and live providers, plus deduplicated provider map.
+3. Preview-only persistence, durable retry state, candidate selection, and stored/playable coverage stats.
+4. Bounded preview enrichment engine and reuse of already-running canonical page fetches.
+5. Media-policy acceptance and regression protection.
+6. Existing same-lock scheduler integration with conservative preview budget.
+7. Full verification, official rollout, two natural scheduler runs, coverage measurement, and authoritative handoff.
+
+Hard rules:
+- no guessed/synthesized preview URLs;
+- no full-video substitution;
+- no first-preview-attribute scraping;
+- related-card preview evidence for another URL is rejected;
+- only `PLAYBACK_CONFIRMED` canonical-bound rules are runtime-capable;
+- runtime rules are loaded from committed `deploy/search-engine-preview-rules.json`;
+- media policy is enforced before persistence and again by the narrow DB update helper;
+- existing preview is never replaced;
+- no unbounded crawl or parallel writer;
+- no UI/API redesign;
+- official deploy path only.
+
+Self-review:
+- spec coverage: PASS
+- placeholder scan: PASS
+- type/interface consistency: PASS
+- Review Focus coverage: PASS
+- `git diff --check`: PASS
+
+Implementation gate:
+- user must review/approve this plan and select execution method;
+- recommended execution: Native, because Tasks 2–6 share tightly coupled interfaces and the current harness has no separate subagent executor;
+- no product code, release, production data, or production deploy has been changed in this planning phase.
