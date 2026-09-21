@@ -1685,3 +1685,101 @@ Rollout sequence:
 9. record after-distribution, `Tiny`, manual evidence samples and final handoff.
 
 `PRODUCTION_UNCHANGED` at this checkpoint.
+
+## 2026-09-21 — AUTHORITATIVE CONTENT CLASSIFICATION V2 PRODUCTION CLOSEOUT
+
+Status: **DONE / PRODUCTION ACCEPTED**.
+
+This section supersedes earlier Content Classification v2 checkpoints where rollout was pending.
+
+### Final release state
+- Feature branch: `feature/content-classification-v2`
+- Release branch: `feature/provider-registry-probe`
+- Final deployed code SHA: `caf2da197ae6144bb5bacfcada2cd51b397e81ce`
+- Production build: `caf2da197ae6`
+- Health: `status=ok`
+- search service, sync timer, backfill timer: active
+- Production must stay on code build `caf2da197ae6`; later closeout commit is docs-only.
+
+### Final verification
+- full suite: **286 PASS**
+- only 2 pre-existing FastAPI `on_event` deprecation warnings
+- backend compileall: PASS
+- frontend node syntax: PASS
+- git diff check: PASS
+- `content_class_source`: present
+- `content_enrichment_state`: present
+- search API normal/studio requests: HTTP 200
+- invalid content class: HTTP 422
+
+### Important rollout ruling
+The first v2 dry-run predicted 49 Studio rows. Manual review showed that bare tag `studio` can describe context such as a recording studio rather than a production company. No apply was performed from that dry-run.
+
+TDD regression fix `caf2da197ae6144bb5bacfcada2cd51b397e81ce` removed bare `studio` from studio tag evidence. Valid Studio evidence remains exact `professional` or `production`, or an explicit structured studio label.
+
+Corrected dry-run before apply:
+- scanned 1,155,501
+- changed 95,645
+- conflicts 3
+- before: amateur 2,016 / studio 1 / unknown 1,153,484
+- predicted after: amateur 96,002 / studio 30 / unknown 1,059,469
+
+Manual bounded evidence review PASS:
+- Amateur rows had explicit `amateur` or `homemade` evidence.
+- Studio rows had explicit `professional` evidence or structured studio labels such as Brazzers or Old4K.
+- conflict rows contained both evidence classes and remained `unknown/conflict`.
+- no title, provider, domain, or image inference was introduced.
+
+### Production reclassification
+Reclassification was applied in bounded 50,000-row chunks under the existing maintenance lock. An overlapping timer tick was cleanly skipped with `SEARCH_MAINTENANCE=SKIPPED reason=lock-busy`; no writers overlapped.
+
+Final idempotency dry-run:
+- scanned **1,157,022**
+- changed **0**
+- conflicts **3**
+- amateur **96,041**
+- studio **33**
+- unknown **1,060,948**
+- sources: tag_amateur 96,041 / tag_studio 29 / studio_label 4 / conflict 3 / none 1,060,945
+- percentages: amateur 8.3007% / studio 0.0029% / unknown 91.6964%
+
+High Unknown remains valid where trusted evidence is absent.
+
+### Natural enrichment acceptance
+Configured in the existing backfill maintenance lock:
+- `SEARCH_CONTENT_ENRICH_BATCH_SIZE=25`
+- `SEARCH_CONTENT_ENRICH_MAX_SECONDS=45`
+
+Natural run A: attempted 25 / enriched 14 / amateur 5 / studio 1 / conflicts 0 / no_signal 19 / failures 0 / unit success.
+
+Natural run B: attempted 25 / enriched 17 / amateur 3 / studio 3 / conflicts 0 / no_signal 19 / failures 0 / unit success.
+
+Scheduler stability: PASS.
+
+One first post-deploy backfill invocation failed with status 2 during a deploy race where the systemd unit already had new flags while that invocation still observed the old CLI argument surface. Read-only investigation confirmed the final runtime CLI exposes both enrichment flags, and subsequent natural runs passed. Incident CLOSED.
+
+### Representative query acceptance: Tiny
+Before v2 via production `/api/search?q=Tiny`:
+- all 8,390
+- amateur 79
+- studio 0
+- unknown 8,311
+
+After v2 via the same API query:
+- all 8,398
+- amateur 1,759
+- studio 1
+- unknown 6,638
+
+The small total-count difference is from normal sync/backfill activity during rollout. The class split now reflects explicit evidence rather than leaving nearly every result Unknown.
+
+### Provider coverage
+Page enrichment capability is enabled only for audited providers:
+`brazzilmoms`, `fpo`, `serviporno`, `sextubespot`, `xcafe`, `xgroovy`, `xnxx`, `xvideos`.
+
+No provider identity or domain is classification evidence.
+
+### Next product slice
+Content Classification v2 is closed. No more reclassification mutation is required.
+
+Recommended next slice: **Preview Coverage**. Audit provider preview extraction and media-policy coverage, then improve `preview_url` coverage in bounded or on-demand fashion instead of crawling the whole index aggressively.
