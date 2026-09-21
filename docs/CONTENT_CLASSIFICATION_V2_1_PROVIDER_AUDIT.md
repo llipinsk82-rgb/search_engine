@@ -43,3 +43,28 @@ Accepted evidence is explicit and item-bound only. Title text, provider identity
 ## Runtime decision
 
 Only `xgroovy`, `xcafe`, and `porndoe` receive v2.1 runtime rules. `xgroovy` duplicates evidence the generic JSON-LD parser already understands and therefore serves as a compatibility/control rule. `xcafe` and `porndoe` add explicit studio/producer evidence not currently captured by the generic parser. Ambiguous providers remain Unknown until an item-bound contract can be proven.
+
+## Pre-deploy gate
+
+Verified code SHA: `671d9d57c993f8f51273efbf7a7d174852bbdc01`
+
+Verification:
+- full pytest suite: 360 PASS;
+- compileall: PASS;
+- frontend JavaScript syntax: PASS;
+- git diff check: PASS.
+
+Production baseline before v2.1 deploy (read-only):
+- build: `3c0b1d05935f`;
+- active rows: 1,204,370;
+- unknown/none: 1,105,426;
+- unknown/conflict: 3;
+- amateur/tag_amateur: 98,781;
+- studio/studio_label: 131;
+- studio/tag_studio: 29;
+- non-empty studio: 131.
+
+Cached query splits (all / amateur / studio / unknown):
+- Tiny: 8516 / 1767 / 8 / 6741;
+- Sis: 4329 / 651 / 4 / 3674;
+- Babe: 89408 / 17462 / 40 / 71906.

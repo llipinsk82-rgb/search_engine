@@ -2145,3 +2145,57 @@ Milestone status:
 - PRODUCT_DONE for current code/data/operations scope;
 - NOT_VERIFIED only: authenticated desktop/mobile visual smoke of frontend v30, because unauthenticated public UI returns HTTP 403 and auth was not bypassed;
 - next implementation work requires either authenticated visual evidence or a new explicit product goal from the owner.
+
+## 2026-09-21 — CONTENT CLASSIFICATION V2.1 PRE-DEPLOY GATE
+
+Branch:
+`feature/content-classification-v2-1`
+
+Verified code SHA:
+`671d9d57c993f8f51273efbf7a7d174852bbdc01`
+
+Goal:
+- improve trustworthy Studio coverage using only explicit, canonical-item-bound studio / producer / production-company evidence;
+- preserve API values `amateur | studio | unknown` and provenance semantics;
+- never infer from title, provider identity, uploader/channel, categories/navigation, or recommendation cards.
+
+Provider audit:
+- confirmed runtime rules: xgroovy JSON-LD `productionCompany`, xcafe scoped microdata `productionCompany/name`, porndoe JSON-LD `producer/name`;
+- ambiguous and deliberately rejected: xvideos sponsor/uploader data, xxxbule mixed genre/performer data, sexplex serialized studio index without a proven stable item-bound value path;
+- all 31 configured providers audited from current production Unknown samples, maximum three samples/provider.
+
+TDD / verification:
+- manifest contract RED then GREEN;
+- rule loader/extractor RED then GREEN;
+- canonical enrichment integration RED then GREEN;
+- persistence/provenance regressions PASS without additional production-code changes;
+- final full suite: 360 PASS;
+- compileall PASS;
+- `node --check frontend/app.js` PASS;
+- `git diff --check` PASS.
+
+Production baseline before deploy:
+- current build: `3c0b1d05935f`, health PASS;
+- active rows: 1,204,370;
+- unknown/none: 1,105,426;
+- unknown/conflict: 3;
+- amateur/tag_amateur: 98,781;
+- studio/studio_label: 131;
+- studio/tag_studio: 29;
+- non-empty studio: 131;
+- Tiny all/amateur/studio/unknown: 8516 / 1767 / 8 / 6741;
+- Sis: 4329 / 651 / 4 / 3674;
+- Babe: 89408 / 17462 / 40 / 71906.
+
+VERIFIED:
+- code and tests above.
+
+NOT_VERIFIED:
+- production effect of xcafe/porndoe rules until exact code SHA is deployed and one bounded maintenance enrichment cycle completes.
+
+Exact next step:
+- push branch;
+- helper CHECK;
+- deploy exact verified code SHA `671d9d57c993f8f51273efbf7a7d174852bbdc01` through the official deploy helper;
+- run one bounded enrichment cycle under the existing maintenance lock;
+- collect the same global/source/query measurements and accept only attributable `studio_label` increases.
