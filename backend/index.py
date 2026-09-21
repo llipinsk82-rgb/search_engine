@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.content_class import classify_content_evidence
+from backend.media_policy import media_url_allowed
 from backend.models import SearchItem, SortMode
 from backend.settings import DB_PATH
 
@@ -87,6 +88,15 @@ def initialize(path: Path = DB_PATH) -> None:
                 );
 
                 CREATE TABLE IF NOT EXISTS content_enrichment_state (
+                    item_id TEXT PRIMARY KEY,
+                    provider TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    failure_count INTEGER NOT NULL DEFAULT 0,
+                    last_attempt_at TEXT NOT NULL,
+                    next_attempt_at TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS preview_enrichment_state (
                     item_id TEXT PRIMARY KEY,
                     provider TEXT NOT NULL,
                     status TEXT NOT NULL,
@@ -180,6 +190,22 @@ def initialize(path: Path = DB_PATH) -> None:
                     "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) "
                     "VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
                     ("__system__", content_enrichment_index_key),
+                )
+
+            preview_enrichment_index_key = "migration:preview_enrichment_index_v1"
+            preview_enrichment_index_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", preview_enrichment_index_key),
+            ).fetchone()
+            if preview_enrichment_index_done is None:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_preview_enrichment_next_attempt "
+                    "ON preview_enrichment_state(next_attempt_at)"
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) "
+                    "VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", preview_enrichment_index_key),
                 )
 
             # Older indexed Beeg rows used /-0/<id>, while the accepted public
@@ -614,6 +640,106 @@ def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
         score=0.0,
     )
 
+
+
+@dataclass(frozen=True)
+class PreviewEnrichmentCandidate:
+    item: SearchItem
+    failure_count: int = 0
+
+
+def update_preview_url(
+    item_id: str,
+    *,
+    preview_url: str,
+    path: Path = DB_PATH,
+) -> bool:
+    value = (preview_url or "").strip()
+    if not value or not value.startswith("https://"):
+        raise ValueError("preview_url must use https")
+    initialize(path)
+    with _connect(path) as conn:
+        row = conn.execute(
+            "SELECT provider, preview_url FROM items WHERE id = ? AND active = 1",
+            (item_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        if row["preview_url"]:
+            return False
+        if not media_url_allowed(str(row["provider"]), "preview", value):
+            raise ValueError("preview URL is not allowed by media policy")
+        cursor = conn.execute(
+            "UPDATE items SET preview_url = ? "
+            "WHERE id = ? AND active = 1 AND (preview_url IS NULL OR preview_url = '')",
+            (value, item_id),
+        )
+        return cursor.rowcount == 1
+
+
+def record_preview_enrichment_attempt(
+    item_id: str,
+    *,
+    provider: str,
+    status: str,
+    failure_count: int,
+    last_attempt_at: datetime,
+    next_attempt_at: datetime | None,
+    path: Path = DB_PATH,
+) -> None:
+    initialize(path)
+    last_value = last_attempt_at.astimezone(timezone.utc).isoformat()
+    next_value = next_attempt_at.astimezone(timezone.utc).isoformat() if next_attempt_at is not None else None
+    with _connect(path) as conn:
+        conn.execute(
+            """
+            INSERT INTO preview_enrichment_state(
+                item_id, provider, status, failure_count, last_attempt_at, next_attempt_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET
+                provider=excluded.provider,
+                status=excluded.status,
+                failure_count=excluded.failure_count,
+                last_attempt_at=excluded.last_attempt_at,
+                next_attempt_at=excluded.next_attempt_at
+            """,
+            (item_id, provider, status, max(0, int(failure_count)), last_value, next_value),
+        )
+
+
+def list_preview_enrichment_candidates(
+    provider_names: set[str] | list[str] | tuple[str, ...],
+    *,
+    limit: int,
+    now: datetime,
+    path: Path = DB_PATH,
+) -> list[PreviewEnrichmentCandidate]:
+    initialize(path)
+    names = sorted({name.strip() for name in provider_names if name.strip()})
+    if not names or limit < 1:
+        return []
+    placeholders = ",".join("?" for _ in names)
+    now_value = now.astimezone(timezone.utc).isoformat()
+    sql = f"""
+        SELECT i.id, COALESCE(s.failure_count, 0) AS failure_count
+        FROM items i
+        LEFT JOIN preview_enrichment_state s ON s.item_id = i.id
+        WHERE i.active = 1
+          AND (i.preview_url IS NULL OR i.preview_url = '')
+          AND i.url LIKE 'https://%'
+          AND i.provider IN ({placeholders})
+          AND (s.next_attempt_at IS NULL OR s.next_attempt_at <= ?)
+        ORDER BY i.id
+        LIMIT ?
+    """
+    with _connect(path) as conn:
+        rows = conn.execute(sql, [*names, now_value, max(1, int(limit))]).fetchall()
+    result: list[PreviewEnrichmentCandidate] = []
+    for row in rows:
+        item = get_item(str(row["id"]), path=path)
+        if item is not None:
+            result.append(PreviewEnrichmentCandidate(item=item, failure_count=int(row["failure_count"] or 0)))
+    return result
 
 
 @dataclass(frozen=True)
