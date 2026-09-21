@@ -97,3 +97,34 @@ def test_content_class_stats_command(monkeypatch, capsys) -> None:
     assert "total=9" in out
     assert "unknown=4" in out
     assert "demo" in out
+
+
+def test_enrich_content_command(monkeypatch, capsys) -> None:
+    seen = {}
+
+    class Report:
+        attempted = 3
+        enriched = 2
+        classified_amateur = 1
+        classified_studio = 1
+        conflicts = 0
+        no_signal = 0
+        failures = 1
+
+    async def fake(providers, *, batch_size, max_seconds):
+        seen["providers"] = providers
+        seen["batch_size"] = batch_size
+        seen["max_seconds"] = max_seconds
+        return Report()
+
+    monkeypatch.setattr(cli, "enrich_unknown_content", fake, raising=False)
+    monkeypatch.setattr(sys, "argv", ["search-engine", "enrich-content", "--batch-size", "12", "--max-seconds", "30"])
+    cli.main()
+
+    assert seen["providers"] is cli.PROVIDERS
+    assert seen["batch_size"] == 12
+    assert seen["max_seconds"] == 30.0
+    out = capsys.readouterr().out
+    assert "attempted=3" in out
+    assert "enriched=2" in out
+    assert "failures=1" in out

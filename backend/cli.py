@@ -5,6 +5,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from backend.content_enrichment import enrich_unknown_content
 from backend.content_reclassify import content_class_stats, reclassify_content
 from backend.importer import load_jsonl
 from backend.index import (
@@ -167,6 +168,10 @@ def main() -> None:
 
     subparsers.add_parser("content-class-stats")
 
+    enrich = subparsers.add_parser("enrich-content")
+    enrich.add_argument("--batch-size", type=int, default=25)
+    enrich.add_argument("--max-seconds", type=float, default=45.0)
+
     seed = subparsers.add_parser("seed-demo")
     seed.add_argument("--limit", type=int, default=1000)
 
@@ -252,6 +257,21 @@ def main() -> None:
         print("sources=" + json.dumps(stats.source_counts, sort_keys=True))
         for provider, row in stats.providers.items():
             print(f"{provider}=" + json.dumps(row, sort_keys=True))
+        return
+
+    if args.command == "enrich-content":
+        report = asyncio.run(
+            enrich_unknown_content(
+                PROVIDERS,
+                batch_size=args.batch_size,
+                max_seconds=args.max_seconds,
+            )
+        )
+        print(
+            f"attempted={report.attempted} enriched={report.enriched} "
+            f"amateur={report.classified_amateur} studio={report.classified_studio} "
+            f"conflicts={report.conflicts} no_signal={report.no_signal} failures={report.failures}"
+        )
         return
 
     if args.command == "seed-demo":
