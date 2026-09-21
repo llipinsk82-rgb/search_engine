@@ -633,3 +633,18 @@ body.filter-sheet-open { overflow: hidden; }
   .skeleton-media,
   .skeleton-copy span { animation: none; }
 }
+
+.secondary-action {
+  min-height: 46px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  padding: 0 18px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.secondary-action:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}

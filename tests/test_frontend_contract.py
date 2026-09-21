@@ -12,7 +12,8 @@ def test_age_check_frontend_contract_is_consistent() -> None:
     assert 'class="age-check"' in index
     assert 'document.querySelector("#age-check")' in app
     assert 'item.age_check_status === "required"' in app
-    assert 'item.age_check_status === "not_required"' in app
+    assert '<option value="not_required">No age check</option>' in index
+    assert 'item.age_check_status === "not_required"' not in app
 
 
 def test_preview_is_manual_with_play_button() -> None:
@@ -321,21 +322,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v29() -> None:
+def test_frontend_assets_are_v30() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=29" in html
-    assert "/app.js?v=29" in html
-    assert 'register("/sw.js?v=29", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v29";' in sw
-    assert '"/styles.css?v=29"' in sw
-    assert '"/app.js?v=29"' in sw
+    assert "/styles.css?v=30" in html
+    assert "/app.js?v=30" in html
+    assert 'register("/sw.js?v=30", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v30";' in sw
+    assert '"/styles.css?v=30"' in sw
+    assert '"/app.js?v=30"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v29";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v30";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -379,8 +380,45 @@ def test_on_demand_preview_resolution_is_click_driven_and_no_store() -> None:
 def test_on_demand_preview_frontend_bumps_shell_cache() -> None:
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    assert 'search-shell-v29' in sw
-    assert '/app.js?v=29' in sw
-    assert '/styles.css?v=29' in sw
-    assert 'app.js?v=29' in html
-    assert 'styles.css?v=29' in html
+    assert 'search-shell-v30' in sw
+    assert '/app.js?v=30' in sw
+    assert '/styles.css?v=30' in sw
+    assert 'app.js?v=30' in html
+    assert 'styles.css?v=30' in html
+
+def test_premium_polish_removes_dev_badge() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert '<span class="badge">DEV</span>' not in html
+
+
+def test_premium_polish_uses_compact_live_status() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'function liveSummary(providers)' in app
+    assert 'live source' in app
+    assert '(item) => !item.error,' in app
+    assert 'parts.push(`${item.provider} ${item.total.toLocaleString()}`)' not in app
+    assert 'parts.push(`${item.provider} +${item.fetched}`)' not in app
+
+
+def test_premium_polish_uses_neutral_age_copy() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'Any age check' in html
+    assert 'Age check required' in html
+    assert 'No age check observed' not in html
+    assert 'no age check observed' not in app
+    assert '? "18+ gate"' in app
+
+
+def test_premium_polish_reset_is_secondary_action() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert 'id="filters-reset" type="button" class="secondary-action"' in html
+    assert '.secondary-action {' in css
+    assert 'border: 1px solid var(--border-subtle)' in css
+
+
+def test_premium_polish_duration_copy_is_correct() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    assert '10–30 min' in html
+    assert '10–0 min' not in html

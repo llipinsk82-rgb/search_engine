@@ -443,11 +443,7 @@ function resultCard(item) {
   card.querySelector(".content-class").textContent = item.content_class === "amateur" ? "Amateur" : "";
   card.querySelector(".studio").textContent = item.studio || "";
   card.querySelector(".age-check").textContent =
-    item.age_check_status === "required"
-      ? "18+ check (UK)"
-      : item.age_check_status === "not_required"
-        ? "no age check observed"
-        : "";
+    item.age_check_status === "required" ? "18+ gate" : "";
   card.querySelector(".quality").textContent = item.quality || "";
   card.querySelector(".duration").textContent = durationText(item.duration_seconds);
 
@@ -530,16 +526,11 @@ function render(items, { append = false } = {}) {
 }
 
 function liveSummary(providers) {
-  const parts = [];
-  for (const item of providers || []) {
-    if (item.error) continue;
-    if (Number.isFinite(item.total)) {
-      parts.push(`${item.provider} ${item.total.toLocaleString()}`);
-    } else if (item.fetched) {
-      parts.push(`${item.provider} +${item.fetched}`);
-    }
-  }
-  return parts.join(" · ");
+  const available = (providers || []).filter(
+    (item) => !item.error,
+  );
+  if (!available.length) return "";
+  return `${available.length} live source${available.length === 1 ? "" : "s"}`;
 }
 
 function liveFailureCount(providers) {
@@ -954,7 +945,7 @@ async function boot() {
 boot();
 
 if ("serviceWorker" in navigator) {
-  const SW_RELOAD_GUARD = "search.swReload.v29";
+  const SW_RELOAD_GUARD = "search.swReload.v30";
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     try {
@@ -972,7 +963,7 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=29", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=30", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });
