@@ -2119,3 +2119,29 @@ Remaining product gate:
 Exact next step:
 - close visual acceptance when an authenticated desktop/mobile screenshot or browser session is available;
 - otherwise continue only with a newly selected Search Engine product goal, not historical superseded handoff items.
+
+## 2026-09-21 — OPERATIONAL HEALTH SWEEP / MILESTONE CLOSE
+
+Production code build:
+`3c0b1d05935fe7adf1a0ca7e89d298b1b3d7f1b1`
+
+Read-only production sweep:
+- /api/health PASS; indexed_items 1,187,148 at sample time;
+- search-engine.service active/running, Result=success, ExecMainStatus=0;
+- sync and backfill services last result success; timers active/waiting;
+- maintenance serialization healthy: colliding backfill ticks SKIPPED lock-busy rather than overlapping writers;
+- recent completed backfill runs show content-enrichment failures=0;
+- stable preview backlog currently exhausted in sampled runs: preview-enrichment attempted=0, failures=0;
+- recent sync runs finished successfully;
+- no new API 5xx/tracebacks in the inspected 90-minute window; the only trace was the already-documented transient TNAFlix resolver timeout, subsequently production-verified PASS;
+- FastAPI lifespan cleanup remains clean: no deprecation warnings after deployed restart.
+
+Backlog reconciliation:
+- Search Product v2 roadmap phases are all superseded by completed later releases (Classification v2, Preview Coverage v2, Premium v30);
+- repository handoff contains no current unresolved code/deploy blocker other than authenticated visual acceptance;
+- historical provider/browser notes remain superseded unless a new owner-selected provider expansion goal reopens them.
+
+Milestone status:
+- PRODUCT_DONE for current code/data/operations scope;
+- NOT_VERIFIED only: authenticated desktop/mobile visual smoke of frontend v30, because unauthenticated public UI returns HTTP 403 and auth was not bypassed;
+- next implementation work requires either authenticated visual evidence or a new explicit product goal from the owner.
