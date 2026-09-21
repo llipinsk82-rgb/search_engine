@@ -75,3 +75,9 @@ def test_page_json_requires_identity_match_and_ignores_full_video_fields():
     assert m.extract_preview_url(rule, exact, "https://example.com/video/1") == "https://cdn.example/p.mp4"
     assert m.extract_preview_url(rule, other, "https://example.com/video/1") is None
     assert m.extract_preview_url(rule, full_only, "https://example.com/video/1") is None
+
+
+def test_rule_storage_mode_matches_audit_manifest():
+    m = _module()
+    for name, row in _confirmed().items():
+        assert m.PREVIEW_RULES[name].storage_mode == row["storage_mode"]

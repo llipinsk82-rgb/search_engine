@@ -40,7 +40,8 @@
       ".bigfuck.tv"
     ],
     "fixture": "tests/fixtures/preview_pages/bigfuck-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/bigfuck-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/bigfuck-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "brazzilmoms",
@@ -76,7 +77,8 @@
       ".drtst.com"
     ],
     "fixture": "tests/fixtures/preview_pages/drtuber-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/drtuber-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/drtuber-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "eporner",
@@ -126,7 +128,8 @@
       ".hqporn.xxx"
     ],
     "fixture": "tests/fixtures/preview_pages/hqporn-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/hqporn-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/hqporn-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "hqporner",
@@ -309,7 +312,8 @@
       ".sb-cd.com"
     ],
     "fixture": "tests/fixtures/preview_pages/spankbang-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/spankbang-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/spankbang-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "sunporno",
@@ -345,7 +349,8 @@
       ".ypncdn.com"
     ],
     "fixture": "tests/fixtures/preview_pages/thumbzilla-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/thumbzilla-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/thumbzilla-negative.json",
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "tnaflix",
@@ -369,7 +374,8 @@
       ".tnaflix.com"
     ],
     "fixture": "tests/fixtures/preview_pages/tnaflix-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/tnaflix-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/tnaflix-negative.json",
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "tube8",
@@ -391,7 +397,8 @@
       ".t8cdn.com"
     ],
     "fixture": "tests/fixtures/preview_pages/tube8-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/tube8-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/tube8-negative.json",
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "tubev",
@@ -457,7 +464,8 @@
       ".xhcdn.com"
     ],
     "fixture": "tests/fixtures/preview_pages/xhamster-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/xhamster-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/xhamster-negative.json",
+    "storage_mode": "stable"
   },
   {
     "provider": "xnxx",
@@ -500,7 +508,8 @@
       ".youjizz.com"
     ],
     "fixture": "tests/fixtures/preview_pages/youjizz-positive.json",
-    "negative_fixture": "tests/fixtures/preview_pages/youjizz-negative.json"
+    "negative_fixture": "tests/fixtures/preview_pages/youjizz-negative.json",
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "yourlust",

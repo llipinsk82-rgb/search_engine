@@ -462,7 +462,7 @@ class SitemapProvider(SearchProvider):
     @property
     def preview_enrichment(self) -> bool:
         rule = PREVIEW_RULES.get(self.name)
-        return rule is not None and getattr(rule, "kind", None) != "live_search_exact"
+        return rule is not None and getattr(rule, "kind", None) != "live_search_exact" and getattr(rule, "storage_mode", "stable") == "stable"
 
     async def extract_preview(self, item: SearchItem) -> str | None:
         if not self.preview_enrichment:

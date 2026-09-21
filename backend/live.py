@@ -1494,7 +1494,7 @@ class _HttpLiveAdapter:
     @property
     def preview_enrichment(self) -> bool:
         rule = PREVIEW_RULES.get(self.name)
-        return rule is not None and rule.kind == "live_search_exact"
+        return rule is not None and rule.kind == "live_search_exact" and rule.storage_mode == "stable"
 
     async def extract_preview(self, item: SearchItem) -> str | None:
         if not self.preview_enrichment:

@@ -36,11 +36,13 @@ def test_disabled_provider_is_not_eligible():
     assert _map([Fake("x", False)], []) == {}
 
 
-def test_real_live_capabilities_follow_audited_rules():
+def test_real_live_persistent_capabilities_follow_audited_storage_mode():
     rules = importlib.import_module("backend.preview_rules").PREVIEW_RULES
     live = {adapter.name: adapter for adapter in LIVE_ADAPTERS}
     for name, adapter in live.items():
-        assert adapter.preview_enrichment is (name in rules)
+        rule = rules.get(name)
+        expected = rule is not None and rule.storage_mode == "stable"
+        assert adapter.preview_enrichment is expected
 
 
 def test_live_search_strategy_does_not_enable_same_named_sitemap_provider():
@@ -53,5 +55,13 @@ def test_live_search_strategy_does_not_enable_same_named_sitemap_provider():
     )
     live = next(adapter for adapter in LIVE_ADAPTERS if adapter.name == "tube8")
     assert index.preview_enrichment is False
-    assert live.preview_enrichment is True
-    assert _map([index], [live])["tube8"] is live
+    assert live.preview_enrichment is False
+    assert "tube8" not in _map([index], [live])
+
+
+def test_ephemeral_live_rules_are_resolution_only_not_persistent_enrichment():
+    live = {adapter.name: adapter for adapter in LIVE_ADAPTERS}
+    for name in ("thumbzilla", "tnaflix", "tube8", "youjizz"):
+        assert live[name].preview_enrichment is False
+    for name in ("bigfuck", "drtuber", "hqporn", "spankbang", "xhamster"):
+        assert live[name].preview_enrichment is True

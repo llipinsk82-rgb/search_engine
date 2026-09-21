@@ -6,12 +6,14 @@ from typing import Any, Literal
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 RuleKind = Literal["linked_attribute","page_json","custom","live_search_exact"]
+StorageMode = Literal["stable","ephemeral"]
 
 @dataclass(frozen=True)
 class PreviewRule:
     provider: str
     kind: RuleKind
     preview_host_suffixes: tuple[str,...]
+    storage_mode: StorageMode = "stable"
     target_attribute: str|None=None
     preview_attribute: str|None=None
     json_identity_field: str|None=None
@@ -23,6 +25,7 @@ def _load_rules():
     return {r["provider"]:PreviewRule(
         provider=r["provider"], kind=r["rule_kind"],
         preview_host_suffixes=tuple(r.get("policy_host_suffixes",[])),
+        storage_mode=r["storage_mode"],
         target_attribute=r.get("target_attribute"), preview_attribute=r.get("preview_attribute"),
         json_identity_field=r.get("json_identity_field"), json_preview_field=r.get("json_preview_field"),
     ) for r in rows}

@@ -14,7 +14,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".bigfuck.tv"
-    ]
+    ],
+    "storage_mode": "stable"
   },
   {
     "provider": "drtuber",
@@ -31,7 +32,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".drtst.com"
-    ]
+    ],
+    "storage_mode": "stable"
   },
   {
     "provider": "hqporn",
@@ -48,7 +50,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".hqporn.xxx"
-    ]
+    ],
+    "storage_mode": "stable"
   },
   {
     "provider": "spankbang",
@@ -65,7 +68,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".sb-cd.com"
-    ]
+    ],
+    "storage_mode": "stable"
   },
   {
     "provider": "thumbzilla",
@@ -82,7 +86,8 @@
     "playback_mode": "proxy",
     "policy_host_suffixes": [
       ".ypncdn.com"
-    ]
+    ],
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "tnaflix",
@@ -101,7 +106,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".tnaflix.com"
-    ]
+    ],
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "tube8",
@@ -118,7 +124,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".t8cdn.com"
-    ]
+    ],
+    "storage_mode": "ephemeral"
   },
   {
     "provider": "xhamster",
@@ -137,7 +144,8 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".xhcdn.com"
-    ]
+    ],
+    "storage_mode": "stable"
   },
   {
     "provider": "youjizz",
@@ -154,6 +162,7 @@
     "playback_mode": "direct",
     "policy_host_suffixes": [
       ".youjizz.com"
-    ]
+    ],
+    "storage_mode": "ephemeral"
   }
 ]

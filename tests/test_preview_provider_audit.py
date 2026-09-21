@@ -74,3 +74,16 @@ def test_runtime_rule_file_is_exact_confirmed_projection():
         if row["status"] == "PLAYBACK_CONFIRMED"
     ]
     assert _rows(RULES) == expected
+
+
+def test_playback_confirmed_rows_declare_storage_mode():
+    confirmed = [row for row in _rows(MANIFEST) if row["status"] == "PLAYBACK_CONFIRMED"]
+    assert confirmed
+    assert {row["storage_mode"] for row in confirmed} <= {"stable", "ephemeral"}
+    modes = {row["provider"]: row["storage_mode"] for row in confirmed}
+    assert {name for name, mode in modes.items() if mode == "ephemeral"} == {
+        "thumbzilla", "tnaflix", "tube8", "youjizz"
+    }
+    assert {name for name, mode in modes.items() if mode == "stable"} == {
+        "bigfuck", "drtuber", "hqporn", "spankbang", "xhamster"
+    }
