@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "tools" / "preview_lab_site"
@@ -18,25 +19,11 @@ def test_preview_lab_site_is_isolated_and_read_only() -> None:
     assert 'method: "DELETE"' not in app
 
 
-def test_preview_lab_contains_verified_candidate_rules_only() -> None:
-    app = (SITE / "app.js").read_text(encoding="utf-8")
-    for provider in ("xvideos", "xnxx", "xgroovy", "mypornhere", "pussyspace", "porndig"):
-        assert provider in app
-    assert 'xcafe' not in app
-    assert 'sunporno' not in app
-
-
 def test_preview_lab_uses_external_assets_not_inline_script() -> None:
     html = (SITE / "index.html").read_text(encoding="utf-8")
     assert '<script src="/test/app.js" defer></script>' in html
     assert '<link rel="stylesheet" href="/test/styles.css">' in html
     assert '<script>' not in html
-
-
-def test_preview_lab_site_exposes_only_verified_new_candidates() -> None:
-    app = (SITE / "app.js").read_text(encoding="utf-8")
-    for provider in ("sexvid", "pornid", "zbporn"):
-        assert provider in app
 
 
 def test_preview_lab_uses_unauthenticated_test_api_only() -> None:
@@ -57,22 +44,42 @@ def test_preview_cards_have_visible_play_button_and_toggle_contract() -> None:
     assert 'event.stopPropagation()' in app
     assert ".preview-play" in css
 
-def test_provider_dropdown_is_limited_to_preview_lab_candidates() -> None:
+
+def test_preview_lab_queue_contains_only_remaining_unverified_providers() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    block = app.split("const TEST_PROVIDERS = [", 1)[1].split("];", 1)[0]
+    expected = {
+        "xgroovy", "xcafe", "sunporno", "serviporno", "fpo", "sextubespot",
+        "freeporn", "xxxbule", "porngo", "txxx", "sexplex", "voyeurhit",
+        "vxxx", "hdzog", "theyarehuge", "justporn", "bigassporn", "megatube",
+        "tubev", "brazzilmoms", "porndoe", "eporner", "pornone", "hqporner",
+        "milfporn", "yourlust", "zzztube", "bustybus", "redtube", "pornsexvideo",
+        "lexotic", "pornobae", "pornzog",
+    }
+    found = set(re.findall(r'"([a-z0-9]+)"', block))
+    assert found == expected
+    promoted = {"xvideos", "xnxx", "mypornhere", "pussyspace", "porndig", "sexvid", "pornid", "zbporn"}
+    assert promoted.isdisjoint(found)
+
+
+def test_preview_lab_requires_single_provider_selection() -> None:
     app = (SITE / "app.js").read_text(encoding="utf-8")
     html = (SITE / "index.html").read_text(encoding="utf-8")
-    expected = (
-        "xvideos", "xnxx", "xgroovy", "mypornhere", "pussyspace",
-        "porndig", "sexvid", "pornid", "zbporn",
-    )
-    assert 'const TEST_PROVIDERS = [' in app
-    for provider in expected:
-        assert f'"{provider}"' in app
-    assert 'fetch("/test-api/providers"' not in app
-    assert '<option value="">All test candidates</option>' in html
-    assert 'All providers' not in html
-
-
-def test_all_candidates_searches_only_test_providers() -> None:
-    app = (SITE / "app.js").read_text(encoding="utf-8")
-    assert "Promise.all(TEST_PROVIDERS.map" in app
+    assert "Promise.all(TEST_PROVIDERS.map" not in app
+    assert "if (!providerSelect.value)" in app
+    assert '<option value="" selected>Select provider</option>' in html
     assert 'params.set("provider", provider)' in app
+
+
+def test_mobile_play_uses_click_only_and_desktop_hover_is_fine_pointer_only() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in app
+    assert "if (canHover)" in app
+    assert 'playButton.addEventListener("click"' in app
+
+
+def test_xgroovy_is_marked_proxy_required_without_direct_browser_candidate() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    assert 'provider === "xgroovy"' in app
+    assert 'source: "proxy"' in app
+    assert 'badge("Proxy required", "none")' in app

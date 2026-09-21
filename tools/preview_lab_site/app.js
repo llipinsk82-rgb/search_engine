@@ -12,15 +12,39 @@ const counters = {
 };
 
 const TEST_PROVIDERS = [
-  "xvideos",
-  "xnxx",
   "xgroovy",
-  "mypornhere",
-  "pussyspace",
-  "porndig",
-  "sexvid",
-  "pornid",
-  "zbporn",
+  "xcafe",
+  "sunporno",
+  "serviporno",
+  "fpo",
+  "sextubespot",
+  "freeporn",
+  "xxxbule",
+  "porngo",
+  "txxx",
+  "sexplex",
+  "voyeurhit",
+  "vxxx",
+  "hdzog",
+  "theyarehuge",
+  "justporn",
+  "bigassporn",
+  "megatube",
+  "tubev",
+  "brazzilmoms",
+  "porndoe",
+  "eporner",
+  "pornone",
+  "hqporner",
+  "milfporn",
+  "yourlust",
+  "zzztube",
+  "bustybus",
+  "redtube",
+  "pornsexvideo",
+  "lexotic",
+  "pornobae",
+  "pornzog",
 ];
 
 function thumbnailDirectoryPreview(thumbnail) {
@@ -145,8 +169,11 @@ function buildCard(item, preview) {
       playButton.textContent = "▶";
       playButton.setAttribute("aria-label", "Play preview");
     };
-    media.addEventListener("mouseenter", start);
-    media.addEventListener("mouseleave", stop);
+    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (canHover) {
+      media.addEventListener("mouseenter", start);
+      media.addEventListener("mouseleave", stop);
+    }
     playButton.addEventListener("click", (event) => {
       event.stopPropagation();
       video.paused ? start() : stop();
@@ -171,6 +198,7 @@ function buildCard(item, preview) {
   meta.appendChild(badge(item.provider || "unknown", "provider"));
   if (preview?.source === "current") meta.appendChild(badge("Current preview", "current"));
   else if (preview?.source === "candidate") meta.appendChild(badge("Lab candidate", "candidate"));
+  else if (preview?.source === "proxy") meta.appendChild(badge("Proxy required", "none"));
   else meta.appendChild(badge("No preview", "none"));
 
   const title = document.createElement("h2");
@@ -225,28 +253,21 @@ async function runSearch() {
   results.replaceChildren();
   Object.values(counters).forEach((el) => { el.textContent = "0"; });
 
-  try {
-    let items = [];
-    let total = 0;
+  if (!providerSelect.value) {
+    statusEl.textContent = "Select provider";
+    return;
+  }
 
-    if (providerSelect.value) {
-      const payload = await fetchProviderSearch(providerSelect.value, sampleLimit);
-      items = Array.isArray(payload.items) ? payload.items : [];
-      total = Number(payload.total || 0);
-    } else {
-      const payloads = await Promise.all(TEST_PROVIDERS.map(async (provider) => {
-        try {
-          return await fetchProviderSearch(provider, sampleLimit);
-        } catch (_) {
-          return { provider, total: 0, items: [] };
-        }
-      }));
-      total = payloads.reduce((sum, payload) => sum + Number(payload.total || 0), 0);
-      items = roundRobinSamples(payloads, sampleLimit);
-    }
+  try {
+    const payload = await fetchProviderSearch(providerSelect.value, sampleLimit);
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const total = Number(payload.total || 0);
 
     for (const item of items) {
       let preview = await resolveCurrentPreview(item);
+      if (!preview && String(item.provider || "").toLowerCase() === "xgroovy") {
+        preview = { source: "proxy" };
+      }
       if (!preview) {
         const candidate = inferPreviewCandidate(item);
         if (candidate) preview = { url: candidate, source: "candidate" };

@@ -79,3 +79,22 @@ Execution safety layer blocked the bounded probe in this session; no conclusion 
 
 ## Rule
 A provider is promoted to PASS only when the preview is item-bound and a bounded request returns `video/*`. Recommendation-card previews, HTML 200s, full-player video sources, inferred URLs without media proof, and timeouts are not PASS.
+
+## Promotion checkpoint — 2026-09-21
+
+Promoted to production build `de29714afbc5` after full release gate (373 PASS) and production smoke (8/8 item-bound previews returned HTTP 206 + `video/mp4`):
+
+- xvideos
+- xnxx
+- mypornhere
+- pussyspace — only items whose thumbnail is on `*.xvideos-cdn.com`; unsupported thumbnail CDNs remain without preview
+- porndig
+- sexvid
+- pornid
+- zbporn
+
+Not promoted:
+
+- xgroovy — direct browser requests require an upstream Referer; lab marks it `Proxy required`
+
+`test.blackserv.eu` now contains the remaining 33-provider audit queue only. It requires selecting one provider at a time; there is no all-provider fan-out on page load.
