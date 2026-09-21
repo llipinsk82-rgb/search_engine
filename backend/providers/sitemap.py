@@ -401,6 +401,7 @@ class SitemapProvider(SearchProvider):
         backfill_priority: int = 100,
         backfill_max_records: int | None = None,
         enrich_missing_core_metadata: bool = False,
+        content_class_enrichment: bool = False,
     ) -> None:
         self.name = name.strip()
         self.sitemap_url = sitemap_url.strip()
@@ -423,6 +424,7 @@ class SitemapProvider(SearchProvider):
         )
         self.backfill_priority = int(backfill_priority)
         self.enrich_missing_core_metadata = bool(enrich_missing_core_metadata)
+        self.content_class_enrichment = bool(content_class_enrichment)
         self.backfill_max_records = (
             max(1, int(backfill_max_records))
             if backfill_max_records is not None

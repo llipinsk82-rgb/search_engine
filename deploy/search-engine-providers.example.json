@@ -12,7 +12,8 @@
     "fetch_concurrency": 4,
     "backfill_batch_size": 100,
     "backfill_priority": 20,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "xnxx",
@@ -27,7 +28,8 @@
     "fetch_concurrency": 4,
     "backfill_batch_size": 100,
     "backfill_priority": 30,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "sunporno",
@@ -57,7 +59,8 @@
     "fetch_concurrency": 1,
     "backfill_batch_size": 250,
     "backfill_priority": 70,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "txxx",
@@ -117,7 +120,8 @@
     "fetch_concurrency": 2,
     "backfill_batch_size": 250,
     "backfill_priority": 95,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "bigassporn",
@@ -147,7 +151,8 @@
     "fetch_concurrency": 2,
     "backfill_batch_size": 250,
     "backfill_priority": 97,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "sextubespot",
@@ -162,7 +167,8 @@
     "fetch_concurrency": 2,
     "backfill_batch_size": 250,
     "backfill_priority": 98,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "xcafe",
@@ -177,7 +183,8 @@
     "fetch_concurrency": 2,
     "backfill_batch_size": 250,
     "backfill_priority": 99,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   },
   {
     "name": "mypornhere",
@@ -469,6 +476,7 @@
     "fetch_concurrency": 2,
     "backfill_batch_size": 250,
     "backfill_priority": 103,
-    "backfill_max_records": 50000
+    "backfill_max_records": 50000,
+    "content_class_enrichment": true
   }
 ]

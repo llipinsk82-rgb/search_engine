@@ -92,6 +92,7 @@ def _configured_sitemap_providers() -> list[SearchProvider]:
                         else None
                     ),
                     enrich_missing_core_metadata=bool(row.get("enrich_missing_core_metadata", False)),
+                    content_class_enrichment=bool(row.get("content_class_enrichment", False)),
                 )
             )
         except KeyError as exc:

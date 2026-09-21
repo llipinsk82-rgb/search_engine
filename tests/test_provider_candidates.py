@@ -132,3 +132,22 @@ def test_enriched_clock_providers_are_promoted():
 def test_porndoe_is_promoted_after_enriched_gate():
     assert "porndoe" in trusted_provider_names()
     assert is_searchable_provider("porndoe")
+def test_content_class_v2_enrichment_is_enabled_only_for_audited_providers():
+    production = json.loads(
+        (ROOT / "deploy" / "search-engine-providers.example.json").read_text()
+    )
+    enabled = {
+        row["name"]
+        for row in production
+        if row.get("content_class_enrichment") is True
+    }
+    assert enabled == {
+        "brazzilmoms",
+        "fpo",
+        "serviporno",
+        "sextubespot",
+        "xcafe",
+        "xgroovy",
+        "xnxx",
+        "xvideos",
+    }

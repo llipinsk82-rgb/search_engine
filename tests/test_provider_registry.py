@@ -105,3 +105,21 @@ class ProviderRegistryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+def test_content_class_enrichment_defaults_off(monkeypatch):
+    rows = [{"name": "example", "sitemap_url": "https://example.com/sitemap.xml"}]
+    monkeypatch.setenv("SEARCH_SITEMAP_PROVIDERS_JSON", json.dumps(rows))
+    monkeypatch.setenv("SEARCH_PROVIDER_CONFIG_FILE", "")
+    provider = build_providers()[0]
+    assert provider.content_class_enrichment is False
+
+
+def test_content_class_enrichment_can_be_enabled_explicitly(monkeypatch):
+    rows = [{
+        "name": "example",
+        "sitemap_url": "https://example.com/sitemap.xml",
+        "content_class_enrichment": True,
+    }]
+    monkeypatch.setenv("SEARCH_SITEMAP_PROVIDERS_JSON", json.dumps(rows))
+    monkeypatch.setenv("SEARCH_PROVIDER_CONFIG_FILE", "")
+    provider = build_providers()[0]
+    assert provider.content_class_enrichment is True
