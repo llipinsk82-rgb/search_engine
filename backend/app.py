@@ -215,7 +215,7 @@ async def providers() -> dict[str, object]:
     for row in media_rows:
         name = str(row["name"])
         rule = PREVIEW_RULES.get(name)
-        row["preview_resolution_mode"] = ("on_demand" if rule is not None and rule.storage_mode == "ephemeral" else "stored")
+        row["preview_resolution_mode"] = ("on_demand" if rule is not None and (rule.storage_mode == "ephemeral" or rule.kind == "custom") else "stored")
         row["preview_storage_mode"] = rule.storage_mode if rule is not None else "stable"
     return {
         "providers": names,
