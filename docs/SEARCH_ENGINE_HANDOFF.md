@@ -92,38 +92,48 @@ Do not delete without explicit owner instruction.
 
 ## 4. Fresh production state
 
-Verified production code build: `671d9d57c993`
+Verified production code build: de29714afbc5
 
-`/api/health`:
-- `status=ok`
-- version `0.5.0`
-- indexed items: **1,206,272**
-- indexed providers: **55**
-- configured index providers: **31**
-- live providers: **25**
-- trusted providers: **55**
-- available providers: **55**
+/api/health:
+- status=ok
+- version 0.5.0
+- indexed items: 1,278,086
+- indexed providers: 55
+- configured index providers: 31
+- live providers: 25
+- trusted providers: 55
+- available providers: 55
 
 Service state:
-- `search-engine.service`: active
-- sync timer: active
-- backfill timer: active
+- search-engine.service: active
 
-Current content-class distribution from production DB:
-- `unknown / none`: **1,107,149**
-- `amateur / tag_amateur`: **98,937**
-- `studio / studio_label`: **154**
-- `studio / tag_studio`: **29**
-- `unknown / conflict`: **3**
+Current content-class provenance from one read-only DB snapshot:
+- amateur / tag_amateur: 101,680
+- studio / studio_label: 1,041
+- studio / tag_studio: 35
+- unknown / conflict: 8
+- unknown / none: 1,175,322
 
-Total current Studio rows = **183** (`154 studio_label + 29 tag_studio`).
+Explicit Studio-evidence rows = 1,076 (1,041 studio_label + 35 tag_studio).
 
-Fresh cached query split `(all / amateur / studio / unknown)`:
-- `Tiny`: **8518 / 1767 / 8 / 6743**
-- `Sis`: **4334 / 651 / 4 / 3679**
-- `Babe`: **89739 / 17502 / 47 / 72190**
+Current studio_label attribution:
+- xgroovy: 602
+- xcafe: 420
+- porndoe: 19
 
-The content-type select itself is not broken. The product problem was and remains **evidence coverage**, especially Studio.
+The scheduled bounded enrichment therefore continued naturally from studio_label=154 to 1,041 without a mass crawl.
+
+Current UI content-type semantics:
+- Amateur = explicitly classified amateur.
+- Production = every active row that is not explicitly amateur.
+- Unknown is no longer exposed as a separate UI filter.
+
+Fresh cached query split (All / Amateur / Production):
+- Tiny: 8,963 / 1,806 / 7,157
+- Sis: 4,481 / 670 / 3,811
+- Babe: 98,743 / 17,941 / 80,802
+
+The content-type select is working as designed. Do not interpret the Production count as equivalent to explicit Studio evidence; Production intentionally includes unknown/non-amateur rows.
 
 ## 5. Content Classification v2.1 — COMPLETED AND DEPLOYED
 
@@ -194,7 +204,7 @@ Initial `studio_label` attribution:
 
 The +7 global `studio_label` delta exactly matched `classified_studio=7`, proving attributable explicit evidence.
 
-Scheduled bounded enrichment has continued naturally. Fresh current production now has `studio/studio_label=154`, total Studio **183**.
+Scheduled bounded enrichment has continued naturally. Fresh current production now has `studio/studio_label=1,041`, with **1,076** explicit Studio-evidence rows (`1,041 studio_label + 35 tag_studio`).
 
 Do not replace this with heuristics just to make Studio look balanced.
 
