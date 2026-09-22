@@ -286,45 +286,66 @@ Relevant docs:
 
 ## 7. Premium frontend / visual state
 
-Premium product finish is implemented: dark media-first UI, mobile one large card/row, responsive desktop grid, sort/content/filters, mobile filter sheet, manual preview, explicit state handling and PWA hardening.
+Premium product finish is implemented: dark media-first UI, mobile one large card/row, responsive desktop grid, sort/content filters, mobile filter sheet, manual preview, explicit state handling and PWA hardening.
 
-Premium polish later removed the production `DEV` badge in source, compacted provider telemetry, simplified age-gate text, improved Reset contrast, fixed duration copy and bumped frontend cache to v30.
+Fresh server-side truth on 2026-09-22:
+- production and canonical index.html, app.js, styles.css and sw.js hashes are identical;
+- production uses search-shell-v31;
+- index loads /styles.css?v=31 and /app.js?v=31;
+- no standalone DEV badge/text exists in the production frontend source.
 
-Authenticated mobile screenshots previously verified:
-- mobile shell PASS
-- result cards/feed PASS
-- open Filters sheet PASS
-- no horizontal overflow observed
+Therefore the old stale DEV report is not reproduced server-side. Do not patch DEV in source again without evidence from the loaded authenticated client.
 
-Desktop authenticated 3-column visual acceptance remains **NOT_VERIFIED**.
+Previously authenticated mobile screenshots verified:
+- mobile shell PASS;
+- result cards/feed PASS;
+- open Filters sheet PASS;
+- no horizontal overflow observed.
 
-Important RED FLAG from the owner's latest mobile screenshots:
-- browser still visibly showed `DEV` although deployed v30 source removed it;
-- stale PWA/service-worker/browser shell is plausible but **not proven**;
-- first verify actual loaded asset versions before changing source;
-- do not blindly patch DEV again.
+Desktop authenticated three-column visual acceptance remains NOT_VERIFIED because this automation session has no authorized authenticated browser view.
 
-The floating download icon and bottom `Tab / Progress / Finished` bar in screenshots are browser-extension UI, not Search Engine UI.
+If DEV is still visible on the owner's authenticated device, capture the current screenshot and loaded asset/cache version before any code change.
 
-## 8. Interpretation of Amateur / Studio / Unknown
+## 8. Content filter — current semantics
 
-The filter control works.
+The UI exposes only:
+- Amateur = explicitly classified amateur;
+- Production = every active row that is not explicitly amateur.
 
-Exact `Tiny` evolution:
-- old: 8093 All / 47 Amateur / 0 Studio / 8046 Unknown
-- after v2: 8468 / 1763 / 7 / 6698
-- fresh now: 8518 / 1767 / 8 / 6743
+Unknown remains an internal evidence state and is not a separate UI filter.
 
-`Unknown` means **insufficient trustworthy evidence**, not “neither amateur nor studio”.
+Fresh cached query split (All / Amateur / Production):
+- Tiny: 8,963 / 1,806 / 7,157
+- Sis: 4,481 / 670 / 3,811
+- Babe: 98,743 / 17,941 / 80,802
+
+Explicit Studio evidence is a separate provenance metric, not the Production-filter count:
+- studio_label: 1,041
+- tag_studio: 35
+- explicit Studio-evidence total: 1,076
+- studio_label attribution: xgroovy 602, xcafe 420, porndoe 19
+
+The scheduled bounded enrichment is working and grew studio_label from 154 to 1,041 without a mass crawl.
 
 ## 9. Current next steps / priorities
 
 There is no production incident and no rollback required.
 
-1. This handoff refresh and `docs/NEW_CHAT_START_2026-09-21.md` are docs-only: commit/push them, **do not deploy docs-only commits**.
-2. Highest current user-visible value: **Preview Coverage v3** fresh audit of previously ambiguous/current live providers, with no safety-policy weakening.
-3. Classification v2.1: let scheduled enrichment continue and re-measure; add v2.2 rules only if new explicit item-bound evidence exists.
-4. Visual acceptance: verify authenticated desktop v30 and why latest mobile screenshot still shows `DEV` before touching source.
+Completed in the current closeout:
+1. Preview Coverage v3 is CLOSED; production smoke for the eight promoted providers is 8/8 PASS.
+2. Classification v2.1 natural-enrichment follow-up is re-measured and healthy.
+3. Production/frontend source truth for stale DEV is verified: source has no DEV badge, hashes match canonical, SW/assets are v31.
+4. Handoff and new-chat state are refreshed as docs-only commits; do not deploy docs-only commits.
+
+Only remaining product gate:
+- authenticated desktop three-column visual acceptance;
+- if the owner still sees DEV on mobile, capture the authenticated screen and loaded asset/cache truth.
+
+This is a REAL_BLOCKER for visual PASS from automation because public UI authentication must not be bypassed.
+
+After authenticated visual PASS, the current Search Engine milestone is PRODUCT_DONE. Future implementation requires a newly selected product goal. Optional non-blocking preview backlog:
+- xgroovy: evaluate existing strict preview-proxy architecture if desired;
+- xcafe: revisit only if a deterministic per-item capability signal is found.
 
 ## 10. Verification discipline
 
