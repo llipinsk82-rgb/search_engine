@@ -42,8 +42,17 @@ function inferPreviewCandidate(item) {
   const thumbnail = String(item.thumbnail || "");
   const page = String(item.url || "");
 
-  if (["xvideos", "xnxx", "pussyspace"].includes(provider) && thumbnail) {
+  if (["xvideos", "xnxx"].includes(provider) && thumbnail) {
     return thumbnailDirectoryPreview(thumbnail);
+  }
+  if (provider === "pussyspace" && thumbnail) {
+    try {
+      const host = new URL(thumbnail).hostname.toLowerCase();
+      if (host === "xvideos-cdn.com" || host.endsWith(".xvideos-cdn.com")) {
+        return thumbnailDirectoryPreview(thumbnail);
+      }
+    } catch (_) {}
+    return null;
   }
 
   if (provider === "sexvid" || provider === "pornid" || provider === "zbporn") {

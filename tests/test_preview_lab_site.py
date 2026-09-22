@@ -75,3 +75,9 @@ def test_xgroovy_is_marked_proxy_required_without_direct_browser_candidate() -> 
     assert 'provider === "xgroovy"' in app
     assert 'source: "proxy"' in app
     assert 'badge("Proxy required", "none")' in app
+
+
+def test_pussyspace_browser_candidate_requires_xvideos_cdn() -> None:
+    app = (SITE / "app.js").read_text(encoding="utf-8")
+    assert 'provider === "pussyspace"' in app
+    assert 'endsWith(".xvideos-cdn.com")' in app

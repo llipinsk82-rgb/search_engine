@@ -56,8 +56,8 @@ def test_unknown_provider_has_no_inferred_preview() -> None:
 
 def test_pussyspace_uses_thumbnail_directory_preview() -> None:
     from tools.preview_lab import infer_preview_candidate
-    row = {"thumbnail": "https://thumb-cdn.example/uuid/6/xv_15_p.avif", "url": "https://www.pussyspace.com/vid-6162641-example/"}
-    assert infer_preview_candidate("pussyspace", row) == "https://thumb-cdn.example/uuid/6/preview.mp4"
+    row = {"thumbnail": "https://thumb-cdn77.xvideos-cdn.com/uuid/6/xv_15_p.avif", "url": "https://www.pussyspace.com/vid-6162641-example/"}
+    assert infer_preview_candidate("pussyspace", row) == "https://thumb-cdn77.xvideos-cdn.com/uuid/6/preview.mp4"
 
 
 def test_mypornhere_uses_bucketed_preview_file() -> None:
@@ -88,3 +88,17 @@ def test_zbporn_infers_short_preview_from_thumbnail_path() -> None:
     from tools.preview_lab import infer_preview_candidate
     row = {"thumbnail": "https://cdnth.zbporn.com/contents/videos_screenshots/682000/682348/preview.mp4.jpg", "url": "https://zbporn.com/videos/682348/example/"}
     assert infer_preview_candidate("zbporn", row) == "https://pr1.zbporn.com/contents/videos/682000/682348/682348_short_preview.mp4"
+
+
+def test_pussyspace_only_infers_preview_for_xvideos_cdn() -> None:
+    from tools.preview_lab import infer_preview_candidate
+    good = {
+        "thumbnail": "https://thumb-cdn77.xvideos-cdn.com/abc/6/xv_15_p.avif",
+        "url": "https://www.pussyspace.com/vid-6162641-example/",
+    }
+    bad = {
+        "thumbnail": "https://cdne-pics.youjizz.com/e/5/1/5/9/example.jpg",
+        "url": "https://www.pussyspace.com/vid-123-example/",
+    }
+    assert infer_preview_candidate("pussyspace", good) == "https://thumb-cdn77.xvideos-cdn.com/abc/6/preview.mp4"
+    assert infer_preview_candidate("pussyspace", bad) is None

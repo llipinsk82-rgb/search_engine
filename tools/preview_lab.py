@@ -52,9 +52,14 @@ def infer_preview_candidate(provider: str, item: dict) -> str | None:
     name = provider.strip().lower()
     thumbnail = str(item.get("thumbnail") or "").strip()
     page_url = str(item.get("url") or "").strip()
-    if name in {"xvideos", "xnxx", "pussyspace"} and thumbnail:
+    if name in {"xvideos", "xnxx"} and thumbnail:
         parsed = urlparse(thumbnail)
         if parsed.scheme in {"http", "https"} and parsed.netloc and "/" in parsed.path:
+            return parsed._replace(path=parsed.path.rsplit("/", 1)[0] + "/preview.mp4", query="", fragment="").geturl()
+    if name == "pussyspace" and thumbnail:
+        parsed = urlparse(thumbnail)
+        host = (parsed.hostname or "").lower()
+        if (host == "xvideos-cdn.com" or host.endswith(".xvideos-cdn.com")) and parsed.scheme in {"http", "https"} and "/" in parsed.path:
             return parsed._replace(path=parsed.path.rsplit("/", 1)[0] + "/preview.mp4", query="", fragment="").geturl()
     if name == "porndig" and thumbnail:
         match = re.search(r"/thumbs/(\d{4})/(\d{2})/(\d+)/", thumbnail)
