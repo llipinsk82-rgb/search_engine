@@ -97,4 +97,52 @@ Not promoted:
 
 - xgroovy — direct browser requests require an upstream Referer; lab marks it `Proxy required`
 
-`test.blackserv.eu` now contains the remaining 33-provider audit queue only. It requires selecting one provider at a time; there is no all-provider fan-out on page load.
+`test.blackserv.eu` is the dedicated Preview Lab. Its current dropdown is intentionally limited to the nine active lab providers: xvideos, xnxx, xgroovy, mypornhere, pussyspace, porndig, sexvid, pornid, zbporn.
+
+## Preview v3 closeout — 2026-09-22
+
+This section supersedes the older open audit queue above. The audit is now complete for all 55 providers. No provider is left in NOT_PROBED.
+
+### Production truth state
+
+Production build de29714afbc5 already contains the eight promoted custom preview rules:
+
+- xvideos
+- xnxx
+- mypornhere
+- pussyspace — only thumbnails on *.xvideos-cdn.com; unsupported thumbnail CDNs remain No preview
+- porndig
+- sexvid
+- pornid
+- zbporn
+
+Fresh production smoke on 2026-09-22: 8/8 PASS through /api/search + /api/preview, each returning HTTP 200 with a non-empty preview URL. Production service is active and /api/health reports build de29714afbc5.
+
+### Browser / mobile acceptance
+
+- test.blackserv.eu is the dedicated Preview Lab origin.
+- Android owner test confirmed Play starts with one tap after the fine-pointer hover guard.
+- xgroovy is not promoted: direct browser-style request without Referer returns 403; the same item-bound preview with source Referer returns 206 video/mp4. Lab status: Proxy required.
+
+### Expanded remaining-provider audit
+
+xcafe is the only additional provider with meaningful partial evidence: item-bound preview.anysex.com/<bucket>/<id>/<id>_pr640.mp4 returned 9/12 PASS (206 video/mp4) and 3/12 404. It is not promoted because support is not deterministic for every item.
+
+No safe deterministic item-bound preview was proven for the rest of the queue:
+
+- sunporno, fpo, sextubespot, txxx, sexplex, voyeurhit, hdzog, theyarehuge, bigassporn: sampled predictable motion paths returned 404.
+- vxxx, justporn: sampled predictable motion paths returned HTTP 200 but text/html, not video.
+- freeporn: sampled item pages / motion paths were blocked with 403; adding page or host Referer did not change the result.
+- porngo: bounded item-bound probes timed out / returned transport code 000; no PASS claimed.
+- megatube, serviporno, xxxbule, tubev, porndoe, eporner, pornone, hqporner, yourlust, zzztube, bustybus, redtube, pornobae, pornzog, pornsexvideo: sampled rows exposed no proven item-bound motion preview.
+- brazzilmoms: page data-preview values were recommendation-card media; current-item predictable preview paths returned 404, so no promotion.
+- milfporn: most sampled detail-page probes timed out; no item-bound preview was proven.
+- lexotic: sampled search results were tag pages rather than playable items, so item-level preview remains NOT_TESTABLE.
+
+### Closeout decision
+
+Preview Coverage v3 is CLOSED. Do not re-run the full provider audit. Future preview work is incremental only:
+
+1. xgroovy proxy support may be evaluated separately using the existing strict preview-proxy architecture.
+2. xcafe may be revisited only if a deterministic item-level existence/capability signal is found; do not emit guessed URLs that create false browser errors.
+3. All other providers stay without preview until new explicit item-bound evidence appears.
