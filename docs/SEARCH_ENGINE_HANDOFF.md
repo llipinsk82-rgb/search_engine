@@ -2642,3 +2642,36 @@ Preview status remains separate from this branch:
 Exact next product step:
 - let scheduled content enrichment continue and re-measure Studio coverage after natural cycles;
 - separately run Preview Coverage v3 only as a fresh audit of previously AMBIGUOUS/live providers, accepting new preview support only when canonical item binding and safe playback are proven.
+
+## 2026-09-22 — PREVIEW COVERAGE V3 CLOSEOUT
+
+Preview Coverage v3 is complete. Do not restart the provider audit.
+
+Production truth:
+- canonical branch feature/provider-registry-probe;
+- code / production build de29714afbc5;
+- production service active; canonical health is /api/health;
+- fresh production smoke: 8/8 newly promoted providers returned HTTP 200 from /api/preview with non-empty preview URL.
+
+Promoted in de29714:
+- xvideos, xnxx, mypornhere, pussyspace, porndig, sexvid, pornid, zbporn.
+- PussySpace is restricted to *.xvideos-cdn.com thumbnails; other thumbnail CDNs remain No preview.
+
+Not promoted:
+- xgroovy: item-bound media exists but direct browser request requires upstream Referer; lab status Proxy required.
+- xcafe: partial item-bound pattern verified 9/12 (206 video/mp4), 3/12 404; no deterministic per-item capability signal, therefore no production rule.
+- remaining providers: no safe deterministic item-bound preview proven in bounded audit; HTML 200s, recommendation previews, full-video URLs, 403s, 404s and timeouts are not accepted.
+
+Mobile lab acceptance:
+- dedicated origin test.blackserv.eu;
+- owner confirmed one-tap Play works on Android;
+- Preview Lab remains isolated from production.
+
+Authoritative detailed closeout:
+- preview-lab branch feature/preview-lab;
+- docs/PREVIEW_LAB_COVERAGE_2026-09-21.md in the preview-lab worktree.
+
+Next product priority after preview closeout:
+1. read-only visual truth check for production frontend: stale DEV report and authenticated desktop three-column acceptance;
+2. do not patch frontend until loaded asset/cache truth is established;
+3. classification v2.1 continues scheduled enrichment naturally; no heuristic mass crawl.

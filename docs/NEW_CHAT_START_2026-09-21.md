@@ -4,6 +4,22 @@ Paste this message into the new chat.
 
 ---
 
+## 2026-09-22 CURRENT OVERRIDE
+
+This block supersedes older build / Preview-v3-next-step statements later in this file.
+
+- Canonical branch: feature/provider-registry-probe.
+- Production code/build: de29714afbc5.
+- Canonical health endpoint: /api/health; production service is active.
+- Preview Coverage v3 is CLOSED; do not restart the provider audit.
+- Newly promoted production preview providers: xvideos, xnxx, mypornhere, pussyspace, porndig, sexvid, pornid, zbporn.
+- Fresh production smoke on 2026-09-22: 8/8 /api/preview PASS with non-empty preview URLs.
+- xgroovy is not promoted: lab status Proxy required.
+- xcafe is partial only: 9/12 item-bound preview probes PASS, 3/12 404; no production rule.
+- test.blackserv.eu is the isolated Preview Lab; owner confirmed one-tap Play on Android.
+- Next product priority: read-only frontend truth check for stale DEV report and authenticated desktop three-column visual acceptance. Do not patch frontend before loaded asset/cache truth is established.
+- Classification v2.1 continues scheduled enrichment; no heuristic mass crawl.
+
 You are continuing **BlackServ Search Engine** as CTO / Tech Lead.
 
 Work mode:
