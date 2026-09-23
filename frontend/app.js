@@ -18,13 +18,9 @@ const filterSheet = document.querySelector("#filter-sheet");
 const filtersCloseBtn = document.querySelector("#filters-close");
 const filtersResetBtn = document.querySelector("#filters-reset");
 const filtersApplyBtn = document.querySelector("#filters-apply");
-const desktopSecondaryFilters = document.querySelector(".secondary-filters");
-const mobileSecondaryFilters = document.querySelector("#mobile-secondary-filters");
+const filterCountEl = document.querySelector("#filter-count");
 const filterSheetPanel = document.querySelector(".filter-sheet-panel");
-const mobileQuery = window.matchMedia("(max-width: 680px)");
 let filterSheetOpen = false;
-const secondaryFiltersHome = document.createComment("secondary-filters-home");
-desktopSecondaryFilters.after(secondaryFiltersHome);
 
 const PAGE_SIZE = 40;
 let nextOffset = 0;
@@ -50,7 +46,6 @@ function setLiveDetail(text) {
 function openFilterSheet() {
   if (filterSheetOpen) return;
   filterSheetOpen = true;
-  mobileSecondaryFilters.append(desktopSecondaryFilters);
   filterSheet.hidden = false;
   filtersOpenBtn.setAttribute("aria-expanded", "true");
   document.body.classList.add("filter-sheet-open");
@@ -60,20 +55,27 @@ function openFilterSheet() {
 function closeFilterSheet({ returnFocus = true } = {}) {
   if (!filterSheetOpen) return;
   filterSheetOpen = false;
-  secondaryFiltersHome.before(desktopSecondaryFilters);
   filterSheet.hidden = true;
   filtersOpenBtn.setAttribute("aria-expanded", "false");
   document.body.classList.remove("filter-sheet-open");
   if (returnFocus) filtersOpenBtn.focus();
 }
 
-function applyMobileFilters() {
-  closeFilterSheet();
-  search();
+function activeSecondaryFilterCount() {
+  return [providerSelect, qualitySelect, durationSelect, ageCheckSelect]
+    .filter((control) => Boolean(control.value))
+    .length;
 }
 
-function secondaryFilterChanged() {
-  if (mobileQuery.matches) return;
+function updateFilterCount() {
+  const count = activeSecondaryFilterCount();
+  filterCountEl.hidden = count === 0;
+  filterCountEl.textContent = String(count);
+}
+
+function applyFilterSheet() {
+  updateFilterCount();
+  closeFilterSheet();
   search();
 }
 
@@ -82,6 +84,7 @@ function resetSecondaryFilters() {
   qualitySelect.value = "";
   durationSelect.value = "";
   ageCheckSelect.value = "";
+  updateFilterCount();
 }
 
 function trapFilterSheetFocus(event) {
@@ -367,6 +370,7 @@ function restoreState() {
     durationSelect.value = duration;
   }
 
+  updateFilterCount();
   return [...params.keys()].length > 0;
 }
 
@@ -908,18 +912,15 @@ for (const button of contentClassButtons) {
 }
 
 for (const el of [providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
-  el.addEventListener("change", secondaryFilterChanged);
+  el.addEventListener("change", updateFilterCount);
 }
 
 filtersOpenBtn.addEventListener("click", openFilterSheet);
 filtersCloseBtn.addEventListener("click", () => closeFilterSheet());
 filtersResetBtn.addEventListener("click", resetSecondaryFilters);
-filtersApplyBtn.addEventListener("click", applyMobileFilters);
+filtersApplyBtn.addEventListener("click", applyFilterSheet);
 filterSheet.querySelector("[data-filter-close]").addEventListener("click", () => closeFilterSheet());
 filterSheet.addEventListener("keydown", trapFilterSheetFocus);
-mobileQuery.addEventListener("change", (event) => {
-  if (!event.matches && filterSheetOpen) closeFilterSheet({ returnFocus: false });
-});
 
 moreBtn.addEventListener("click", () => {
   search({ persist: false, append: true });
@@ -934,6 +935,7 @@ clearBtn.addEventListener("click", () => {
   qualitySelect.value = "";
   durationSelect.value = "";
   ageCheckSelect.value = "";
+  updateFilterCount();
   resultsEl.replaceChildren();
   seenIds = new Set();
   nextOffset = 0;

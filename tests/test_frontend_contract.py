@@ -100,13 +100,12 @@ def test_premium_css_uses_tokens_and_three_two_one_grid() -> None:
 
 
 def test_premium_mobile_has_no_horizontal_filter_strip() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
     mobile = css[css.index("@media (max-width: 680px)"):]
     assert "overflow-x: auto" not in mobile
-    assert ".filters-open" in mobile
-    assert ".secondary-filters" in mobile
-    assert "display: none" in mobile[mobile.index(".secondary-filters"):]
-
+    assert 'id="filters-open"' in html
+    assert 'class="secondary-filters"' not in html
 
 def test_keyboard_focus_is_explicit() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
@@ -230,13 +229,13 @@ def test_mobile_filter_sheet_contract() -> None:
     for hook in (
         'id="filters-open"', 'id="filter-sheet"', 'role="dialog"',
         'aria-modal="true"', 'id="filters-close"', 'id="filters-reset"',
-        'id="filters-apply"', 'id="mobile-secondary-filters"',
+        'id="filters-apply"', 'class="filter-fields"',
     ):
         assert hook in html
     for fn in (
         "function openFilterSheet()",
         "function closeFilterSheet(",
-        "function applyMobileFilters()",
+        "function applyFilterSheet()",
         "function resetSecondaryFilters()",
         "function trapFilterSheetFocus(event)",
     ):
@@ -247,18 +246,12 @@ def test_mobile_filter_sheet_contract() -> None:
     assert 'event.key !== "Tab"' in app
     assert "filtersOpenBtn.focus()" in app
 
-
-def test_mobile_secondary_changes_wait_for_apply() -> None:
+def test_secondary_filters_wait_for_apply_on_all_viewports() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const mobileQuery = window.matchMedia("(max-width: 680px)")' in app
-    assert "function secondaryFilterChanged()" in app
-    section = app[app.index("function secondaryFilterChanged()"):app.index("function resetSecondaryFilters()")]
-    assert "mobileQuery.matches" in section
-    assert "search();" in section
-    apply = app[app.index("function applyMobileFilters()"):app.index("function trapFilterSheetFocus")]
-    assert "search();" in apply
-    assert "closeFilterSheet" in apply
-
+    assert "function applyFilterSheet()" in app
+    assert 'filtersApplyBtn.addEventListener("click", applyFilterSheet);' in app
+    assert 'for (const el of [providerSelect, qualitySelect, durationSelect, ageCheckSelect])' in app
+    assert 'el.addEventListener("change", updateFilterCount);' in app
 
 def test_card_thumb_gets_accessible_name_from_title() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
@@ -447,3 +440,32 @@ def test_segmented_content_state_maps_to_existing_api_values() -> None:
 def test_unknown_restored_content_state_fails_closed_to_all() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert 'const safeValue = ["", "amateur", "studio"].includes(value) ? value : "";' in app
+
+
+def test_secondary_filters_live_only_in_filter_sheet() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    shell_start = html.index('<section class="search-shell"')
+    shell_end = html.index('</section>', shell_start)
+    shell = html[shell_start:shell_end]
+    assert 'id="provider"' not in shell
+    assert 'id="quality"' not in shell
+    assert 'id="duration"' not in shell
+    assert 'id="age-check"' not in shell
+    sheet = html[html.index('id="filter-sheet"'):]
+    for hook in ('id="provider"', 'id="quality"', 'id="duration"', 'id="age-check"'):
+        assert hook in sheet
+    assert 'const desktopSecondaryFilters' not in app
+    assert 'const mobileSecondaryFilters' not in app
+    assert 'const mobileQuery' not in app
+
+
+def test_filter_count_tracks_non_default_secondary_filters() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'id="filter-count"' in html
+    assert "function activeSecondaryFilterCount()" in app
+    assert "function updateFilterCount()" in app
+    assert "[providerSelect, qualitySelect, durationSelect, ageCheckSelect]" in app
+    assert 'filterCountEl.hidden = count === 0;' in app
+    assert 'filterCountEl.textContent = String(count);' in app
