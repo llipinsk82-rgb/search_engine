@@ -43,12 +43,12 @@ def test_production_filter_accepts_exact_professional_or_production_tag(tmp_path
 
 def test_ui_exposes_only_amateur_and_production_content_filters() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    start = html.index('id="content-class"')
-    end = html.index("</select>", start)
-    select = html[start:end]
-    assert '<option value="amateur">Amateur</option>' in select
-    assert '<option value="studio">Production</option>' in select
-    assert 'value="unknown"' not in select
+    assert '<input id="content-class" type="hidden" value="">' in html
+    assert 'data-content-class="amateur"' in html
+    assert '>Amateur</button>' in html
+    assert 'data-content-class="studio"' in html
+    assert '>Production</button>' in html
+    assert 'data-content-class="unknown"' not in html
 
 
 def test_production_filter_is_everything_not_explicitly_amateur(tmp_path: Path) -> None:

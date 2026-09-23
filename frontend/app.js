@@ -1,7 +1,8 @@
 const form = document.querySelector("#search-form");
 const queryInput = document.querySelector("#q");
 const sortSelect = document.querySelector("#sort");
-const contentClassSelect = document.querySelector("#content-class");
+const contentClassInput = document.querySelector("#content-class");
+const contentClassButtons = [...document.querySelectorAll("[data-content-class]")];
 const providerSelect = document.querySelector("#provider");
 const qualitySelect = document.querySelector("#quality");
 const durationSelect = document.querySelector("#duration");
@@ -292,13 +293,27 @@ async function loadProviders() {
   } catch (_) {}
 }
 
+function getContentClassValue() {
+  return contentClassInput.value;
+}
+
+function setContentClassValue(value) {
+  const safeValue = ["", "amateur", "studio"].includes(value) ? value : "";
+  contentClassInput.value = safeValue;
+  for (const button of contentClassButtons) {
+    const active = button.dataset.contentClass === safeValue;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(button.dataset.contentClass === safeValue));
+  }
+}
+
 function buildSearchParams() {
   const params = new URLSearchParams();
   const query = queryInput.value.trim();
   if (query) params.set("q", query);
 
   if (sortSelect.value !== "relevance") params.set("sort", sortSelect.value);
-  if (contentClassSelect.value) params.set("content_class", contentClassSelect.value);
+  if (getContentClassValue()) params.set("content_class", getContentClassValue());
   if (providerSelect.value) params.set("provider", providerSelect.value);
   if (qualitySelect.value) params.set("quality", qualitySelect.value);
   if (ageCheckSelect.value) params.set("age_check", ageCheckSelect.value);
@@ -328,10 +343,7 @@ function restoreState() {
   const sort = params.get("sort") || "relevance";
   sortSelect.value = [...sortSelect.options].some((option) => option.value === sort) ? sort : "relevance";
 
-  const contentClass = params.get("content_class") || "";
-  if ([...contentClassSelect.options].some((option) => option.value === contentClass)) {
-    contentClassSelect.value = contentClass;
-  }
+  setContentClassValue(params.get("content_class") || "");
 
   const provider = params.get("provider") || "";
   if ([...providerSelect.options].some((option) => option.value === provider)) {
@@ -475,7 +487,7 @@ function clearSkeletons() {
 
 function hasActiveFilters() {
   return Boolean(
-    contentClassSelect.value ||
+    getContentClassValue() ||
     providerSelect.value ||
     qualitySelect.value ||
     durationSelect.value ||
@@ -867,7 +879,7 @@ resultsEl.addEventListener("click", (event) => {
   if (action === "retry-search") {
     search({ persist: false });
   } else if (action === "clear-filters") {
-    contentClassSelect.value = "";
+    setContentClassValue("");
     providerSelect.value = "";
     qualitySelect.value = "";
     durationSelect.value = "";
@@ -887,8 +899,12 @@ form.addEventListener("submit", (event) => {
   search();
 });
 
-for (const el of [sortSelect, contentClassSelect]) {
-  el.addEventListener("change", () => search());
+sortSelect.addEventListener("change", () => search());
+for (const button of contentClassButtons) {
+  button.addEventListener("click", () => {
+    setContentClassValue(button.dataset.contentClass || "");
+    search();
+  });
 }
 
 for (const el of [providerSelect, qualitySelect, durationSelect, ageCheckSelect]) {
@@ -913,7 +929,7 @@ clearBtn.addEventListener("click", () => {
   searchGeneration += 1;
   queryInput.value = "";
   sortSelect.value = "relevance";
-  contentClassSelect.value = "";
+  setContentClassValue("");
   providerSelect.value = "";
   qualitySelect.value = "";
   durationSelect.value = "";

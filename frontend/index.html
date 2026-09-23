@@ -10,10 +10,6 @@
   <link rel="stylesheet" href="/styles.css?v=31">
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="Search home">SEARCH</a>
-  </header>
-
   <main class="shell">
     <section class="search-shell" aria-label="Search controls">
       <form id="search-form" class="searchbox">
@@ -33,11 +29,15 @@
             <option value="longest">Longest</option>
             <option value="shortest">Shortest</option>
           </select>
-          <select id="content-class" aria-label="Content type">
-            <option value="">All content types</option>
-            <option value="amateur">Amateur</option>
-            <option value="studio">Production</option>
-          </select>
+          <input id="content-class" type="hidden" value="">
+          <div class="content-segment" role="group" aria-label="Content type">
+            <button type="button" class="content-segment-option is-active"
+                    data-content-class="" aria-pressed="true">All</button>
+            <button type="button" class="content-segment-option"
+                    data-content-class="amateur" aria-pressed="false">Amateur</button>
+            <button type="button" class="content-segment-option"
+                    data-content-class="studio" aria-pressed="false">Production</button>
+          </div>
         </div>
         <button id="filters-open" class="filters-open" type="button"
                 aria-controls="filter-sheet" aria-expanded="false">Filters</button>

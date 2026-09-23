@@ -79,7 +79,7 @@ def test_card_media_is_policy_driven() -> None:
 def test_search_submit_runs_once() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     start = app.index('form.addEventListener("submit"')
-    end = app.index("for (const el of", start)
+    end = app.index("});", start) + 3
     assert app[start:end].count("search();") == 1
 
 
@@ -138,9 +138,8 @@ def test_sort_selector_state_and_payload_contract() -> None:
     assert 'const sort = params.get("sort") || "relevance";' in app
     assert 'if (payload.sort) livePayload.sort = payload.sort;' in app
     assert app.count('if (stateParams.has("sort")) payload.sort = stateParams.get("sort");') >= 2
-    assert '[sortSelect, contentClassSelect]' in app
+    assert 'sortSelect.addEventListener("change", () => search());' in app
     assert 'sortSelect.value = "relevance";' in app
-
 
 def test_optional_sort_metadata_is_rendered_without_fake_placeholders() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -168,20 +167,17 @@ def test_non_relevance_visible_pool_is_not_round_robin_blended() -> None:
 def test_content_class_filter_state_and_payload_contract() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    start = html.index('id="content-class"')
-    end = html.index('</select>', start)
-    selector = html[start:end]
+    assert '<input id="content-class" type="hidden" value="">' in html
     for value in ("", "amateur", "studio"):
-        assert f'value="{value}"' in selector
-    assert 'value="unknown"' not in selector
-    assert '<option value="studio">Production</option>' in selector
-    assert 'const contentClassSelect = document.querySelector("#content-class");' in app
-    assert 'if (contentClassSelect.value) params.set("content_class", contentClassSelect.value);' in app
-    assert 'const contentClass = params.get("content_class") || "";' in app
+        assert f'data-content-class="{value}"' in html
+    assert 'data-content-class="unknown"' not in html
+    assert '>Production</button>' in html
+    assert 'const contentClassInput = document.querySelector("#content-class");' in app
+    assert 'if (getContentClassValue()) params.set("content_class", getContentClassValue());' in app
+    assert 'setContentClassValue(params.get("content_class") || "");' in app
     assert 'if (payload.content_class) livePayload.content_class = payload.content_class;' in app
     assert app.count('if (stateParams.has("content_class")) payload.content_class = stateParams.get("content_class");') >= 2
-    assert 'contentClassSelect.value = "";' in app
-
+    assert 'setContentClassValue("");' in app
 
 def test_content_class_metadata_is_minimal_and_never_title_inferred() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -199,14 +195,12 @@ def test_premium_shell_has_primary_and_secondary_filter_hierarchy() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     assert 'class="search-shell"' in html
     assert 'class="primary-controls"' in html
-    assert 'class="secondary-filters"' in html
     primary = html[html.index('class="primary-controls"'):html.index('</div>', html.index('class="primary-controls"'))]
     assert 'id="sort"' in primary
-    assert 'id="content-class"' in primary
+    assert 'class="content-segment"' in html
     assert 'id="provider"' not in primary
     assert 'id="quality"' not in primary
     assert 'id="duration"' not in primary
-
 
 def test_results_grid_is_not_live_region_and_status_is() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -424,3 +418,32 @@ def test_premium_polish_duration_copy_is_correct() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     assert '10–30 min' in html
     assert '10–0 min' not in html
+
+
+def test_brandless_shell_uses_segmented_content_control() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "BlackServ" not in html
+    assert ">BS<" not in html
+    assert 'class="brand"' not in html
+    assert '<input id="content-class" type="hidden" value="">' in html
+    for value, label in (("", "All"), ("amateur", "Amateur"), ("studio", "Production")):
+        assert f'data-content-class="{value}"' in html
+        assert f'>{label}</button>' in html
+    assert 'const contentClassInput = document.querySelector("#content-class");' in app
+    assert 'const contentClassButtons = [...document.querySelectorAll("[data-content-class]")];' in app
+    assert "function getContentClassValue()" in app
+    assert "function setContentClassValue(value)" in app
+
+
+def test_segmented_content_state_maps_to_existing_api_values() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'if (getContentClassValue()) params.set("content_class", getContentClassValue());' in app
+    assert 'setContentClassValue(params.get("content_class") || "");' in app
+    assert '["", "amateur", "studio"].includes(value)' in app
+    assert 'button.setAttribute("aria-pressed", String(button.dataset.contentClass === safeValue));' in app
+
+
+def test_unknown_restored_content_state_fails_closed_to_all() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const safeValue = ["", "amateur", "studio"].includes(value) ? value : "";' in app
