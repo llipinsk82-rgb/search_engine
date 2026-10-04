@@ -83,21 +83,43 @@ def test_search_submit_runs_once() -> None:
     assert app[start:end].count("search();") == 1
 
 
-def test_premium_css_uses_tokens_and_three_two_one_grid() -> None:
+def test_premium_visual_contract_is_media_first_and_responsive() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
-    for token in (
-        "--bg-page:", "--bg-surface:", "--bg-elevated:", "--border-subtle:",
-        "--text-primary:", "--text-secondary:", "--text-muted:", "--focus-ring:",
-        "--radius-card:", "--space-2:", "--space-4:",
-    ):
+    for token in ("--bg-page:", "--surface-soft:", "--text-primary:", "--text-muted:", "--radius-media:"):
         assert token in css
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
     tablet = css[css.index("@media (max-width: 960px)"):css.index("@media (max-width: 680px)")]
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in tablet
     mobile = css[css.index("@media (max-width: 680px)"):]
     assert "grid-template-columns: 1fr" in mobile
-    assert "aspect-ratio: 16 / 9" in css or "aspect-ratio: 16/9" in css
+    card_block = css[css.index(".card {"):css.index("}", css.index(".card {"))]
+    assert "border: 1px solid" not in card_block
+    assert "aspect-ratio: 16 / 9" in css
 
+
+def test_hover_motion_is_fine_pointer_only() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "@media (hover: hover) and (pointer: fine)" in css
+    hover = css[css.index("@media (hover: hover) and (pointer: fine)"):]
+    assert ".card:hover" in hover
+    assert "transform:" in hover
+
+
+def test_filter_sheet_is_desktop_drawer_and_mobile_bottom_sheet() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert ".filter-sheet-panel {" in css
+    assert "width: min(420px, calc(100vw - 32px));" in css
+    mobile = css[css.index("@media (max-width: 680px)"):]
+    assert ".filter-sheet-panel" in mobile
+    assert "width: 100%;" in mobile
+
+
+def test_mobile_search_zone_is_sticky_and_touch_targets_are_large() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    mobile = css[css.index("@media (max-width: 680px)"):]
+    assert ".search-shell" in mobile
+    assert "position: sticky" in mobile
+    assert "min-height: 44px" in css
 
 def test_premium_mobile_has_no_horizontal_filter_strip() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -404,7 +426,7 @@ def test_premium_polish_reset_is_secondary_action() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
     assert 'id="filters-reset" type="button" class="secondary-action"' in html
     assert '.secondary-action {' in css
-    assert 'border: 1px solid var(--border-subtle)' in css
+    assert 'border: 1px solid var(--line-soft)' in css
 
 
 def test_premium_polish_duration_copy_is_correct() -> None:
