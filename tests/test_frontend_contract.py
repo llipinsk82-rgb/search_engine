@@ -469,3 +469,33 @@ def test_filter_count_tracks_non_default_secondary_filters() -> None:
     assert "[providerSelect, qualitySelect, durationSelect, ageCheckSelect]" in app
     assert 'filterCountEl.hidden = count === 0;' in app
     assert 'filterCountEl.textContent = String(count);' in app
+
+
+def test_card_template_is_media_first_with_two_metadata_levels() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    template = html[html.index('<template id="card-template">'):html.index('</template>')]
+    assert 'class="media-frame"' in template
+    assert 'class="card-title-row"' in template
+    assert 'class="card-meta-primary"' in template
+    assert 'class="card-meta-tags"' in template
+    assert template.index('class="media-frame"') < template.index('class="card-title-row"')
+    assert template.index('class="card-title-row"') < template.index('class="card-meta-primary"')
+    assert template.index('class="card-meta-primary"') < template.index('class="card-meta-tags"')
+
+
+def test_optional_card_metadata_is_hidden_when_empty() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "function setOptionalText(node, value)" in app
+    assert "node.hidden = !text;" in app
+    for selector in (".published", ".views", ".rating", ".content-class", ".studio", ".age-check", ".alternates"):
+        assert f'card.querySelector("{selector}")' in app
+
+
+def test_preview_button_contract_survives_card_redesign() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'class="preview-toggle"' in html
+    assert 'aria-label="Play preview"' in html
+    assert 'previewToggle.addEventListener("click"' in app
+    assert 'event.stopPropagation();' in app
+    assert "IntersectionObserver" not in app

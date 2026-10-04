@@ -374,6 +374,12 @@ function restoreState() {
   return [...params.keys()].length > 0;
 }
 
+function setOptionalText(node, value) {
+  const text = String(value || "").trim();
+  node.textContent = text;
+  node.hidden = !text;
+}
+
 function resultCard(item) {
   const card = template.content.firstElementChild.cloneNode(true);
   const thumb = card.querySelector(".thumb");
@@ -453,19 +459,23 @@ function resultCard(item) {
 
   title.textContent = item.title;
   card.querySelector(".source").textContent = `✓ ${item.provider}`;
-  card.querySelector(".published").textContent = publishedText(item.published_at);
-  card.querySelector(".views").textContent = viewsText(item.views);
-  card.querySelector(".rating").textContent = ratingText(item.rating_percent, item.rating_count);
-  card.querySelector(".content-class").textContent = item.content_class === "amateur" ? "Amateur" : "";
-  card.querySelector(".studio").textContent = item.studio || "";
-  card.querySelector(".age-check").textContent =
-    item.age_check_status === "required" ? "18+ gate" : "";
+  setOptionalText(card.querySelector(".published"), publishedText(item.published_at));
+  setOptionalText(card.querySelector(".views"), viewsText(item.views));
+  setOptionalText(card.querySelector(".rating"), ratingText(item.rating_percent, item.rating_count));
+  setOptionalText(card.querySelector(".content-class"), item.content_class === "amateur" ? "Amateur" : "");
+  setOptionalText(card.querySelector(".studio"), item.studio || "");
+  setOptionalText(
+    card.querySelector(".age-check"),
+    item.age_check_status === "required" ? "18+ gate" : "",
+  );
   card.querySelector(".quality").textContent = item.quality || "";
   card.querySelector(".duration").textContent = durationText(item.duration_seconds);
 
   const count = item.alternate_sources?.length || 0;
-  card.querySelector(".alternates").textContent =
-    count ? `+${count} source${count === 1 ? "" : "s"}` : "";
+  setOptionalText(
+    card.querySelector(".alternates"),
+    count ? `+${count} source${count === 1 ? "" : "s"}` : "",
+  );
 
   return card;
 }
