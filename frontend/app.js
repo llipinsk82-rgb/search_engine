@@ -33,6 +33,7 @@ let localHasMore = false;
 let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
+let renderedItems = [];
 
 function setPrimaryStatus(text) {
   statusEl.textContent = text;
@@ -120,6 +121,7 @@ const failedPreviewIds = new Set();
 const FAILED_PREVIEW_STORAGE_KEY = "search.failedPreviewIds.v2";
 const FAILED_PREVIEW_LIMIT = 100;
 const RETURN_POSITION_KEY = "search.returnPosition.v1";
+const RETURN_SNAPSHOT_LIMIT = 120;
 
 try {
   const saved = JSON.parse(sessionStorage.getItem(FAILED_PREVIEW_STORAGE_KEY) || "[]");
@@ -539,12 +541,14 @@ function render(items, { append = false } = {}) {
   if (!append) {
     resultsEl.replaceChildren();
     seenIds = new Set();
+    renderedItems = [];
   }
 
   let added = 0;
   for (const item of items) {
     if (!item?.id || seenIds.has(item.id)) continue;
     seenIds.add(item.id);
+    renderedItems.push(item);
     resultsEl.append(resultCard(item));
     added += 1;
   }
@@ -898,6 +902,20 @@ function saveBrowsePosition(itemId) {
       itemId,
       scrollY: window.scrollY,
       loadedCount: nextOffset,
+      items: renderedItems.slice(0, RETURN_SNAPSHOT_LIMIT),
+      query: queryInput.value,
+      sort: sortSelect.value,
+      contentClass: getContentClassValue(),
+      provider: providerSelect.value,
+      quality: qualitySelect.value,
+      duration: durationSelect.value,
+      ageCheck: ageCheckSelect.value,
+      localHasMore,
+      liveHasMore,
+      livePage,
+      liveStatusText,
+      primaryStatus: statusEl.textContent,
+      liveDetail: liveDetailEl.textContent,
     }));
   } catch (_) {}
 }
@@ -911,9 +929,78 @@ function readBrowsePosition() {
     const scrollY = Number(saved.scrollY);
     const loadedCount = Number(saved.loadedCount);
     if (!Number.isFinite(scrollY) || !Number.isFinite(loadedCount)) return null;
-    return { ...saved, scrollY, loadedCount };
+    const items = Array.isArray(saved.items)
+      ? saved.items.filter((item) => item?.id).slice(0, RETURN_SNAPSHOT_LIMIT)
+      : [];
+    return { ...saved, scrollY, loadedCount, items };
   } catch (_) {
     return null;
+  }
+}
+
+function restoreBrowseSnapshot(saved) {
+  if (!saved?.items?.length) return false;
+
+  queryInput.value = String(saved.query || "");
+  sortSelect.value = [...sortSelect.options].some((option) => option.value === saved.sort)
+    ? saved.sort
+    : "relevance";
+  setContentClassValue(String(saved.contentClass || ""));
+  qualitySelect.value = String(saved.quality || "");
+  durationSelect.value = String(saved.duration || "");
+  ageCheckSelect.value = String(saved.ageCheck || "");
+
+  render(saved.items);
+  localHasMore = Boolean(saved.localHasMore);
+  liveHasMore = Boolean(saved.liveHasMore);
+  livePage = Number.isFinite(Number(saved.livePage)) ? Number(saved.livePage) : 0;
+  liveStatusText = String(saved.liveStatusText || "");
+  moreBtn.hidden = !(localHasMore || liveHasMore);
+  moreBtn.disabled = false;
+  setPrimaryStatus(String(saved.primaryStatus || `${nextOffset} shown`));
+  setLiveDetail(String(saved.liveDetail || liveStatusText));
+
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    const target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
+    if (target) target.scrollIntoView({ block: "center", behavior: "auto" });
+    else window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
+  }));
+
+  try { sessionStorage.removeItem(RETURN_POSITION_KEY); } catch (_) {}
+  return true;
+}
+
+async function refreshBrowseSnapshotInBackground(saved) {
+  if (!saved?.items?.length) return;
+  const generation = ++searchGeneration;
+  const stateParams = buildSearchParams();
+  const payload = { q: stateParams.get("q") || "" };
+  if (stateParams.has("sort")) payload.sort = stateParams.get("sort");
+  if (stateParams.has("content_class")) payload.content_class = stateParams.get("content_class");
+  if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
+  if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
+  if (stateParams.has("age_check")) payload.age_check = stateParams.get("age_check");
+  if (stateParams.has("min_duration")) payload.min_duration = Number(stateParams.get("min_duration"));
+  if (stateParams.has("max_duration")) payload.max_duration = Number(stateParams.get("max_duration"));
+
+  const refreshLimit = Math.min(Math.max(saved.items.length, PAGE_SIZE), RETURN_SNAPSHOT_LIMIT);
+  try {
+    const data = await fetchLocal(payload, { limit: refreshLimit });
+    if (generation !== searchGeneration) return;
+    render(data.items || []);
+    localHasMore = Boolean(data.has_more);
+    moreBtn.hidden = !(localHasMore || liveHasMore);
+    moreBtn.disabled = false;
+    const total = Number.isFinite(data.total) ? data.total : nextOffset;
+    setPrimaryStatus(`${nextOffset} shown · ${total} cached matches`);
+    setLiveDetail(liveStatusText);
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    const target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
+    if (target) target.scrollIntoView({ block: "center", behavior: "auto" });
+    else window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
+    startPrefetch(payload, generation);
+  } catch (_) {
+    // Snapshot stays visible; a failed background refresh is non-fatal.
   }
 }
 
@@ -1003,6 +1090,7 @@ clearBtn.addEventListener("click", () => {
   updateFilterCount();
   resultsEl.replaceChildren();
   seenIds = new Set();
+  renderedItems = [];
   nextOffset = 0;
   livePage = 0;
   liveHasMore = false;
@@ -1018,8 +1106,14 @@ clearBtn.addEventListener("click", () => {
 });
 
 async function boot() {
+  const saved = readBrowsePosition();
+  const snapshotRestored = restoreBrowseSnapshot(saved);
   await loadProviders();
   const restored = restoreState();
+  if (snapshotRestored) {
+    window.setTimeout(() => refreshBrowseSnapshotInBackground(saved), 0);
+    return;
+  }
   if (restored) {
     await search({ persist: false });
     await restoreBrowsePosition();

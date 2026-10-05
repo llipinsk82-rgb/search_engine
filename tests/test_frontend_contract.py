@@ -558,3 +558,34 @@ def test_scroll_restore_reloads_previous_depth_before_scrolling() -> None:
     assert 'await loadMore();' in restore
     assert 'document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`)' in restore
     assert 'target.scrollIntoView({ block: "center", behavior: "auto" });' in restore
+
+
+def test_instant_back_restore_uses_session_snapshot_before_network() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const RETURN_SNAPSHOT_LIMIT = 120;' in app
+    assert 'let renderedItems = [];' in app
+    assert 'items: renderedItems.slice(0, RETURN_SNAPSHOT_LIMIT)' in app
+    assert 'function restoreBrowseSnapshot(saved)' in app
+    boot = app[app.index("async function boot()"):app.index('if ("scrollRestoration" in window.history)')]
+    assert 'const saved = readBrowsePosition();' in boot
+    assert 'const snapshotRestored = restoreBrowseSnapshot(saved);' in boot
+    assert boot.index('const snapshotRestored = restoreBrowseSnapshot(saved);') < boot.index('await loadProviders();')
+
+
+def test_snapshot_restore_renders_without_search_skeleton() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function refreshBrowseSnapshotInBackground(saved)")]
+    assert 'render(saved.items);' in restore
+    assert 'renderSkeletons' not in restore
+    assert 'fetchLocal' not in restore
+    assert 'window.requestAnimationFrame' in restore
+    assert 'sessionStorage.removeItem(RETURN_POSITION_KEY)' in restore
+
+
+def test_snapshot_background_refresh_is_silent_and_depth_bounded() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    refresh = app[app.index("async function refreshBrowseSnapshotInBackground(saved)"):app.index("async function restoreBrowsePosition()") ]
+    assert 'const refreshLimit = Math.min(Math.max(saved.items.length, PAGE_SIZE), RETURN_SNAPSHOT_LIMIT);' in refresh
+    assert 'await fetchLocal(payload, { limit: refreshLimit })' in refresh
+    assert 'renderSkeletons' not in refresh
+    assert 'setPrimaryStatus("Searching…")' not in refresh
