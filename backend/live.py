@@ -23,6 +23,7 @@ from backend.index import merge_provider_batches
 from backend.media_policy import media_url_allowed
 from backend.models import SearchItem, SortMode
 from backend.preview_rules import PREVIEW_RULES, select_exact_live_preview
+from backend.query_syntax import parse_search_query
 from backend.settings import DB_PATH
 from backend.source_policy import normalize_trusted_live_item
 
@@ -486,6 +487,18 @@ class LiveAdapter(Protocol):
     async def search(
         self, query: str, *, page: int = 1, limit: int = 24
     ) -> LiveProviderResult: ...
+
+
+def _matches_required_query_tokens(
+    item: SearchItem, required_tokens: tuple[str, ...]
+) -> bool:
+    if not required_tokens:
+        return True
+    searchable = " ".join(
+        [item.title, item.provider, *(item.tags or [])]
+    ).casefold()
+    available = set(re.findall(r"\w+", searchable, re.UNICODE))
+    return all(token in available for token in required_tokens)
 
 
 def _clean_text(value: object) -> str:
@@ -2421,7 +2434,8 @@ async def refresh_live_search(
     max_duration: int | None = None,
     path=DB_PATH,
 ) -> LiveRefreshResult:
-    query = query.strip()
+    parsed_query = parse_search_query(query)
+    query = parsed_query.provider_query
     if not query:
         return LiveRefreshResult(providers=[], cached_items=0)
 
@@ -2463,6 +2477,12 @@ async def refresh_live_search(
             if enforce_trust
             else list(result.items)
         )
+        if parsed_query.required_tokens:
+            items = [
+                item
+                for item in items
+                if _matches_required_query_tokens(item, parsed_query.required_tokens)
+            ]
         if age_check:
             items = [item for item in items if item.age_check_status == age_check]
         if quality:

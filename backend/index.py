@@ -11,9 +11,9 @@ from pathlib import Path
 from backend.content_class import classify_content_evidence
 from backend.media_policy import media_url_allowed
 from backend.models import SearchItem, SortMode
+from backend.query_syntax import parse_search_query
 from backend.settings import DB_PATH
 
-_token_re = re.compile(r"\w+", re.UNICODE)
 _initialized_paths: set[str] = set()
 _initialize_lock = threading.Lock()
 
@@ -535,7 +535,7 @@ def _where_for_search(
     params: list[object] = []
     joins = ""
     rank_select = "0.0 AS fts_rank"
-    tokens = _token_re.findall(query.lower())
+    tokens = parse_search_query(query).tokens
     if tokens:
         fts_query = " ".join(f'"{token}"' for token in tokens)
         joins = "JOIN items_fts ON items_fts.id = i.id"
@@ -951,7 +951,7 @@ def search_items(
         max_duration=max_duration,
         exclude_ids=exclude_ids,
     )
-    tokens = _token_re.findall(query.lower())
+    tokens = parse_search_query(query).tokens
     if sort == "relevance":
         order = (
             "fts_rank ASC, i.indexed_at DESC, i.source_order ASC"
