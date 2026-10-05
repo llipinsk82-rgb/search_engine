@@ -80,7 +80,7 @@ def test_search_submit_runs_once() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     start = app.index('form.addEventListener("submit"')
     end = app.index("});", start) + 3
-    assert app[start:end].count("search();") == 1
+    assert app[start:end].count("search({ resetScroll: true });") == 1
 
 
 def test_premium_visual_contract_is_media_first_and_responsive() -> None:
@@ -159,7 +159,7 @@ def test_sort_selector_state_and_payload_contract() -> None:
     assert 'const sort = params.get("sort") || "relevance";' in app
     assert 'if (payload.sort) livePayload.sort = payload.sort;' in app
     assert app.count('if (stateParams.has("sort")) payload.sort = stateParams.get("sort");') >= 2
-    assert 'sortSelect.addEventListener("change", () => search());' in app
+    assert 'sortSelect.addEventListener("change", () => search({ resetScroll: true }));' in app
     assert 'sortSelect.value = "relevance";' in app
 
 def test_optional_sort_metadata_is_rendered_without_fake_placeholders() -> None:
@@ -651,6 +651,20 @@ def test_snapshot_restore_refuses_partial_snapshot_missing_clicked_item() -> Non
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function restoreBrowsePosition()")]
     assert 'if (!saved.items.some((item) => item.id === saved.itemId)) return false;' in restore
+
+
+def test_manual_search_resets_scroll_but_back_restore_keeps_saved_position() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'async function search({ persist = true, append = false, resetScroll = false } = {})' in app
+    search_block = app[app.index("async function search("):app.index("function saveBrowsePosition")]
+    assert 'if (resetScroll) window.scrollTo({ top: 0, left: 0, behavior: "auto" });' in search_block
+    submit = app[app.index('form.addEventListener("submit"'):app.index('sortSelect.addEventListener("change"')]
+    assert 'search({ resetScroll: true });' in submit
+    assert 'sortSelect.addEventListener("change", () => search({ resetScroll: true }));' in app
+    assert 'search({ persist: false });' in app
+    restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function restoreBrowsePosition()")]
+    assert 'window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });' in restore
+    assert 'top: 0' not in restore
 
 
 def test_frontend_cache_v32_markers_are_synchronized() -> None:

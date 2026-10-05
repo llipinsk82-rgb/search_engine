@@ -77,7 +77,7 @@ function updateFilterCount() {
 function applyFilterSheet() {
   updateFilterCount();
   closeFilterSheet();
-  search();
+  search({ resetScroll: true });
 }
 
 function resetSecondaryFilters() {
@@ -825,8 +825,9 @@ async function loadMore() {
   }
 }
 
-async function search({ persist = true, append = false } = {}) {
+async function search({ persist = true, append = false, resetScroll = false } = {}) {
   if (append) return loadMore();
+  if (resetScroll) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
   const generation = ++searchGeneration;
   const stateParams = buildSearchParams();
@@ -1005,7 +1006,7 @@ resultsEl.addEventListener("click", (event) => {
     qualitySelect.value = "";
     durationSelect.value = "";
     ageCheckSelect.value = "";
-    search();
+    search({ resetScroll: true });
   }
 });
 
@@ -1017,14 +1018,14 @@ document.addEventListener("visibilitychange", () => {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  search();
+  search({ resetScroll: true });
 });
 
-sortSelect.addEventListener("change", () => search());
+sortSelect.addEventListener("change", () => search({ resetScroll: true }));
 for (const button of contentClassButtons) {
   button.addEventListener("click", () => {
     setContentClassValue(button.dataset.contentClass || "");
-    search();
+    search({ resetScroll: true });
   });
 }
 
