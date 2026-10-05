@@ -940,6 +940,7 @@ function readBrowsePosition() {
 
 function restoreBrowseSnapshot(saved) {
   if (!saved?.items?.length) return false;
+  if (!saved.items.some((item) => item.id === saved.itemId)) return false;
 
   queryInput.value = String(saved.query || "");
   sortSelect.value = [...sortSelect.options].some((option) => option.value === saved.sort)
@@ -961,47 +962,11 @@ function restoreBrowseSnapshot(saved) {
   setLiveDetail(String(saved.liveDetail || liveStatusText));
 
   window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-    const target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
-    if (target) target.scrollIntoView({ block: "center", behavior: "auto" });
-    else window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
+    window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
   }));
 
   try { sessionStorage.removeItem(RETURN_POSITION_KEY); } catch (_) {}
   return true;
-}
-
-async function refreshBrowseSnapshotInBackground(saved) {
-  if (!saved?.items?.length) return;
-  const generation = ++searchGeneration;
-  const stateParams = buildSearchParams();
-  const payload = { q: stateParams.get("q") || "" };
-  if (stateParams.has("sort")) payload.sort = stateParams.get("sort");
-  if (stateParams.has("content_class")) payload.content_class = stateParams.get("content_class");
-  if (stateParams.has("provider")) payload.provider = stateParams.get("provider");
-  if (stateParams.has("quality")) payload.quality = stateParams.get("quality");
-  if (stateParams.has("age_check")) payload.age_check = stateParams.get("age_check");
-  if (stateParams.has("min_duration")) payload.min_duration = Number(stateParams.get("min_duration"));
-  if (stateParams.has("max_duration")) payload.max_duration = Number(stateParams.get("max_duration"));
-
-  const refreshLimit = Math.min(Math.max(saved.items.length, PAGE_SIZE), RETURN_SNAPSHOT_LIMIT);
-  try {
-    const data = await fetchLocal(payload, { limit: refreshLimit });
-    if (generation !== searchGeneration) return;
-    render(data.items || []);
-    localHasMore = Boolean(data.has_more);
-    moreBtn.hidden = !(localHasMore || liveHasMore);
-    moreBtn.disabled = false;
-    const total = Number.isFinite(data.total) ? data.total : nextOffset;
-    setPrimaryStatus(`${nextOffset} shown · ${total} cached matches`);
-    setLiveDetail(liveStatusText);
-    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-    const target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
-    if (target) target.scrollIntoView({ block: "center", behavior: "auto" });
-    else window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
-    startPrefetch(payload, generation);
-  } catch (_) {
-    // Snapshot stays visible; a failed background refresh is non-fatal.
-  }
 }
 
 async function restoreBrowsePosition() {
@@ -1111,7 +1076,6 @@ async function boot() {
   await loadProviders();
   const restored = restoreState();
   if (snapshotRestored) {
-    window.setTimeout(() => refreshBrowseSnapshotInBackground(saved), 0);
     return;
   }
   if (restored) {
@@ -1122,7 +1086,13 @@ async function boot() {
 
 if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
 window.addEventListener("pageshow", (event) => {
-  if (event.persisted) restoreBrowsePosition();
+  if (!event.persisted) return;
+  const saved = readBrowsePosition();
+  if (!saved) return;
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
+    try { sessionStorage.removeItem(RETURN_POSITION_KEY); } catch (_) {}
+  }));
 });
 
 boot();

@@ -574,21 +574,12 @@ def test_instant_back_restore_uses_session_snapshot_before_network() -> None:
 
 def test_snapshot_restore_renders_without_search_skeleton() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function refreshBrowseSnapshotInBackground(saved)")]
+    restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function restoreBrowsePosition()")]
     assert 'render(saved.items);' in restore
     assert 'renderSkeletons' not in restore
     assert 'fetchLocal' not in restore
     assert 'window.requestAnimationFrame' in restore
     assert 'sessionStorage.removeItem(RETURN_POSITION_KEY)' in restore
-
-
-def test_snapshot_background_refresh_is_silent_and_depth_bounded() -> None:
-    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    refresh = app[app.index("async function refreshBrowseSnapshotInBackground(saved)"):app.index("async function restoreBrowsePosition()") ]
-    assert 'const refreshLimit = Math.min(Math.max(saved.items.length, PAGE_SIZE), RETURN_SNAPSHOT_LIMIT);' in refresh
-    assert 'await fetchLocal(payload, { limit: refreshLimit })' in refresh
-    assert 'renderSkeletons' not in refresh
-    assert 'setPrimaryStatus("Searching…")' not in refresh
 
 
 def test_premium_polish_v2_removes_technical_card_copy() -> None:
@@ -629,3 +620,34 @@ def test_premium_polish_v2_uses_subtle_media_controls() -> None:
     assert "box-shadow: 0 6px 18px rgba(0,0,0,.18);" in preview
     badge = css[css.rindex(".duration,"):css.index("}", css.rindex(".duration,")) + 1]
     assert "background: rgba(6,7,9,.62);" in badge
+
+
+def test_back_snapshot_restore_is_single_owner_without_background_rerender() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "refreshBrowseSnapshotInBackground" not in app
+    restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function restoreBrowsePosition()")]
+    assert 'saved.items.some((item) => item.id === saved.itemId)' in restore
+    assert 'window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });' in restore
+    assert "scrollIntoView" not in restore
+    boot = app[app.index("async function boot()"):app.index('if ("scrollRestoration" in window.history)')]
+    assert "refreshBrowseSnapshotInBackground" not in boot
+
+
+def test_bfcache_return_does_not_run_network_restore() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    start = app.index('window.addEventListener("pageshow"')
+    end = app.index("boot();", start)
+    pageshow = app[start:end]
+    assert "if (!event.persisted) return;" in pageshow
+    assert "restoreBrowsePosition()" not in pageshow
+    assert "loadMore()" not in pageshow
+    assert "search(" not in pageshow
+    assert "readBrowsePosition()" in pageshow
+    assert 'window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });' in pageshow
+    assert "sessionStorage.removeItem(RETURN_POSITION_KEY)" in pageshow
+
+
+def test_snapshot_restore_refuses_partial_snapshot_missing_clicked_item() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    restore = app[app.index("function restoreBrowseSnapshot(saved)"):app.index("async function restoreBrowsePosition()")]
+    assert 'if (!saved.items.some((item) => item.id === saved.itemId)) return false;' in restore
