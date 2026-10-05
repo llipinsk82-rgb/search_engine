@@ -1171,3 +1171,36 @@ body {
     border-bottom: 0;
   }
 }
+
+/* Mobile control layout: keep the content segment readable at narrow widths. */
+@media (max-width: 680px) {
+  .control-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "sort filters" "segment segment";
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .primary-controls { display: contents; }
+
+  #sort { grid-area: sort; width: 100%; min-width: 0; }
+
+  .content-segment {
+    grid-area: segment;
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .content-segment-option {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 6px;
+    white-space: nowrap;
+  }
+
+  .filters-open { grid-area: filters; }
+}

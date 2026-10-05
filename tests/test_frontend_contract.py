@@ -521,3 +521,40 @@ def test_preview_button_contract_survives_card_redesign() -> None:
     assert 'previewToggle.addEventListener("click"' in app
     assert 'event.stopPropagation();' in app
     assert "IntersectionObserver" not in app
+
+
+def test_mobile_content_segment_uses_full_width_second_row() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    mobile = css[css.index("@media (max-width: 680px)"): ]
+    assert 'grid-template-areas: "sort filters" "segment segment";' in mobile
+    assert '.primary-controls { display: contents; }' in mobile
+    assert '#sort { grid-area: sort;' in mobile
+    assert '.content-segment {' in mobile
+    assert 'grid-area: segment;' in mobile
+    assert '.filters-open {' in mobile
+    assert 'grid-area: filters;' in mobile
+    assert 'white-space: nowrap;' in mobile
+
+
+def test_result_navigation_saves_and_restores_browse_position() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const RETURN_POSITION_KEY = "search.returnPosition.v1";' in app
+    assert 'function saveBrowsePosition(itemId)' in app
+    assert 'function readBrowsePosition()' in app
+    assert 'async function restoreBrowsePosition()' in app
+    assert 'loadedCount: nextOffset' in app
+    assert 'scrollY: window.scrollY' in app
+    assert 'card.dataset.itemId = item.id;' in app
+    assert 'const outbound = event.target.closest("a.thumb, a.title");' in app
+    assert 'saveBrowsePosition(outbound.closest(".card")?.dataset.itemId || "");' in app
+    assert 'await restoreBrowsePosition();' in app
+    assert 'window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });' in app
+
+
+def test_scroll_restore_reloads_previous_depth_before_scrolling() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    restore = app[app.index("async function restoreBrowsePosition()"):app.index("async function boot()") ]
+    assert 'while (nextOffset < saved.loadedCount && (localHasMore || liveHasMore))' in restore
+    assert 'await loadMore();' in restore
+    assert 'document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`)' in restore
+    assert 'target.scrollIntoView({ block: "center", behavior: "auto" });' in restore

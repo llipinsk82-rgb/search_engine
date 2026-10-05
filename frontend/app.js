@@ -119,6 +119,7 @@ const providerMediaPolicies = new Map();
 const failedPreviewIds = new Set();
 const FAILED_PREVIEW_STORAGE_KEY = "search.failedPreviewIds.v2";
 const FAILED_PREVIEW_LIMIT = 100;
+const RETURN_POSITION_KEY = "search.returnPosition.v1";
 
 try {
   const saved = JSON.parse(sessionStorage.getItem(FAILED_PREVIEW_STORAGE_KEY) || "[]");
@@ -389,6 +390,7 @@ function resultCard(item) {
   const placeholder = card.querySelector(".placeholder");
   const previewToggle = card.querySelector(".preview-toggle");
 
+  card.dataset.itemId = item.id;
   thumb.href = item.url;
   thumb.setAttribute("aria-label", `View ${item.title}`);
   title.href = item.url;
@@ -888,7 +890,60 @@ async function search({ persist = true, append = false } = {}) {
   }
 }
 
+function saveBrowsePosition(itemId) {
+  if (!itemId) return;
+  try {
+    sessionStorage.setItem(RETURN_POSITION_KEY, JSON.stringify({
+      href: window.location.href,
+      itemId,
+      scrollY: window.scrollY,
+      loadedCount: nextOffset,
+    }));
+  } catch (_) {}
+}
+
+function readBrowsePosition() {
+  try {
+    const raw = sessionStorage.getItem(RETURN_POSITION_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || saved.href !== window.location.href || !saved.itemId) return null;
+    const scrollY = Number(saved.scrollY);
+    const loadedCount = Number(saved.loadedCount);
+    if (!Number.isFinite(scrollY) || !Number.isFinite(loadedCount)) return null;
+    return { ...saved, scrollY, loadedCount };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function restoreBrowsePosition() {
+  const saved = readBrowsePosition();
+  if (!saved) return;
+  try {
+    let target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
+    let previousOffset = -1;
+    while (nextOffset < saved.loadedCount && (localHasMore || liveHasMore)) {
+      if (target) break;
+      if (nextOffset === previousOffset) break;
+      previousOffset = nextOffset;
+      await loadMore();
+      target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
+    }
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
+    if (target) target.scrollIntoView({ block: "center", behavior: "auto" });
+    else window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
+  } finally {
+    try { sessionStorage.removeItem(RETURN_POSITION_KEY); } catch (_) {}
+  }
+}
+
 resultsEl.addEventListener("click", (event) => {
+  const outbound = event.target.closest("a.thumb, a.title");
+  if (outbound && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    saveBrowsePosition(outbound.closest(".card")?.dataset.itemId || "");
+  }
   const action = event.target.closest("[data-action]")?.dataset.action;
   if (action === "retry-search") {
     search({ persist: false });
@@ -967,8 +1022,14 @@ async function boot() {
   const restored = restoreState();
   if (restored) {
     await search({ persist: false });
+    await restoreBrowsePosition();
   }
 }
+
+if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) restoreBrowsePosition();
+});
 
 boot();
 
