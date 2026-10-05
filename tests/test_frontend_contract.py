@@ -418,7 +418,7 @@ def test_premium_polish_uses_neutral_age_copy() -> None:
     assert 'Age check required' in html
     assert 'No age check observed' not in html
     assert 'no age check observed' not in app
-    assert '? "18+ gate"' in app
+    assert '? "18+"' in app
 
 
 def test_premium_polish_reset_is_secondary_action() -> None:
@@ -589,3 +589,43 @@ def test_snapshot_background_refresh_is_silent_and_depth_bounded() -> None:
     assert 'await fetchLocal(payload, { limit: refreshLimit })' in refresh
     assert 'renderSkeletons' not in refresh
     assert 'setPrimaryStatus("Searching…")' not in refresh
+
+
+def test_premium_polish_v2_removes_technical_card_copy() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'card.querySelector(".source").textContent = item.provider;' in app
+    assert '`✓ ${item.provider}`' not in app
+    assert 'item.age_check_status === "required" ? "18+" : ""' in app
+    assert '"18+ gate"' not in app
+
+
+def test_premium_polish_v2_uses_quieter_search_and_card_typography() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "--action-soft:" in css
+    assert ".searchbox button {" in css
+    search_button = css[css.rindex(".searchbox button {"):css.index("}", css.rindex(".searchbox button {")) + 1]
+    assert "background: var(--action-soft);" in search_button
+    assert "color: var(--text-primary);" in search_button
+    title = css[css.rindex(".title {"):css.index("}", css.rindex(".title {")) + 1]
+    assert "font-weight: 650;" in title
+    assert "line-height: 1.38;" in title
+
+
+def test_premium_polish_v2_compacts_status_and_card_rhythm() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert ".statusbar {" in css
+    status = css[css.rindex(".statusbar {"):css.index("}", css.rindex(".statusbar {")) + 1]
+    assert "min-height: 40px;" in status
+    assert "padding: 0 2px 10px;" in status
+    copy = css[css.rindex(".card-copy {"):css.index("}", css.rindex(".card-copy {")) + 1]
+    assert "padding: 9px 2px 0;" in copy
+    assert "gap: 5px;" in copy
+
+
+def test_premium_polish_v2_uses_subtle_media_controls() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    preview = css[css.rindex(".preview-toggle {"):css.index("}", css.rindex(".preview-toggle {")) + 1]
+    assert "background: rgba(8,9,11,.52);" in preview
+    assert "box-shadow: 0 6px 18px rgba(0,0,0,.18);" in preview
+    badge = css[css.rindex(".duration,"):css.index("}", css.rindex(".duration,")) + 1]
+    assert "background: rgba(6,7,9,.62);" in badge

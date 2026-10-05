@@ -462,7 +462,7 @@ function resultCard(item) {
   }
 
   title.textContent = item.title;
-  card.querySelector(".source").textContent = `✓ ${item.provider}`;
+  card.querySelector(".source").textContent = item.provider;
   setOptionalText(card.querySelector(".published"), publishedText(item.published_at));
   setOptionalText(card.querySelector(".views"), viewsText(item.views));
   setOptionalText(card.querySelector(".rating"), ratingText(item.rating_percent, item.rating_count));
@@ -470,7 +470,7 @@ function resultCard(item) {
   setOptionalText(card.querySelector(".studio"), item.studio || "");
   setOptionalText(
     card.querySelector(".age-check"),
-    item.age_check_status === "required" ? "18+ gate" : "",
+    item.age_check_status === "required" ? "18+" : "",
   );
   card.querySelector(".quality").textContent = item.quality || "";
   card.querySelector(".duration").textContent = durationText(item.duration_seconds);
