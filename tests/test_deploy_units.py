@@ -38,5 +38,10 @@ def test_backfill_service_includes_bounded_preview_enrichment_defaults():
         assert value in env
     assert "--enrich-preview-batch-size \"$SEARCH_PREVIEW_ENRICH_BATCH_SIZE\"" in unit
     assert "--enrich-preview-seconds \"$SEARCH_PREVIEW_ENRICH_MAX_SECONDS\"" in unit
+
+    assert 'Environment=SEARCH_DERIVED_PREVIEW_ENRICH_BATCH_SIZE=500' in unit
+    assert 'Environment=SEARCH_DERIVED_PREVIEW_ENRICH_MAX_SECONDS=20' in unit
+    assert '--enrich-derived-preview-batch-size "$SEARCH_DERIVED_PREVIEW_ENRICH_BATCH_SIZE"' in unit
+    assert '--enrich-derived-preview-seconds "$SEARCH_DERIVED_PREVIEW_ENRICH_MAX_SECONDS"' in unit
     assert unit.count("run-maintenance.sh /run/search_engine/maintenance.lock") == 1
     assert "TimeoutStartSec=6min" in unit

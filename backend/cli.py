@@ -9,6 +9,7 @@ from backend.content_enrichment import enrich_unknown_content
 from backend.content_reclassify import content_class_stats, reclassify_content
 from backend.live import LIVE_ADAPTERS
 from backend.preview_enrichment import enrich_missing_previews
+from backend.preview_rules import PREVIEW_RULES
 from backend.preview_stats import preview_coverage_stats
 from backend.importer import load_jsonl
 from backend.index import (
@@ -76,6 +77,8 @@ async def _backfill_all(
     enrich_unknown_seconds: float = 0.0,
     enrich_preview_batch_size: int = 0,
     enrich_preview_seconds: float = 0.0,
+    enrich_derived_preview_batch_size: int = 0,
+    enrich_derived_preview_seconds: float = 0.0,
 ) -> None:
     providers = [
         provider
@@ -102,9 +105,6 @@ async def _backfill_all(
             f"{run.provider}: batches={run.batches} fetched={run.fetched} "
             f"status={status}"
         )
-    if failures:
-        raise SystemExit(1)
-
     if enrich_unknown_seconds > 0 and enrich_unknown_batch_size > 0:
         report = await enrich_unknown_content(
             PROVIDERS,
@@ -117,10 +117,33 @@ async def _backfill_all(
             f"conflicts={report.conflicts} no_signal={report.no_signal} failures={report.failures}"
         )
 
+    derived_names = {
+        name
+        for name, rule in PREVIEW_RULES.items()
+        if rule.kind == "custom" and rule.storage_mode == "stable"
+    }
+
+    if enrich_derived_preview_seconds > 0 and enrich_derived_preview_batch_size > 0:
+        derived_index = [provider for provider in PROVIDERS if provider.name in derived_names]
+        if derived_index:
+            report = await enrich_missing_previews(
+                derived_index,
+                [],
+                batch_size=enrich_derived_preview_batch_size,
+                max_seconds=enrich_derived_preview_seconds,
+            )
+            print(
+                f"derived-preview-enrichment: attempted={report.attempted} extracted={report.extracted} "
+                f"stored={report.stored} playable={report.playable} no_preview={report.no_preview} "
+                f"blocked_policy={report.blocked_policy} failures={report.failures}"
+            )
+
     if enrich_preview_seconds > 0 and enrich_preview_batch_size > 0:
+        network_index = [provider for provider in PROVIDERS if provider.name not in derived_names]
+        network_live = [adapter for adapter in LIVE_ADAPTERS if getattr(adapter, "name", "") not in derived_names]
         report = await enrich_missing_previews(
-            PROVIDERS,
-            LIVE_ADAPTERS,
+            network_index,
+            network_live,
             batch_size=enrich_preview_batch_size,
             max_seconds=enrich_preview_seconds,
         )
@@ -129,6 +152,9 @@ async def _backfill_all(
             f"stored={report.stored} playable={report.playable} no_preview={report.no_preview} "
             f"blocked_policy={report.blocked_policy} failures={report.failures}"
         )
+
+    if failures:
+        raise SystemExit(1)
 
 
 async def _probe_one(provider: SearchProvider, limit: int) -> None:
@@ -237,6 +263,8 @@ def main() -> None:
     backfill_all.add_argument("--enrich-unknown-seconds", type=float, default=0.0)
     backfill_all.add_argument("--enrich-preview-batch-size", type=int, default=0)
     backfill_all.add_argument("--enrich-preview-seconds", type=float, default=0.0)
+    backfill_all.add_argument("--enrich-derived-preview-batch-size", type=int, default=0)
+    backfill_all.add_argument("--enrich-derived-preview-seconds", type=float, default=0.0)
 
     probe = subparsers.add_parser("probe")
     probe.add_argument("provider")
@@ -373,6 +401,8 @@ def main() -> None:
                 enrich_unknown_seconds=args.enrich_unknown_seconds,
                 enrich_preview_batch_size=args.enrich_preview_batch_size,
                 enrich_preview_seconds=args.enrich_preview_seconds,
+                enrich_derived_preview_batch_size=args.enrich_derived_preview_batch_size,
+                enrich_derived_preview_seconds=args.enrich_derived_preview_seconds,
             )
         )
         return

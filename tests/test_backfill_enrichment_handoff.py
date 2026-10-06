@@ -64,7 +64,7 @@ def test_successful_backfill_hands_off_to_enrichment(monkeypatch, capsys) -> Non
     assert "content-enrichment: attempted=2 enriched=1" in capsys.readouterr().out
 
 
-def test_backfill_error_skips_enrichment_and_preserves_failure(monkeypatch) -> None:
+def test_backfill_error_still_runs_enrichment_then_preserves_failure(monkeypatch) -> None:
     provider = PagedProvider()
     called = False
 
@@ -91,7 +91,7 @@ def test_backfill_error_skips_enrichment_and_preserves_failure(monkeypatch) -> N
             )
         )
     assert exc.value.code == 1
-    assert called is False
+    assert called is True
 
 
 def test_zero_enrichment_seconds_skips_handoff(monkeypatch) -> None:
@@ -224,3 +224,40 @@ def test_preview_item_failures_do_not_fail_maintenance(monkeypatch, capsys) -> N
     ))
     assert "preview-enrichment:" in capsys.readouterr().out
     assert "failures=2" in capsys.readouterr().out if False else True
+
+
+def test_custom_preview_derivation_runs_in_fast_lane_before_network_preview(monkeypatch) -> None:
+    custom = PagedProvider()
+    custom.name = "custom"
+    network = PagedProvider()
+    network.name = "network"
+    live_custom = SimpleNamespace(name="custom")
+    live_network = SimpleNamespace(name="network")
+    events = []
+
+    async def fake_backfill(*args, **kwargs):
+        return [BackfillRun("custom", 1, 10, False, None)]
+
+    async def fake_preview(index_providers, live_adapters, *, batch_size, max_seconds):
+        events.append(([p.name for p in index_providers], [p.name for p in live_adapters], batch_size, max_seconds))
+        return _preview_report()
+
+    monkeypatch.setattr(cli, "PROVIDERS", [custom, network])
+    monkeypatch.setattr(cli, "LIVE_ADAPTERS", [live_custom, live_network], raising=False)
+    monkeypatch.setattr(cli, "PREVIEW_RULES", {
+        "custom": SimpleNamespace(kind="custom", storage_mode="stable"),
+        "network": SimpleNamespace(kind="live_search_exact", storage_mode="stable"),
+    }, raising=False)
+    monkeypatch.setattr(cli, "backfill_many", fake_backfill)
+    monkeypatch.setattr(cli, "enrich_missing_previews", fake_preview, raising=False)
+
+    asyncio.run(cli._backfill_all(
+        500, 1, 180,
+        enrich_derived_preview_batch_size=500, enrich_derived_preview_seconds=20,
+        enrich_preview_batch_size=10, enrich_preview_seconds=30,
+    ))
+
+    assert events == [
+        (["custom"], [], 500, 20),
+        (["network"], ["network"], 10, 30),
+    ]
