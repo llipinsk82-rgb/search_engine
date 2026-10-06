@@ -31,9 +31,6 @@ def _connect(path: Path = DB_PATH) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, timeout=15.0)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA cache_size=-65536")
-    conn.execute("PRAGMA mmap_size=268435456")
-    conn.execute("PRAGMA temp_store=MEMORY")
     return conn
 
 
