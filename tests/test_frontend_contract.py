@@ -597,23 +597,25 @@ def test_premium_polish_v2_removes_technical_card_copy() -> None:
 
 def test_premium_polish_v2_uses_quieter_search_and_card_typography() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
-    assert "--action-soft:" in css
-    assert ".searchbox button {" in css
-    search_button = css[css.rindex(".searchbox button {"):css.index("}", css.rindex(".searchbox button {")) + 1]
+    v2 = css[css.index("/* Premium polish v2"):css.index("/* Premium v3")]
+    assert "--action-soft:" in v2
+    assert ".searchbox button {" in v2
+    search_button = v2[v2.index(".searchbox button {"):v2.index("}", v2.index(".searchbox button {")) + 1]
     assert "background: var(--action-soft);" in search_button
     assert "color: var(--text-primary);" in search_button
-    title = css[css.rindex(".title {"):css.index("}", css.rindex(".title {")) + 1]
+    title = v2[v2.index(".title {"):v2.index("}", v2.index(".title {")) + 1]
     assert "font-weight: 650;" in title
     assert "line-height: 1.38;" in title
 
 
 def test_premium_polish_v2_compacts_status_and_card_rhythm() -> None:
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
-    assert ".statusbar {" in css
-    status = css[css.rindex(".statusbar {"):css.index("}", css.rindex(".statusbar {")) + 1]
+    v2 = css[css.index("/* Premium polish v2"):css.index("/* Premium v3")]
+    assert ".statusbar {" in v2
+    status = v2[v2.index(".statusbar {"):v2.index("}", v2.index(".statusbar {")) + 1]
     assert "min-height: 40px;" in status
     assert "padding: 0 2px 10px;" in status
-    copy = css[css.rindex(".card-copy {"):css.index("}", css.rindex(".card-copy {")) + 1]
+    copy = v2[v2.index(".card-copy {"):v2.index("}", v2.index(".card-copy {")) + 1]
     assert "padding: 9px 2px 0;" in copy
     assert "gap: 5px;" in copy
 
@@ -732,3 +734,38 @@ def test_more_results_autoload_near_viewport_with_button_fallback() -> None:
     assert 'rootMargin: "900px 0px"' in app
     assert "loadMore();" in app
     assert 'moreBtn.addEventListener("click"' in app
+
+def test_premium_v3_wide_desktop_uses_four_column_media_grid() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "@media (min-width: 1320px)" in css
+    wide = css[css.rindex("@media (min-width: 1320px)"):]
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in wide
+    assert "width: min(1540px, 100%);" in wide
+
+
+def test_premium_v3_provider_badge_and_media_depth_are_present() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert 'class="provider-badge"' in html
+    assert 'card.querySelector(".provider-badge").textContent = item.provider;' in app
+    assert ".provider-badge" in css
+    assert ".media-frame::after" in css
+    assert "linear-gradient" in css[css.rindex(".media-frame::after"):]
+
+
+def test_premium_v3_long_results_use_content_visibility() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "content-visibility: auto;" in css
+    assert "contain-intrinsic-size:" in css
+
+
+def test_premium_v3_mobile_search_compacts_only_while_scrolling_down() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert 'document.body.classList.toggle("compact-search"' in app
+    assert "window.scrollY" in app
+    assert "lastScrollY" in app
+    assert 'window.addEventListener("scroll"' in app
+    assert ".compact-search .control-row" in css
+    assert "display: none;" in css[css.rindex(".compact-search .control-row"):]

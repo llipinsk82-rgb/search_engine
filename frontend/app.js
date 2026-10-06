@@ -53,6 +53,7 @@ function openFilterSheet() {
   filterSheet.hidden = false;
   filtersOpenBtn.setAttribute("aria-expanded", "true");
   document.body.classList.add("filter-sheet-open");
+  document.body.classList.remove("compact-search");
   window.requestAnimationFrame(() => filterSheetPanel.focus());
 }
 
@@ -503,6 +504,7 @@ function resultCard(item) {
 
   title.textContent = item.title;
   card.querySelector(".source").textContent = item.provider;
+  card.querySelector(".provider-badge").textContent = item.provider;
   setOptionalText(card.querySelector(".published"), publishedText(item.published_at));
   setOptionalText(card.querySelector(".views"), viewsText(item.views));
   setOptionalText(card.querySelector(".rating"), ratingText(item.rating_percent, item.rating_count));
@@ -1088,6 +1090,34 @@ resultsEl.addEventListener("click", (event) => {
     ageCheckSelect.value = "";
     search({ resetScroll: true });
   }
+});
+
+let lastScrollY = window.scrollY;
+let compactScrollFrame = null;
+
+function updateCompactSearch() {
+  const currentY = window.scrollY;
+  const scrollingDown = currentY > lastScrollY;
+  const shouldCompact = (
+    currentY > 180 &&
+    scrollingDown &&
+    document.activeElement !== queryInput &&
+    !filterSheetOpen
+  );
+  document.body.classList.toggle("compact-search", shouldCompact);
+  lastScrollY = currentY;
+}
+
+window.addEventListener("scroll", () => {
+  if (compactScrollFrame !== null) return;
+  compactScrollFrame = window.requestAnimationFrame(() => {
+    compactScrollFrame = null;
+    updateCompactSearch();
+  });
+}, { passive: true });
+
+queryInput.addEventListener("focus", () => {
+  document.body.classList.remove("compact-search");
 });
 
 document.addEventListener("visibilitychange", () => {
