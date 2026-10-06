@@ -46,7 +46,7 @@ async def asgi_get(path: str, params: dict[str, str]):
 
 
 def test_get_search_forwards_sort_mode():
-    search = AsyncMock(return_value=([], [], False, 0))
+    search = AsyncMock(return_value=([], [], False, 0, False))
     with (
         patch("backend.app.search_all", search),
         patch("backend.app.trusted_provider_names", return_value=set()),
@@ -58,7 +58,7 @@ def test_get_search_forwards_sort_mode():
 
 
 def test_get_search_rejects_invalid_sort_mode():
-    search = AsyncMock(return_value=([], [], False, 0))
+    search = AsyncMock(return_value=([], [], False, 0, False))
     with (
         patch("backend.app.search_all", search),
         patch("backend.app.trusted_provider_names", return_value=set()),
@@ -70,7 +70,7 @@ def test_get_search_rejects_invalid_sort_mode():
 
 
 def test_post_search_forwards_sort_mode():
-    search = AsyncMock(return_value=([], [], False, 0))
+    search = AsyncMock(return_value=([], [], False, 0, False))
     with (
         patch("backend.app.search_all", search),
         patch("backend.app.trusted_provider_names", return_value=set()),

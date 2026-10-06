@@ -62,6 +62,7 @@ class SearchRequest(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     total: int
+    total_capped: bool = False
     offset: int
     limit: int
     has_more: bool

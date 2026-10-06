@@ -31,6 +31,9 @@ def _connect(path: Path = DB_PATH) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, timeout=15.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA cache_size=-65536")
+    conn.execute("PRAGMA mmap_size=268435456")
+    conn.execute("PRAGMA temp_store=MEMORY")
     return conn
 
 
@@ -577,6 +580,46 @@ def _where_for_search(
         where.append("i.id NOT IN (" + ",".join("?" for _ in ids) + ")")
         params.extend(ids)
     return " AND ".join(where), params, joins, rank_select
+
+
+def count_search_items_capped(
+    query: str,
+    *,
+    cap: int,
+    provider: str | None = None,
+    quality: str | None = None,
+    content_class: str | None = None,
+    age_check: str | None = None,
+    min_duration: int | None = None,
+    max_duration: int | None = None,
+    allowed_providers: set[str] | None = None,
+    path: Path = DB_PATH,
+) -> tuple[int, bool]:
+    if cap < 1:
+        raise ValueError("cap must be positive")
+    initialize(path)
+    where, params, joins, _ = _where_for_search(
+        query,
+        provider=provider,
+        allowed_providers=allowed_providers,
+        quality=quality,
+        content_class=content_class,
+        age_check=age_check,
+        min_duration=min_duration,
+        max_duration=max_duration,
+    )
+    with _connect(path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM (SELECT 1 FROM items i "
+            + joins
+            + " WHERE "
+            + where
+            + " LIMIT ?)",
+            [*params, cap + 1],
+        ).fetchone()
+    observed = int(row["n"])
+    return (cap, True) if observed > cap else (observed, False)
+
 
 
 def count_search_items(

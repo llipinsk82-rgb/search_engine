@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from collections import defaultdict
 
 from backend.content_class import ContentClass
-from backend.index import count_search_items, indexed_providers, search_items
+from backend.index import count_search_items_capped, indexed_providers, search_items
 from backend.models import SearchItem, SortMode, SourceVariant
 
 _space_re = re.compile(r"\s+")
@@ -73,30 +74,35 @@ async def search_all(
     if provider is not None:
         allowed &= {provider}
 
-    total = count_search_items(
-        query,
-        provider=provider,
-        quality=quality,
-        content_class=content_class,
-        age_check=age_check,
-        min_duration=min_duration,
-        max_duration=max_duration,
-        allowed_providers=allowed,
-    )
-    items = search_items(
-        query,
-        provider=provider,
-        quality=quality,
-        content_class=content_class,
-        age_check=age_check,
-        min_duration=min_duration,
-        max_duration=max_duration,
-        allowed_providers=allowed,
-        exclude_ids=exclude_ids,
-        offset=offset,
-        limit=limit,
-        sort=sort,
-    )
+    def run_index_query():
+        total_result = count_search_items_capped(
+            query,
+            cap=5000,
+            provider=provider,
+            quality=quality,
+            content_class=content_class,
+            age_check=age_check,
+            min_duration=min_duration,
+            max_duration=max_duration,
+            allowed_providers=allowed,
+        )
+        page_items = search_items(
+            query,
+            provider=provider,
+            quality=quality,
+            content_class=content_class,
+            age_check=age_check,
+            min_duration=min_duration,
+            max_duration=max_duration,
+            allowed_providers=allowed,
+            exclude_ids=exclude_ids,
+            offset=offset,
+            limit=limit,
+            sort=sort,
+        )
+        return total_result, page_items
+
+    (total, total_capped), items = await asyncio.to_thread(run_index_query)
     used = sorted(allowed)
-    has_more = total > offset + len(items)
-    return items, used, has_more, total
+    has_more = total_capped or total > offset + len(items)
+    return items, used, has_more, total, total_capped

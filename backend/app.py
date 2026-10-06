@@ -296,7 +296,7 @@ async def _search_response(
     if provider is not None and provider not in known:
         raise HTTPException(status_code=400, detail="unknown provider")
 
-    items, used, has_more, total = await search_all(
+    items, used, has_more, total, total_capped = await search_all(
         q,
         provider=provider,
         quality=quality,
@@ -313,6 +313,7 @@ async def _search_response(
     return SearchResponse(
         query=q,
         total=total,
+        total_capped=total_capped,
         offset=offset,
         limit=limit,
         has_more=has_more,

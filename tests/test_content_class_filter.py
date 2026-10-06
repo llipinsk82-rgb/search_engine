@@ -56,7 +56,7 @@ async def asgi_get(path: str, params: dict[str, str]):
 
 
 def test_get_search_forwards_content_class_and_rejects_invalid_value() -> None:
-    search=AsyncMock(return_value=([],[],False,0))
+    search=AsyncMock(return_value=([],[],False,0,False))
     with patch("backend.app.search_all",search), patch("backend.app.trusted_provider_names",return_value=set()):
         status,_=asyncio.run(asgi_get("/api/search",{"q":"alpha","content_class":"studio"}))
     assert status==200
@@ -66,7 +66,7 @@ def test_get_search_forwards_content_class_and_rejects_invalid_value() -> None:
 
 
 def test_post_search_forwards_content_class() -> None:
-    search=AsyncMock(return_value=([],[],False,0))
+    search=AsyncMock(return_value=([],[],False,0,False))
     with patch("backend.app.search_all",search), patch("backend.app.trusted_provider_names",return_value=set()):
         response=asyncio.run(search_post(SearchRequest(q="alpha",content_class="unknown")))
     assert response.query=="alpha"

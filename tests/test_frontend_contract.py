@@ -679,3 +679,25 @@ def test_frontend_cache_v32_markers_are_synchronized() -> None:
     assert "?v=31" not in html + app + sw
     assert "search-shell-v31" not in sw
     assert "search.swReload.v31" not in app
+
+def test_initial_live_merge_reuses_first_local_page_without_refetching() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    start = app.index("async function refreshLive(")
+    end = app.index("async function loadMore()")
+    block = app[start:end]
+    assert "fetchLocal(payload)" not in block
+    assert "localData.items" in block
+
+    search_start = app.index("async function search(")
+    search_end = app.index("function saveBrowsePosition")
+    search_block = app[search_start:search_end]
+    assert "refreshLive(payload, generation, data)" in search_block
+
+
+def test_initial_prefetch_waits_until_first_live_merge_finishes() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    search_start = app.index("async function search(")
+    search_end = app.index("function saveBrowsePosition")
+    block = app[search_start:search_end]
+    before_live = block.split("if (shouldRefreshLive)", 1)[0]
+    assert "startPrefetch(payload, generation);" not in before_live
