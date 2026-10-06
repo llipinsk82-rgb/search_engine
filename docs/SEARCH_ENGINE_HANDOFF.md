@@ -1,3 +1,142 @@
+# CURRENT AUTHORITATIVE STATE — 2026-10-07
+
+> This block supersedes all older authoritative-state blocks below. Older content is retained as history only.
+
+## Current release / branch
+
+Project: BlackServ Search Engine
+Repository: `llipinsk82-rgb/search_engine`
+Canonical sandbox: `/opt/bs-sandbox/search_engine`
+Production: `/opt/search_engine`
+Production DB: `/var/lib/search_engine/search.db`
+Production backend: `127.0.0.1:8775`
+Public: `search.blackserv.eu`
+
+Current working branch: `feature/search-speed-pass1`
+Current deployed code release: `c5d811694cf3d8f4fb5b4ac782584229085db9f4`
+Previous production release: `80511f1c7cf13ce368de9b4b8471c1ef31ef03cb`
+Frontend cache shell: v33
+
+Official deploy path only:
+- `sudo -u blackserv /usr/local/bin/search-engine-deploy-client status`
+- `sudo -u blackserv /usr/local/bin/search-engine-deploy-client check`
+- `sudo -u blackserv /usr/local/bin/search-engine-deploy-client deploy`
+
+Do not direct-edit `/opt/search_engine` or production SQLite. Respect `/run/search_engine/maintenance.lock`.
+
+## Production state verified after Pass 1 deploy
+
+Official helper: `DEPLOY_PASS build=c5d811694cf3`.
+Fresh `/api/health`: status OK, build `c5d811694cf3`, indexed items 1,328,853 at verification time.
+Services verified active:
+- `search-engine.service`
+- `search-engine-sync.timer`
+- `search-engine-backfill.timer`
+
+Release/production SHA-256 equality verified for:
+- `backend/app.py`
+- `backend/index.py`
+- `backend/models.py`
+- `backend/search.py`
+- `frontend/index.html`
+- `frontend/app.js`
+- `frontend/sw.js`
+
+Frontend cache markers v33 verified in production.
+
+## Premium roast — verified findings
+
+The product already has enough functionality and catalog breadth. The improvement direction is not more filters/features; it is faster search, more visible motion preview, less duplicate content, denser browse UX, and a richer media presentation.
+
+Verified catalog snapshot during audit:
+- ~1.328M indexed items
+- 55 indexed/trusted/available providers
+- 31 configured index providers
+- 25 live providers
+- all 25/25 live providers returned results in a bounded `step` probe; 70/125 returned preview URLs in those live results
+
+Metadata coverage from the audit snapshot:
+- thumbnail ~100%
+- duration ~99.8%
+- quality ~2.6%
+- views/rating/published ~0.1%
+- studio ~1%
+- tags ~58.6%
+
+Therefore the premium visual direction should enrich the media itself, not add noisy text metadata that mostly does not exist.
+
+Preview potential:
+- 19 preview-eligible providers
+- ~503k indexed rows from preview-eligible providers
+- ~496k rows are on-demand preview mode
+- deterministic custom preview derivation is available for ~236k rows; MyPornHere, PornDig, PornID, SexVid, XNXX, XVideos and ZBPorn were 100% derivable in the audit; PussySpace ~85.6%
+
+Duplicate result problem is real. On `sis+step+perv`, 12/40 sampled rows belonged to duplicate groups even though `_collapse()` and `alternate_sources` support already exist. Main search path does not currently use `_collapse()`.
+
+## Pass 1 — SPEED — DEPLOYED
+
+Code commit: `1ddb4977ff11a2b8230e814df10f5e277f2182de`
+Cache/release commit: `c5d811694cf3d8f4fb5b4ac782584229085db9f4`
+
+Changes:
+- removed the expensive `indexed_providers()` scan from the API hot path when an allowlist is already supplied;
+- moved SQLite search/count and health/provider DB work off the asyncio event loop via `asyncio.to_thread`;
+- count and TOP40 execute concurrently;
+- broad result counts are bounded at `5000+` using an explicit `total_is_capped` API field instead of exact full COUNT;
+- frontend reuses the initial local page after Live refresh instead of fetching page 1 again;
+- first-page prefetch waits until Live merge completes, avoiding three heavy local queries during initial search;
+- fixed the maintenance-lock regression fixture so the full suite is actually green under the `nologin` service account;
+- frontend cache bumped v32 -> v33.
+
+Rejected optimization:
+- SQLite `mmap_size=256MB` improved wide-query latency about 9-12% but raised warmed test-worker RSS from ~60MB to ~766MB. It was fully reverted and is NOT in the release.
+
+Measured production after release:
+- `sis`: ~119 ms
+- `step`: ~521 ms
+- `amateur`: ~1.89 s
+- `sis+step+perv`: ~26 ms
+- health during simultaneous heavy `amateur` search: ~0.75 s
+
+Pre-Pass1 comparison from the same audit:
+- `sis` ~0.73 s
+- `step` ~1.4 s
+- `milf` ~3.3 s
+- `amateur` ~3.9 s
+- health during heavy search ~5.24 s
+
+Verification after final code/cache state:
+- frontend contract: 67/67 PASS
+- full suite: 413/413 PASS
+- backend compileall PASS
+- `node --check frontend/app.js` PASS
+- `git diff --check` PASS
+- staging v33 + Pass1 API smoke PASS
+- official production check/deploy PASS
+- production hash verification PASS
+
+## Test/staging state
+
+`test.blackserv.eu` root static frontend is v33 under `/opt/search-engine-premium-test`.
+Root staging `/api/` currently proxies to isolated Pass1 backend `127.0.0.1:8777` (`search-engine-pass1-test.service`, build `1ddb497-test`) using its own DB copy under `/var/lib/search_engine_pass1_test/search.db`.
+`/test-api/` remains separate and still points to 8776.
+
+Additional test services on 8776 and 8779 existed during the audit/integration work. Their dependency status was not proven, so they were deliberately not deleted blindly.
+
+## Next exact work — Pass 2 PREVIEW / BROWSE
+
+Continue autonomously in this order unless fresh measurements invalidate it:
+1. increase preview availability using cheap deterministic preview derivation first; do not mass-network-crawl unnecessarily;
+2. isolate provider backfill failures so one 522 does not prevent later content/preview enrichment;
+3. desktop hover preview with a short delay and one active preview at a time; mobile retains explicit tap Play;
+4. activate safe duplicate collapsing / `+N sources` in the real search path;
+5. add bounded automatic next-page loading with `Show more` retained as fallback;
+6. benchmark/test each slice and only deploy green bounded changes.
+
+Then Pass 3 visual work: A/B 3 vs 4 desktop columns, media badges/gradient, compact mobile sticky behavior, and CSS consolidation. Do not add new filters or visual clutter just to make the UI look busier.
+
+---
+
 # CURRENT AUTHORITATIVE STATE — 2026-09-21
 
 > This section is the authoritative current handoff. Older entries below are retained as history only. If an older entry conflicts with this section, use this section.
