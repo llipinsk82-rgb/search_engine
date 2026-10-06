@@ -76,35 +76,34 @@ async def search_all(
     if provider is not None:
         allowed &= {provider}
 
-    def run_index_query():
-        total_result = count_search_items_capped(
-            query,
-            cap=5000,
-            provider=provider,
-            quality=quality,
-            content_class=content_class,
-            age_check=age_check,
-            min_duration=min_duration,
-            max_duration=max_duration,
-            allowed_providers=allowed,
-        )
-        rows = search_items(
-            query,
-            provider=provider,
-            quality=quality,
-            content_class=content_class,
-            age_check=age_check,
-            min_duration=min_duration,
-            max_duration=max_duration,
-            allowed_providers=allowed,
-            exclude_ids=exclude_ids,
-            offset=offset,
-            limit=limit + 1,
-            sort=sort,
-        )
-        return total_result, rows
-
-    (total, total_capped), rows = await asyncio.to_thread(run_index_query)
+    total_task = asyncio.to_thread(
+        count_search_items_capped,
+        query,
+        cap=5000,
+        provider=provider,
+        quality=quality,
+        content_class=content_class,
+        age_check=age_check,
+        min_duration=min_duration,
+        max_duration=max_duration,
+        allowed_providers=allowed,
+    )
+    rows_task = asyncio.to_thread(
+        search_items,
+        query,
+        provider=provider,
+        quality=quality,
+        content_class=content_class,
+        age_check=age_check,
+        min_duration=min_duration,
+        max_duration=max_duration,
+        allowed_providers=allowed,
+        exclude_ids=exclude_ids,
+        offset=offset,
+        limit=limit + 1,
+        sort=sort,
+    )
+    (total, total_capped), rows = await asyncio.gather(total_task, rows_task)
     items = rows[:limit]
     used = sorted(allowed)
     has_more = len(rows) > limit
