@@ -2,6 +2,42 @@
 
 > This block supersedes all older authoritative-state blocks below. Older content is retained as history only.
 
+## Pass 2 — PREVIEW / BROWSE — DEPLOYED
+
+Production code build: `3fbb32cae034`. Frontend cache: v35.
+
+Commits:
+- `6e556ac` — deterministic local preview enrichment + backfill failure isolation
+- `3b34f7b` — desktop hover preview
+- `e9c6bf9` — collapse duplicate browse results into alternate sources
+- `16e920e` — auto-load next results near viewport end with Show more fallback
+- `3fbb32c` — cache bump v35
+
+Verified behavior:
+- deterministic preview enrichment runs before remote preview enrichment; one failing backfill provider no longer prevents later enrichment, while the maintenance command still exits nonzero after enrichment if the catalog backfill had failures;
+- production local preview batches use 3000 attempts / 20 s; observed cycles: 2875/3000 and 2892/3000 new playable previews, 0 failures;
+- desktop fine-pointer hover preview starts after 300 ms, has abort handling, and preserves one-active-preview behavior; mobile/manual Play remains available;
+- cross-provider duplicate cards are collapsed client-side by normalized title + 15 s duration bucket and surfaced as `+N sources`;
+- user-visible shown count tracks rendered cards after dedupe;
+- next page loads automatically when Show more is within 900 px of the viewport; Show more remains the fallback;
+- full suite before release: 423/423 PASS; frontend contract: 73/73 PASS; compileall, node syntax, diff check PASS;
+- official deploy helper returned DEPLOY_PASS for `3fbb32cae034`; post-deploy health/build, v35 markers, service states and release/production file hashes were verified.
+
+Rejected during Pass1 remains rejected: SQLite 256 MB mmap was not deployed because test worker RSS grew to ~766 MB.
+
+## Next exact work — Pass 3 PREMIUM v3
+
+Visual work is a staging-first owner-visible gate. Do not deploy Pass3 visual changes to production until the owner sees the rendered test frontend and accepts it.
+
+Planned bounded order:
+1. A/B desktop density: 4 columns on wide desktop, retain 3 below the wide breakpoint, 2 tablet, 1 mobile;
+2. media depth: restrained bottom gradient/provider badge treatment without noisy metadata;
+3. compact mobile sticky behavior while scrolling;
+4. consolidate the accumulated premium CSS override layers after visual behavior is accepted;
+5. full test/gate and owner visual approval on `test.blackserv.eu`; only then production cache bump/deploy.
+
+---
+
 ## Current release / branch
 
 Project: BlackServ Search Engine
