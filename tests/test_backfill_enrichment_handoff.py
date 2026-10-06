@@ -64,7 +64,7 @@ def test_successful_backfill_hands_off_to_enrichment(monkeypatch, capsys) -> Non
     assert "content-enrichment: attempted=2 enriched=1" in capsys.readouterr().out
 
 
-def test_backfill_error_skips_enrichment_and_preserves_failure(monkeypatch) -> None:
+def test_backfill_error_still_runs_enrichment_and_preserves_failure(monkeypatch) -> None:
     provider = PagedProvider()
     called = False
 
@@ -91,7 +91,7 @@ def test_backfill_error_skips_enrichment_and_preserves_failure(monkeypatch) -> N
             )
         )
     assert exc.value.code == 1
-    assert called is False
+    assert called is True
 
 
 def test_zero_enrichment_seconds_skips_handoff(monkeypatch) -> None:
@@ -224,3 +224,22 @@ def test_preview_item_failures_do_not_fail_maintenance(monkeypatch, capsys) -> N
     ))
     assert "preview-enrichment:" in capsys.readouterr().out
     assert "failures=2" in capsys.readouterr().out if False else True
+
+
+def test_backfill_runs_fast_derivable_preview_pass(monkeypatch, capsys) -> None:
+    provider = PagedProvider()
+    seen = {}
+    async def fake_backfill(*args, **kwargs):
+        return [BackfillRun("paged", 1, 10, False, None)]
+    def fake_derive(index_providers, *, batch_size, max_seconds):
+        seen.update(index=index_providers, batch=batch_size, seconds=max_seconds)
+        return _preview_report()
+    monkeypatch.setattr(cli, "PROVIDERS", [provider])
+    monkeypatch.setattr(cli, "backfill_many", fake_backfill)
+    monkeypatch.setattr(cli, "enrich_derivable_previews", fake_derive, raising=False)
+    asyncio.run(cli._backfill_all(
+        500, 1, 180,
+        derive_preview_batch_size=500, derive_preview_seconds=30,
+    ))
+    assert seen == {"index": [provider], "batch": 500, "seconds": 30}
+    assert "preview-derive: attempted=2" in capsys.readouterr().out

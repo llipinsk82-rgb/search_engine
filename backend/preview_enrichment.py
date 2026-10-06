@@ -12,6 +12,7 @@ from backend.index import (
 )
 from backend.media_policy import media_url_allowed
 from backend.preview_providers import preview_provider_map
+from backend.preview_rules import PREVIEW_RULES, derive_custom_preview
 from backend.settings import DB_PATH
 
 
@@ -29,6 +30,70 @@ class PreviewEnrichmentReport:
 def _failure_delay(failure_count: int) -> timedelta:
     hours = 6 * (2 ** max(0, failure_count - 1))
     return min(timedelta(hours=hours), timedelta(days=7))
+
+
+def enrich_derivable_previews(
+    index_providers,
+    *,
+    batch_size: int,
+    max_seconds: float,
+    path: Path = DB_PATH,
+    now: datetime | None = None,
+) -> PreviewEnrichmentReport:
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    if max_seconds < 0:
+        raise ValueError("max_seconds must be non-negative")
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
+
+    provider_names = {
+        provider.name
+        for provider in index_providers
+        if (rule := PREVIEW_RULES.get(provider.name)) is not None
+        and rule.kind == "custom"
+    }
+    report = PreviewEnrichmentReport()
+    if not provider_names or max_seconds == 0:
+        return report
+
+    candidates = list_preview_enrichment_candidates(
+        provider_names, limit=batch_size, now=now, path=path
+    )
+    deadline = monotonic() + float(max_seconds)
+    for candidate in candidates:
+        if monotonic() >= deadline:
+            break
+        item = candidate.item
+        report.attempted += 1
+        preview = derive_custom_preview(item.provider, item)
+        if not preview:
+            report.no_preview += 1
+            record_preview_enrichment_attempt(
+                item.id, provider=item.provider, status="no_preview",
+                failure_count=0, last_attempt_at=now,
+                next_attempt_at=now + timedelta(days=30), path=path,
+            )
+            continue
+        report.extracted += 1
+        if not media_url_allowed(item.provider, "preview", preview):
+            report.blocked_policy += 1
+            record_preview_enrichment_attempt(
+                item.id, provider=item.provider, status="blocked_policy",
+                failure_count=0, last_attempt_at=now,
+                next_attempt_at=now + timedelta(days=30), path=path,
+            )
+            continue
+        changed = update_preview_url(item.id, preview_url=preview, path=path)
+        if changed:
+            report.stored += 1
+            report.playable += 1
+        record_preview_enrichment_attempt(
+            item.id, provider=item.provider, status="success",
+            failure_count=0, last_attempt_at=now, next_attempt_at=None, path=path,
+        )
+    return report
 
 
 async def enrich_missing_previews(

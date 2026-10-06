@@ -24,8 +24,10 @@ def test_preview_is_manual_with_play_button() -> None:
     assert 'class="preview-toggle"' in html
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
-    assert "IntersectionObserver" not in app
-    assert "pointerenter" not in app
+    card = app[app.index("function resultCard("):app.index("function renderSkeletons(")]
+    assert "IntersectionObserver" not in card
+    assert 'matchMedia("(hover: hover) and (pointer: fine)")' in app
+    assert 'mediaFrame.addEventListener("pointerenter"' in app
     assert ".preview-toggle {" in css
 
 
@@ -287,13 +289,15 @@ def test_preview_failure_is_scoped_to_its_media_frame() -> None:
     assert "toggle.hidden = true;" in app
 
 
-def test_manual_one_active_preview_contract_is_preserved() -> None:
+def test_one_active_preview_and_desktop_hover_contract() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     start = app[app.index("function startMotionPreview("):app.index("function durationText(")]
     assert "activeMotionPreview?.motion && activeMotionPreview.motion !== motion" in start
     assert "stopMotionPreview(" in start
-    assert "IntersectionObserver" not in app
-    assert "pointerenter" not in app
+    assert 'const HOVER_PREVIEW_DELAY_MS = 300;' in app
+    assert 'matchMedia("(hover: hover) and (pointer: fine)")' in app
+    assert 'mediaFrame.addEventListener("pointerenter"' in app
+    assert 'mediaFrame.addEventListener("pointerleave"' in app
 
 
 def test_explicit_search_state_helpers_exist() -> None:
@@ -520,7 +524,8 @@ def test_preview_button_contract_survives_card_redesign() -> None:
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
     assert 'event.stopPropagation();' in app
-    assert "IntersectionObserver" not in app
+    card = app[app.index("function resultCard("):app.index("function renderSkeletons(")]
+    assert "IntersectionObserver" not in card
 
 
 def test_mobile_content_segment_uses_full_width_second_row() -> None:
@@ -696,3 +701,53 @@ def test_speed_pass_does_not_prefetch_while_first_live_refresh_is_running() -> N
     before_live = search[:search.index("await refreshLive")]
     assert "startPrefetch(payload, generation);" not in before_live
     assert 'data.total_is_capped ? `${data.total}+` : String(data.total)' in app
+
+
+def test_preview_resolution_uses_bounded_session_cache() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "const resolvedPreviewCache = new Map();" in app
+    assert "const RESOLVED_PREVIEW_CACHE_LIMIT = 200;" in app
+    resolver = app[app.index("async function resolvePreviewForPlayback("):app.index("function setPreviewToggle(")]
+    assert "resolvedPreviewCache.get(item.id)" in resolver
+    assert "cacheResolvedPreview(item.id, previewUrl);" in resolver
+
+
+def test_render_deduplicates_cross_source_results_and_tracks_hidden_ids() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "let renderedFingerprints = new Map();" in app
+    assert "function resultFingerprint(item)" in app
+    assert "function mergeDuplicateIntoPrimary(primary, duplicate)" in app
+    render = app[app.index("function render(items"):app.index("function liveSummary(")]
+    assert "const fingerprint = resultFingerprint(item);" in render
+    assert "renderedFingerprints.get(fingerprint)" in render
+    assert "seenIds.add(item.id);" in render
+    assert "mergeDuplicateIntoPrimary(existing.item, item);" in render
+    assert "nextOffset = renderedItems.length;" in render
+    assert "updateAlternateCount(existing.card, existing.item);" in render
+
+
+def test_infinite_browse_is_bounded_and_keeps_manual_fallback() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'const moreRow = document.querySelector(".more-row");' in app
+    assert 'new IntersectionObserver' in app
+    assert 'rootMargin: "800px 0px"' in app
+    assert 'if (!entry.isIntersecting) {' in app
+    assert 'autoLoadReady = true;' in app
+    assert 'if (!autoLoadReady || moreBtn.hidden || moreBtn.disabled' in app
+    assert 'search({ persist: false, append: true });' in app
+    assert 'moreBtn.addEventListener("click"' in app
+
+
+def test_long_result_sessions_use_render_containment() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "content-visibility: auto;" in css
+    assert "contain-intrinsic-size:" in css
+
+
+def test_premium_v3_uses_four_columns_only_on_wide_desktop() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "@media (min-width: 1280px)" in css
+    wide = css[css.index("@media (min-width: 1280px)"):]
+    assert ".grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }" in wide
+    mobile = css[css.index("@media (max-width: 680px)"):]
+    assert "grid-template-columns: 1fr;" in mobile

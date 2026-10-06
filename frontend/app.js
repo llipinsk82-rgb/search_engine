@@ -12,6 +12,7 @@ const statusEl = document.querySelector("#status");
 const liveDetailEl = document.querySelector("#live-detail");
 const clearBtn = document.querySelector("#clear");
 const moreBtn = document.querySelector("#more");
+const moreRow = document.querySelector(".more-row");
 const template = document.querySelector("#card-template");
 const filtersOpenBtn = document.querySelector("#filters-open");
 const filterSheet = document.querySelector("#filter-sheet");
@@ -23,6 +24,10 @@ const filterSheetPanel = document.querySelector(".filter-sheet-panel");
 let filterSheetOpen = false;
 
 const PAGE_SIZE = 40;
+const HOVER_PREVIEW_DELAY_MS = 300;
+const RESOLVED_PREVIEW_CACHE_LIMIT = 200;
+const desktopHoverPreview = window.matchMedia("(hover: hover) and (pointer: fine)");
+const resolvedPreviewCache = new Map();
 let nextOffset = 0;
 let searchGeneration = 0;
 let seenIds = new Set();
@@ -34,6 +39,7 @@ let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
 let renderedItems = [];
+let renderedFingerprints = new Map();
 
 function setPrimaryStatus(text) {
   statusEl.textContent = text;
@@ -189,7 +195,21 @@ function resolvePreviewUrl(item, previewUrl = item.preview_url) {
   return previewUrl;
 }
 
+function cacheResolvedPreview(itemId, previewUrl) {
+  if (!itemId || !previewUrl) return;
+  resolvedPreviewCache.delete(itemId);
+  resolvedPreviewCache.set(itemId, previewUrl);
+  while (resolvedPreviewCache.size > RESOLVED_PREVIEW_CACHE_LIMIT) {
+    const oldest = resolvedPreviewCache.keys().next().value;
+    if (!oldest) break;
+    resolvedPreviewCache.delete(oldest);
+  }
+}
+
 async function resolvePreviewForPlayback(item) {
+  const cached = resolvedPreviewCache.get(item.id);
+  if (cached) return cached;
+
   const policy = mediaPolicyFor(item.provider);
   const needsFresh = policy.preview_resolution_mode === "on_demand" && (!item.preview_url || policy.preview_storage_mode === "ephemeral");
   let previewUrl = item.preview_url || "";
@@ -200,7 +220,9 @@ async function resolvePreviewForPlayback(item) {
     previewUrl = String(payload?.preview_url || "");
   }
   if (!previewUrl) throw new Error("preview unavailable");
-  return resolvePreviewUrl(item, previewUrl);
+  previewUrl = resolvePreviewUrl(item, previewUrl);
+  cacheResolvedPreview(item.id, previewUrl);
+  return previewUrl;
 }
 
 function setPreviewToggle(toggle, playing) {
@@ -254,6 +276,30 @@ function startMotionPreview(motion, still, url, toggle, itemId) {
     4000,
   );
   motion.play().catch(() => failMotionPreview(itemId, motion, still, toggle));
+}
+
+async function playPreviewForItem(item, motion, still, toggle, { requireHover = false } = {}) {
+  if (!item || !motion || !toggle || toggle.hidden) return;
+  if (motion._previewResolvePromise) return motion._previewResolvePromise;
+
+  toggle.disabled = true;
+  toggle.setAttribute("aria-busy", "true");
+  const task = (async () => {
+    try {
+      const resolvedPreview = await resolvePreviewForPlayback(item);
+      if (requireHover && !motion._hovering) return;
+      motion.dataset.previewUrl = resolvedPreview;
+      startMotionPreview(motion, still, resolvedPreview, toggle, item.id);
+    } catch (_) {
+      failMotionPreview(item.id, motion, still, toggle);
+    } finally {
+      toggle.disabled = false;
+      toggle.removeAttribute("aria-busy");
+      motion._previewResolvePromise = null;
+    }
+  })();
+  motion._previewResolvePromise = task;
+  return task;
 }
 
 function durationText(seconds) {
@@ -383,8 +429,63 @@ function setOptionalText(node, value) {
   node.hidden = !text;
 }
 
+function normalizeResultTitle(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function resultFingerprint(item) {
+  const title = normalizeResultTitle(item?.title);
+  const words = title ? title.split(" ").filter(Boolean) : [];
+  if (!item?.id || title.length < 12 || words.length < 3) return `id:${item?.id || ""}`;
+  const duration = Number.isFinite(item.duration_seconds) ? item.duration_seconds : 0;
+  return `${title}|${Math.round(duration / 15)}`;
+}
+
+function sourceVariantKey(source) {
+  return `${String(source?.provider || "")}|${String(source?.url || "")}`;
+}
+
+function mergeDuplicateIntoPrimary(primary, duplicate) {
+  if (!primary || !duplicate) return;
+  if (!Array.isArray(primary.alternate_sources)) primary.alternate_sources = [];
+  const known = new Set([
+    sourceVariantKey({ provider: primary.provider, url: primary.url }),
+    ...primary.alternate_sources.map(sourceVariantKey),
+  ]);
+  const candidates = [
+    {
+      id: duplicate.id,
+      provider: duplicate.provider,
+      url: duplicate.url,
+      quality: duplicate.quality || null,
+    },
+    ...(Array.isArray(duplicate.alternate_sources) ? duplicate.alternate_sources : []),
+  ];
+  for (const source of candidates) {
+    const key = sourceVariantKey(source);
+    if (!source?.provider || !source?.url || known.has(key)) continue;
+    known.add(key);
+    primary.alternate_sources.push(source);
+    if (source.id) seenIds.add(source.id);
+  }
+}
+
+function updateAlternateCount(card, item) {
+  const count = item?.alternate_sources?.length || 0;
+  setOptionalText(
+    card.querySelector(".alternates"),
+    count ? `+${count} source${count === 1 ? "" : "s"}` : "",
+  );
+}
+
 function resultCard(item) {
   const card = template.content.firstElementChild.cloneNode(true);
+  const mediaFrame = card.querySelector(".media-frame");
   const thumb = card.querySelector(".thumb");
   const title = card.querySelector(".title");
   const preview = card.querySelector(".preview");
@@ -444,19 +545,29 @@ function resultCard(item) {
         stopMotionPreview(motion, preview, previewToggle);
         return;
       }
-      previewToggle.disabled = true;
-      previewToggle.setAttribute("aria-busy", "true");
-      try {
-        const resolvedPreview = await resolvePreviewForPlayback(item);
-        motion.dataset.previewUrl = resolvedPreview;
-        startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id);
-      } catch (_) {
-        failMotionPreview(item.id, motion, preview, previewToggle);
-      } finally {
-        previewToggle.disabled = false;
-        previewToggle.removeAttribute("aria-busy");
-      }
+      await playPreviewForItem(item, motion, preview, previewToggle);
     });
+
+    if (desktopHoverPreview.matches) {
+      mediaFrame.addEventListener("pointerenter", () => {
+        motion._hovering = true;
+        if (motion._hoverTimer) window.clearTimeout(motion._hoverTimer);
+        motion._hoverTimer = window.setTimeout(() => {
+          motion._hoverTimer = null;
+          playPreviewForItem(item, motion, preview, previewToggle, { requireHover: true });
+        }, HOVER_PREVIEW_DELAY_MS);
+      });
+      mediaFrame.addEventListener("pointerleave", () => {
+        motion._hovering = false;
+        if (motion._hoverTimer) {
+          window.clearTimeout(motion._hoverTimer);
+          motion._hoverTimer = null;
+        }
+        if (activeMotionPreview?.motion === motion) {
+          stopMotionPreview(motion, preview, previewToggle);
+        }
+      });
+    }
   } else {
     previewToggle.hidden = true;
   }
@@ -475,11 +586,7 @@ function resultCard(item) {
   card.querySelector(".quality").textContent = item.quality || "";
   card.querySelector(".duration").textContent = durationText(item.duration_seconds);
 
-  const count = item.alternate_sources?.length || 0;
-  setOptionalText(
-    card.querySelector(".alternates"),
-    count ? `+${count} source${count === 1 ? "" : "s"}` : "",
-  );
+  updateAlternateCount(card, item);
 
   return card;
 }
@@ -542,18 +649,33 @@ function render(items, { append = false } = {}) {
     resultsEl.replaceChildren();
     seenIds = new Set();
     renderedItems = [];
+    renderedFingerprints = new Map();
   }
 
   let added = 0;
   for (const item of items) {
     if (!item?.id || seenIds.has(item.id)) continue;
     seenIds.add(item.id);
+    for (const source of item.alternate_sources || []) {
+      if (source?.id) seenIds.add(source.id);
+    }
+
+    const fingerprint = resultFingerprint(item);
+    const existing = renderedFingerprints.get(fingerprint);
+    if (existing) {
+      mergeDuplicateIntoPrimary(existing.item, item);
+      updateAlternateCount(existing.card, existing.item);
+      continue;
+    }
+
+    const card = resultCard(item);
     renderedItems.push(item);
-    resultsEl.append(resultCard(item));
+    renderedFingerprints.set(fingerprint, { item, card });
+    resultsEl.append(card);
     added += 1;
   }
 
-  nextOffset = seenIds.size;
+  nextOffset = renderedItems.length;
   return added;
 }
 
@@ -1016,6 +1138,25 @@ document.addEventListener("visibilitychange", () => {
     stopMotionPreview(activeMotionPreview.motion, activeMotionPreview.still, activeMotionPreview.toggle);
   }
 });
+
+function setupInfiniteBrowse() {
+  if (!("IntersectionObserver" in window) || !moreRow) return;
+  let autoLoadReady = true;
+  const observer = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    if (!entry) return;
+    if (!entry.isIntersecting) {
+      autoLoadReady = true;
+      return;
+    }
+    if (!autoLoadReady || moreBtn.hidden || moreBtn.disabled || !(localHasMore || liveHasMore)) return;
+    autoLoadReady = false;
+    search({ persist: false, append: true });
+  }, { rootMargin: "800px 0px" });
+  observer.observe(moreRow);
+}
+
+setupInfiniteBrowse();
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();

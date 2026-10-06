@@ -10,7 +10,7 @@ from backend.index import (
     record_preview_enrichment_attempt,
 )
 from backend.models import SearchItem
-from backend.preview_enrichment import enrich_missing_previews
+from backend.preview_enrichment import enrich_derivable_previews, enrich_missing_previews
 
 NOW = datetime(2026, 9, 21, 2, 0, tzinfo=timezone.utc)
 
@@ -130,3 +130,20 @@ def test_deadline_stops_before_unstarted_candidate(tmp_path, monkeypatch):
     assert report.attempted == 1
     assert p.calls == ["a"]
     assert _state(db, "b") is None
+
+
+def test_derivable_custom_preview_is_stored_without_provider_fetch(tmp_path):
+    db = tmp_path / "derive.db"
+    _insert(db, "x1", provider="xvideos")
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "UPDATE items SET thumbnail=? WHERE id='x1'",
+            ("https://thumb-cdn77.xvideos-cdn.com/abc/def/0.jpg",),
+        )
+    provider = FakeProvider("xvideos", error=AssertionError("network fetch must not run"))
+    report = enrich_derivable_previews([provider], batch_size=10, max_seconds=10, path=db, now=NOW)
+    with sqlite3.connect(db) as conn:
+        preview = conn.execute("SELECT preview_url FROM items WHERE id='x1'").fetchone()[0]
+    assert preview == "https://thumb-cdn77.xvideos-cdn.com/abc/def/preview.mp4"
+    assert provider.calls == []
+    assert (report.attempted, report.extracted, report.stored, report.playable) == (1, 1, 1, 1)

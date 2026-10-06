@@ -243,6 +243,8 @@ select:hover { border-color: var(--border-strong); }
   min-width: 0;
   background: transparent;
   transition: transform .2s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 280px 320px;
 }
 
 
@@ -1309,4 +1311,9 @@ body {
   .quality {
     background: rgba(6,7,9,.62);
   }
+}
+
+/* Premium v3: denser cinematic browse on wide desktop. */
+@media (min-width: 1280px) {
+  .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
