@@ -679,3 +679,20 @@ def test_frontend_cache_v32_markers_are_synchronized() -> None:
     assert "?v=31" not in html + app + sw
     assert "search-shell-v31" not in sw
     assert "search.swReload.v31" not in app
+
+
+def test_speed_pass_reuses_first_local_page_after_live_refresh() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    refresh = app[app.index("async function refreshLive("):app.index("async function loadMore(")]
+    assert "fetchLocal(" not in refresh
+    assert "localData.items" in refresh
+    search = app[app.index("async function search("):app.index("function saveBrowsePosition")]
+    assert "await refreshLive(payload, generation, data)" in search
+
+
+def test_speed_pass_does_not_prefetch_while_first_live_refresh_is_running() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    search = app[app.index("async function search("):app.index("function saveBrowsePosition")]
+    before_live = search[:search.index("await refreshLive")]
+    assert "startPrefetch(payload, generation);" not in before_live
+    assert 'data.total_is_capped ? `${data.total}+` : String(data.total)' in app

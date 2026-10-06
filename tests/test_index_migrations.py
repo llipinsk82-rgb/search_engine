@@ -139,3 +139,16 @@ def test_preview_enrichment_state_schema_is_additive(tmp_path: Path):
         }
         pk = [row[1] for row in conn.execute("PRAGMA table_info(preview_enrichment_state)") if row[5] == 1]
         assert pk == ["item_id"]
+
+
+def test_active_provider_covering_index_is_migrated(tmp_path: Path):
+    db = tmp_path / "active-provider.db"
+    index._initialized_paths.discard(str(db.resolve()))
+    index.initialize(db)
+    with sqlite3.connect(db) as conn:
+        indexes = {row[1] for row in conn.execute("PRAGMA index_list(items)")}
+        assert "idx_items_active_provider" in indexes
+        marker = conn.execute(
+            "SELECT state_value FROM provider_state WHERE provider='__system__' AND state_key='migration:active_provider_index_v1'"
+        ).fetchone()
+        assert marker == ("done",)

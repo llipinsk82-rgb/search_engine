@@ -1,4 +1,5 @@
 from __future__ import annotations
+import fcntl
 import subprocess
 import tempfile
 import unittest
@@ -22,13 +23,11 @@ class MaintenanceRunnerTests(unittest.TestCase):
     def test_lock_contention_is_clean_skip(self):
         with tempfile.TemporaryDirectory() as d:
             lock=Path(d)/"lock"
-            holder=subprocess.Popen(["flock","-x",str(lock),"-c","sleep 1"])
-            try:
+            with lock.open("w") as holder:
+                fcntl.flock(holder.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 p=subprocess.run([str(RUNNER),str(lock),"0","/bin/false"],capture_output=True,text=True)
                 self.assertEqual(p.returncode,0)
                 self.assertIn("SEARCH_MAINTENANCE=SKIPPED",p.stdout)
-            finally:
-                holder.wait()
 
 if __name__ == "__main__":
     unittest.main()

@@ -176,6 +176,22 @@ def initialize(path: Path = DB_PATH) -> None:
                     ("__system__", content_class_index_key),
                 )
 
+            active_provider_index_key = "migration:active_provider_index_v1"
+            active_provider_index_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", active_provider_index_key),
+            ).fetchone()
+            if active_provider_index_done is None:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_items_active_provider "
+                    "ON items(active, provider)"
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) "
+                    "VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", active_provider_index_key),
+                )
+
             content_enrichment_index_key = "migration:content_enrichment_index_v1"
             content_enrichment_index_done = conn.execute(
                 "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
@@ -607,6 +623,45 @@ def count_search_items(
             "SELECT COUNT(*) AS n FROM items i " + joins + " WHERE " + where, params
         ).fetchone()
         return int(row["n"])
+
+
+def count_search_items_capped(
+    query: str,
+    *,
+    provider: str | None = None,
+    quality: str | None = None,
+    content_class: str | None = None,
+    age_check: str | None = None,
+    min_duration: int | None = None,
+    max_duration: int | None = None,
+    allowed_providers: set[str] | None = None,
+    cap: int = 5000,
+    path: Path = DB_PATH,
+) -> tuple[int, bool]:
+    if cap < 1:
+        raise ValueError("cap must be positive")
+    initialize(path)
+    where, params, joins, _ = _where_for_search(
+        query,
+        provider=provider,
+        allowed_providers=allowed_providers,
+        quality=quality,
+        content_class=content_class,
+        age_check=age_check,
+        min_duration=min_duration,
+        max_duration=max_duration,
+    )
+    with _connect(path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM (SELECT 1 FROM items i "
+            + joins
+            + " WHERE "
+            + where
+            + " LIMIT ?)",
+            [*params, cap + 1],
+        ).fetchone()
+    observed = int(row["n"])
+    return (cap, True) if observed > cap else (observed, False)
 
 
 def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:

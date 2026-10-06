@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from collections import defaultdict
 
 from backend.content_class import ContentClass
-from backend.index import count_search_items, indexed_providers, search_items
+from backend.index import count_search_items_capped, indexed_providers, search_items
 from backend.models import SearchItem, SortMode, SourceVariant
 
 _space_re = re.compile(r"\s+")
@@ -53,6 +54,40 @@ def _slice_page(
     return items[offset:end], len(items) > end
 
 
+def _search_all_sync(
+    query: str,
+    *,
+    provider: str | None = None,
+    quality: str | None = None,
+    content_class: ContentClass | None = None,
+    age_check: str | None = None,
+    min_duration: int | None = None,
+    max_duration: int | None = None,
+    offset: int = 0,
+    limit: int = 40,
+    sort: SortMode = "relevance",
+    allowed_providers: set[str] | None = None,
+    exclude_ids: set[str] | None = None,
+) -> tuple[list[SearchItem], list[str], bool, int, bool]:
+    allowed = set(indexed_providers()) if allowed_providers is None else set(allowed_providers)
+    if provider is not None:
+        allowed &= {provider}
+    total, total_is_capped = count_search_items_capped(
+        query, provider=provider, quality=quality, content_class=content_class,
+        age_check=age_check, min_duration=min_duration, max_duration=max_duration,
+        allowed_providers=allowed,
+    )
+    rows = search_items(
+        query, provider=provider, quality=quality, content_class=content_class,
+        age_check=age_check, min_duration=min_duration, max_duration=max_duration,
+        allowed_providers=allowed, exclude_ids=exclude_ids, offset=offset,
+        limit=limit + 1, sort=sort,
+    )
+    has_more = len(rows) > limit
+    items = rows[:limit]
+    return items, sorted(allowed), has_more, total, total_is_capped
+
+
 async def search_all(
     query: str,
     *,
@@ -67,36 +102,11 @@ async def search_all(
     sort: SortMode = "relevance",
     allowed_providers: set[str] | None = None,
     exclude_ids: set[str] | None = None,
-) -> tuple[list[SearchItem], list[str], bool, int]:
-    indexed = set(indexed_providers())
-    allowed = indexed if allowed_providers is None else indexed & allowed_providers
-    if provider is not None:
-        allowed &= {provider}
-
-    total = count_search_items(
-        query,
-        provider=provider,
-        quality=quality,
-        content_class=content_class,
-        age_check=age_check,
-        min_duration=min_duration,
-        max_duration=max_duration,
-        allowed_providers=allowed,
+) -> tuple[list[SearchItem], list[str], bool, int, bool]:
+    return await asyncio.to_thread(
+        _search_all_sync, query, provider=provider, quality=quality,
+        content_class=content_class, age_check=age_check,
+        min_duration=min_duration, max_duration=max_duration,
+        offset=offset, limit=limit, sort=sort,
+        allowed_providers=allowed_providers, exclude_ids=exclude_ids,
     )
-    items = search_items(
-        query,
-        provider=provider,
-        quality=quality,
-        content_class=content_class,
-        age_check=age_check,
-        min_duration=min_duration,
-        max_duration=max_duration,
-        allowed_providers=allowed,
-        exclude_ids=exclude_ids,
-        offset=offset,
-        limit=limit,
-        sort=sort,
-    )
-    used = sorted(allowed)
-    has_more = total > offset + len(items)
-    return items, used, has_more, total

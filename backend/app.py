@@ -180,11 +180,14 @@ def _provider_observability() -> dict[str, object]:
     }
 
 
+def _health_snapshot() -> tuple[int, dict[str, object]]:
+    return count_items(), _provider_observability()
+
+
 @app.get("/api/health")
 async def health() -> dict[str, object]:
     try:
-        indexed_items = count_items()
-        provider_observability = _provider_observability()
+        indexed_items, provider_observability = await asyncio.to_thread(_health_snapshot)
     except sqlite3.OperationalError as exc:
         logger.warning("index database unavailable during health check: %s", exc)
         raise HTTPException(
@@ -296,7 +299,7 @@ async def _search_response(
     if provider is not None and provider not in known:
         raise HTTPException(status_code=400, detail="unknown provider")
 
-    items, used, has_more, total = await search_all(
+    items, used, has_more, total, total_is_capped = await search_all(
         q,
         provider=provider,
         quality=quality,
@@ -313,6 +316,7 @@ async def _search_response(
     return SearchResponse(
         query=q,
         total=total,
+        total_is_capped=total_is_capped,
         offset=offset,
         limit=limit,
         has_more=has_more,
