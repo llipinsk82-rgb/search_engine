@@ -152,3 +152,25 @@ def test_provider_and_stats_scans_do_not_block_event_loop(monkeypatch) -> None:
     providers_responsive, stats_responsive = asyncio.run(scenario())
     assert providers_responsive is True
     assert stats_responsive is True
+
+
+def test_count_and_page_query_start_concurrently(monkeypatch) -> None:
+    count_started = threading.Event()
+    search_started = threading.Event()
+
+    def fake_count(*args, **kwargs):
+        count_started.set()
+        assert search_started.wait(1.0)
+        return 1, False
+
+    def fake_search(*args, **kwargs):
+        search_started.set()
+        assert count_started.wait(1.0)
+        return []
+
+    monkeypatch.setattr(search_module, "count_search_items_capped", fake_count)
+    monkeypatch.setattr(search_module, "search_items", fake_search)
+
+    result = asyncio.run(search_module.search_all("query", allowed_providers={"demo"}))
+
+    assert result[3:] == (1, False)
