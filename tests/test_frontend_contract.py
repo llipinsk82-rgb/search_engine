@@ -333,21 +333,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v32() -> None:
+def test_frontend_assets_are_v33() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=32" in html
-    assert "/app.js?v=32" in html
-    assert 'register("/sw.js?v=32", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v32";' in sw
-    assert '"/styles.css?v=32"' in sw
-    assert '"/app.js?v=32"' in sw
+    assert "/styles.css?v=33" in html
+    assert "/app.js?v=33" in html
+    assert 'register("/sw.js?v=33", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v33";' in sw
+    assert '"/styles.css?v=33"' in sw
+    assert '"/app.js?v=33"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v32";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v33";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -391,11 +391,11 @@ def test_on_demand_preview_resolution_is_click_driven_and_no_store() -> None:
 def test_on_demand_preview_frontend_bumps_shell_cache() -> None:
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    assert 'search-shell-v32' in sw
-    assert '/app.js?v=32' in sw
-    assert '/styles.css?v=32' in sw
-    assert 'app.js?v=32' in html
-    assert 'styles.css?v=32' in html
+    assert 'search-shell-v33' in sw
+    assert '/app.js?v=33' in sw
+    assert '/styles.css?v=33' in sw
+    assert 'app.js?v=33' in html
+    assert 'styles.css?v=33' in html
 
 def test_premium_polish_removes_dev_badge() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -667,15 +667,15 @@ def test_manual_search_resets_scroll_but_back_restore_keeps_saved_position() -> 
     assert 'top: 0' not in restore
 
 
-def test_frontend_cache_v32_markers_are_synchronized() -> None:
+def test_frontend_cache_v33_markers_are_synchronized() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert html.count("?v=32") == 2
-    assert 'register("/sw.js?v=32", { updateViaCache: "none" })' in app
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v32";' in app
-    assert 'const CACHE = "search-shell-v32";' in sw
-    assert sw.count("?v=32") == 2
+    assert html.count("?v=33") == 2
+    assert 'register("/sw.js?v=33", { updateViaCache: "none" })' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v33";' in app
+    assert 'const CACHE = "search-shell-v33";' in sw
+    assert sw.count("?v=33") == 2
     assert "?v=31" not in html + app + sw
     assert "search-shell-v31" not in sw
     assert "search.swReload.v31" not in app
