@@ -68,9 +68,11 @@ async def search_all(
     sort: SortMode = "relevance",
     allowed_providers: set[str] | None = None,
     exclude_ids: set[str] | None = None,
-) -> tuple[list[SearchItem], list[str], bool, int]:
-    indexed = set(indexed_providers())
-    allowed = indexed if allowed_providers is None else indexed & allowed_providers
+) -> tuple[list[SearchItem], list[str], bool, int, bool]:
+    if allowed_providers is None:
+        allowed = set(await asyncio.to_thread(indexed_providers))
+    else:
+        allowed = set(allowed_providers)
     if provider is not None:
         allowed &= {provider}
 
@@ -86,7 +88,7 @@ async def search_all(
             max_duration=max_duration,
             allowed_providers=allowed,
         )
-        page_items = search_items(
+        rows = search_items(
             query,
             provider=provider,
             quality=quality,
@@ -97,12 +99,13 @@ async def search_all(
             allowed_providers=allowed,
             exclude_ids=exclude_ids,
             offset=offset,
-            limit=limit,
+            limit=limit + 1,
             sort=sort,
         )
-        return total_result, page_items
+        return total_result, rows
 
-    (total, total_capped), items = await asyncio.to_thread(run_index_query)
+    (total, total_capped), rows = await asyncio.to_thread(run_index_query)
+    items = rows[:limit]
     used = sorted(allowed)
-    has_more = total_capped or total > offset + len(items)
+    has_more = len(rows) > limit
     return items, used, has_more, total, total_capped
