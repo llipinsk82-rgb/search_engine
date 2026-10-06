@@ -717,3 +717,35 @@ def test_hover_preview_abort_does_not_mark_item_failed() -> None:
     assert 'error?.name === "AbortError"' in card
     assert 'hoverPreviewController.abort();' in card
     assert 'startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id, "hover")' in card
+
+
+def test_render_collapses_cross_provider_duplicates_into_alternate_sources() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "let renderedDuplicateGroups = new Map();" in app
+    assert "let visibleResultCount = 0;" in app
+    assert "function duplicateResultKey(item)" in app
+    assert "function mergeAlternateSources(primary, duplicate)" in app
+    render = app[app.index("function render(items"):app.index("function liveSummary(")]
+    assert "renderedDuplicateGroups = new Map();" in render
+    assert "visibleResultCount = 0;" in render
+    assert "const duplicateKey = duplicateResultKey(item);" in render
+    assert "const existingGroup = renderedDuplicateGroups.get(duplicateKey);" in render
+    assert "mergeAlternateSources(existingGroup.item, item);" in render
+    assert "updateAlternateSourceLabel(existingGroup.card, existingGroup.item);" in render
+    assert "visibleResultCount += 1;" in render
+
+
+def test_duplicate_result_key_uses_normalized_title_and_duration_bucket() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    start = app.index("function duplicateResultKey(item)")
+    end = app.index("function mergeAlternateSources", start)
+    block = app[start:end]
+    assert '.normalize("NFKC")' in block
+    assert "Math.round(item.duration_seconds / 15)" in block
+    assert r'replace(/\s+/g, " ")' in block
+
+
+def test_user_visible_shown_count_uses_visible_cards_not_raw_seen_ids() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert '${visibleResultCount} shown' in app
+    assert '${nextOffset} shown' not in app

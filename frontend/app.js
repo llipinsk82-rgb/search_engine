@@ -36,6 +36,8 @@ let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
 let renderedItems = [];
+let renderedDuplicateGroups = new Map();
+let visibleResultCount = 0;
 
 function setPrimaryStatus(text) {
   statusEl.textContent = text;
@@ -395,6 +397,53 @@ function setOptionalText(node, value) {
   node.hidden = !text;
 }
 
+function duplicateResultKey(item) {
+  const title = String(item?.title || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!title) return `id:${item?.id || ""}`;
+  const durationBucket = Number.isFinite(item?.duration_seconds)
+    ? Math.round(item.duration_seconds / 15)
+    : "na";
+  return `${title}|${durationBucket}`;
+}
+
+function alternateSourceKey(source) {
+  return `${String(source?.provider || "")}|${String(source?.url || "")}`;
+}
+
+function mergeAlternateSources(primary, duplicate) {
+  const sources = Array.isArray(primary.alternate_sources)
+    ? [...primary.alternate_sources]
+    : [];
+  const seen = new Set(sources.map(alternateSourceKey));
+  const primaryKey = alternateSourceKey(primary);
+  const incoming = [duplicate, ...(duplicate.alternate_sources || [])];
+  for (const source of incoming) {
+    const normalized = {
+      provider: String(source?.provider || ""),
+      url: String(source?.url || ""),
+      quality: source?.quality || null,
+    };
+    const key = alternateSourceKey(normalized);
+    if (!normalized.provider || !normalized.url || key === primaryKey || seen.has(key)) continue;
+    sources.push(normalized);
+    seen.add(key);
+  }
+  primary.alternate_sources = sources;
+}
+
+function updateAlternateSourceLabel(card, item) {
+  const count = item.alternate_sources?.length || 0;
+  setOptionalText(
+    card.querySelector(".alternates"),
+    count ? `+${count} source${count === 1 ? "" : "s"}` : "",
+  );
+}
+
 function resultCard(item) {
   const card = template.content.firstElementChild.cloneNode(true);
   const thumb = card.querySelector(".thumb");
@@ -538,11 +587,7 @@ function resultCard(item) {
   card.querySelector(".quality").textContent = item.quality || "";
   card.querySelector(".duration").textContent = durationText(item.duration_seconds);
 
-  const count = item.alternate_sources?.length || 0;
-  setOptionalText(
-    card.querySelector(".alternates"),
-    count ? `+${count} source${count === 1 ? "" : "s"}` : "",
-  );
+  updateAlternateSourceLabel(card, item);
 
   return card;
 }
@@ -605,6 +650,8 @@ function render(items, { append = false } = {}) {
     resultsEl.replaceChildren();
     seenIds = new Set();
     renderedItems = [];
+    renderedDuplicateGroups = new Map();
+    visibleResultCount = 0;
   }
 
   let added = 0;
@@ -612,7 +659,19 @@ function render(items, { append = false } = {}) {
     if (!item?.id || seenIds.has(item.id)) continue;
     seenIds.add(item.id);
     renderedItems.push(item);
-    resultsEl.append(resultCard(item));
+
+    const duplicateKey = duplicateResultKey(item);
+    const existingGroup = renderedDuplicateGroups.get(duplicateKey);
+    if (existingGroup) {
+      mergeAlternateSources(existingGroup.item, item);
+      updateAlternateSourceLabel(existingGroup.card, existingGroup.item);
+      continue;
+    }
+
+    const card = resultCard(item);
+    resultsEl.append(card);
+    renderedDuplicateGroups.set(duplicateKey, { item, card });
+    visibleResultCount += 1;
     added += 1;
   }
 
@@ -818,7 +877,7 @@ async function refreshLive(payload, generation, localData) {
     moreBtn.hidden = !(localHasMore || liveHasMore);
     moreBtn.disabled = false;
     const total = Number.isFinite(localData.total) ? localData.total : nextOffset;
-    setPrimaryStatus(`${nextOffset} shown · ${formatCachedTotal(total, Boolean(localData.total_is_capped))} cached matches`);
+    setPrimaryStatus(`${visibleResultCount} shown · ${formatCachedTotal(total, Boolean(localData.total_is_capped))} cached matches`);
     setLiveDetail(liveStatusText);
     if (!prefetchedPage && !prefetchPromise) startPrefetch(payload, generation);
   } catch (_) {
@@ -874,7 +933,7 @@ async function loadMore() {
     moreBtn.hidden = !(localHasMore || liveHasMore);
     moreBtn.disabled = false;
     moreBtn.textContent = "Show more";
-    setPrimaryStatus(`${nextOffset} shown`);
+    setPrimaryStatus(`${visibleResultCount} shown`);
     setLiveDetail(liveStatusText);
 
     startPrefetch(payload, generation);
@@ -930,10 +989,10 @@ async function search({ persist = true, append = false, resetScroll = false } = 
     moreBtn.hidden = !localHasMore;
     moreBtn.disabled = shouldRefreshLive;
     if (shouldRefreshLive) {
-      setPrimaryStatus(`${nextOffset} shown · ${formatCachedTotal(total, Boolean(data.total_is_capped))} cached matches`);
+      setPrimaryStatus(`${visibleResultCount} shown · ${formatCachedTotal(total, Boolean(data.total_is_capped))} cached matches`);
       setLiveDetail("Refreshing live sources…");
     } else {
-      setPrimaryStatus(`${nextOffset} shown · ${formatCachedTotal(total, Boolean(data.total_is_capped))} matches`);
+      setPrimaryStatus(`${visibleResultCount} shown · ${formatCachedTotal(total, Boolean(data.total_is_capped))} matches`);
       setLiveDetail(data.providers.length ? `Sources: ${data.providers.join(", ")}` : "");
     }
 
@@ -1019,7 +1078,7 @@ function restoreBrowseSnapshot(saved) {
   liveStatusText = String(saved.liveStatusText || "");
   moreBtn.hidden = !(localHasMore || liveHasMore);
   moreBtn.disabled = false;
-  setPrimaryStatus(String(saved.primaryStatus || `${nextOffset} shown`));
+  setPrimaryStatus(String(saved.primaryStatus || `${visibleResultCount} shown`));
   setLiveDetail(String(saved.liveDetail || liveStatusText));
 
   window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
