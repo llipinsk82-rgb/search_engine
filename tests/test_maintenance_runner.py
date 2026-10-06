@@ -22,7 +22,7 @@ class MaintenanceRunnerTests(unittest.TestCase):
     def test_lock_contention_is_clean_skip(self):
         with tempfile.TemporaryDirectory() as d:
             lock=Path(d)/"lock"
-            holder=subprocess.Popen(["flock","-x",str(lock),"-c","sleep 1"])
+            holder=subprocess.Popen(["flock","-x",str(lock),"/bin/sleep","1"])
             try:
                 p=subprocess.run([str(RUNNER),str(lock),"0","/bin/false"],capture_output=True,text=True)
                 self.assertEqual(p.returncode,0)

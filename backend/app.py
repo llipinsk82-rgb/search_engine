@@ -34,7 +34,7 @@ from backend.models import (
 from backend.providers import PROVIDERS
 from backend.providers.sitemap import SitemapProvider
 from backend.preview_rules import PREVIEW_RULES
-from backend.search import search_all
+from backend.search import SEARCH_TOTAL_CAP, search_all
 from backend.settings import get_build_id
 from backend.source_policy import (
     is_searchable_provider,
@@ -183,8 +183,10 @@ def _provider_observability() -> dict[str, object]:
 @app.get("/api/health")
 async def health() -> dict[str, object]:
     try:
-        indexed_items = count_items()
-        provider_observability = _provider_observability()
+        indexed_items, provider_observability = await asyncio.gather(
+            asyncio.to_thread(count_items),
+            asyncio.to_thread(_provider_observability),
+        )
     except sqlite3.OperationalError as exc:
         logger.warning("index database unavailable during health check: %s", exc)
         raise HTTPException(
@@ -202,10 +204,11 @@ async def health() -> dict[str, object]:
 
 @app.get("/api/providers")
 async def providers() -> dict[str, object]:
+    indexed = await asyncio.to_thread(indexed_providers)
     available = (
         {provider.name for provider in PROVIDERS}
         | {adapter.name for adapter in LIVE_ADAPTERS}
-        | set(indexed_providers())
+        | set(indexed)
     )
     searchable = {
         name for name in trusted_provider_names() if is_searchable_provider(name)
@@ -310,9 +313,11 @@ async def _search_response(
         allowed_providers=known,
         exclude_ids=exclude_ids,
     )
+    total_is_capped = total > SEARCH_TOTAL_CAP
     return SearchResponse(
         query=q,
-        total=total,
+        total=min(total, SEARCH_TOTAL_CAP),
+        total_is_capped=total_is_capped,
         offset=offset,
         limit=limit,
         has_more=has_more,

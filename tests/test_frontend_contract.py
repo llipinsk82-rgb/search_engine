@@ -679,3 +679,26 @@ def test_frontend_cache_v32_markers_are_synchronized() -> None:
     assert "?v=31" not in html + app + sw
     assert "search-shell-v31" not in sw
     assert "search.swReload.v31" not in app
+
+def test_live_refresh_reuses_initial_local_page_without_refetching_it() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    refresh = app[app.index("async function refreshLive("):app.index("async function loadMore(")]
+    assert "fetchLocal(payload)" not in refresh
+    assert "localData.items" in refresh
+    search = app[app.index("async function search("):app.index("function saveBrowsePosition")]
+    assert "await refreshLive(payload, generation, data);" in search
+
+
+def test_first_page_does_not_prefetch_until_live_merge_finishes() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    search = app[app.index("async function search("):app.index("function saveBrowsePosition")]
+    before_live = search[:search.index("if (shouldRefreshLive) {")]
+    assert "startPrefetch(payload, generation);" not in before_live
+
+
+def test_large_cached_total_is_presented_as_bounded_count() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "const CACHED_TOTAL_CAP" not in app
+    assert "function formatCachedTotal(total, isCapped = false)" in app
+    assert 'return isCapped ? `${total.toLocaleString()}+`' in app
+    assert app.count("formatCachedTotal(total, Boolean(data.total_is_capped))") >= 2

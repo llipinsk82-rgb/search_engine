@@ -44,6 +44,11 @@ function setLiveDetail(text) {
   liveDetailEl.textContent = text || "";
 }
 
+function formatCachedTotal(total, isCapped = false) {
+  if (!Number.isFinite(total)) return "";
+  return isCapped ? `${total.toLocaleString()}+` : total.toLocaleString();
+}
+
 function openFilterSheet() {
   if (filterSheetOpen) return;
   filterSheetOpen = true;
@@ -743,21 +748,19 @@ function startPrefetch(payload, generation) {
     });
 }
 
-async function refreshLive(payload, generation) {
+async function refreshLive(payload, generation, localData) {
   try {
     const live = await requestLive(payload, generation, 1);
     if (!live || generation !== searchGeneration) return;
 
-    const data = await fetchLocal(payload);
-    if (generation !== searchGeneration) return;
-    const merged = mergeLiveAndLocal(live.items || [], data.items || [], payload.sort || "relevance");
+    const merged = mergeLiveAndLocal(live.items || [], localData.items || [], payload.sort || "relevance");
     render(merged);
-    localHasMore = Boolean(data.has_more);
+    localHasMore = Boolean(localData.has_more);
 
     moreBtn.hidden = !(localHasMore || liveHasMore);
     moreBtn.disabled = false;
-    const total = Number.isFinite(data.total) ? data.total : nextOffset;
-    setPrimaryStatus(`${nextOffset} shown · ${total} cached matches`);
+    const total = Number.isFinite(localData.total) ? localData.total : nextOffset;
+    setPrimaryStatus(`${nextOffset} shown · ${formatCachedTotal(total, Boolean(localData.total_is_capped))} cached matches`);
     setLiveDetail(liveStatusText);
     if (!prefetchedPage && !prefetchPromise) startPrefetch(payload, generation);
   } catch (_) {
@@ -865,20 +868,19 @@ async function search({ persist = true, append = false, resetScroll = false } = 
     localHasMore = Boolean(data.has_more);
 
     const total = Number.isFinite(data.total) ? data.total : nextOffset;
-    startPrefetch(payload, generation);
     const shouldRefreshLive = Boolean(payload.q);
     moreBtn.hidden = !localHasMore;
     moreBtn.disabled = shouldRefreshLive;
     if (shouldRefreshLive) {
-      setPrimaryStatus(`${nextOffset} shown · ${total} cached matches`);
+      setPrimaryStatus(`${nextOffset} shown · ${formatCachedTotal(total, Boolean(data.total_is_capped))} cached matches`);
       setLiveDetail("Refreshing live sources…");
     } else {
-      setPrimaryStatus(`${nextOffset} shown · ${total} matches`);
+      setPrimaryStatus(`${nextOffset} shown · ${formatCachedTotal(total, Boolean(data.total_is_capped))} matches`);
       setLiveDetail(data.providers.length ? `Sources: ${data.providers.join(", ")}` : "");
     }
 
     if (shouldRefreshLive) {
-      await refreshLive(payload, generation);
+      await refreshLive(payload, generation, data);
     } else {
       moreBtn.disabled = false;
       startPrefetch(payload, generation);

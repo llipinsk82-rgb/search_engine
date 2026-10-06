@@ -589,6 +589,7 @@ def count_search_items(
     min_duration: int | None = None,
     max_duration: int | None = None,
     allowed_providers: set[str] | None = None,
+    max_count: int | None = None,
     path: Path = DB_PATH,
 ) -> int:
     initialize(path)
@@ -603,9 +604,21 @@ def count_search_items(
         max_duration=max_duration,
     )
     with _connect(path) as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) AS n FROM items i " + joins + " WHERE " + where, params
-        ).fetchone()
+        if max_count is not None:
+            cap = max(0, int(max_count))
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM (SELECT 1 FROM items i "
+                + joins
+                + " WHERE "
+                + where
+                + " LIMIT ?)",
+                [*params, cap + 1],
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM items i " + joins + " WHERE " + where,
+                params,
+            ).fetchone()
         return int(row["n"])
 
 

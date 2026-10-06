@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from collections import defaultdict
 
@@ -9,6 +10,8 @@ from backend.models import SearchItem, SortMode, SourceVariant
 
 _space_re = re.compile(r"\s+")
 _punct_re = re.compile(r"[^\w\s]", re.UNICODE)
+
+SEARCH_TOTAL_CAP = 5000
 
 
 def _title_key(title: str) -> str:
@@ -68,12 +71,15 @@ async def search_all(
     allowed_providers: set[str] | None = None,
     exclude_ids: set[str] | None = None,
 ) -> tuple[list[SearchItem], list[str], bool, int]:
-    indexed = set(indexed_providers())
-    allowed = indexed if allowed_providers is None else indexed & allowed_providers
+    if allowed_providers is None:
+        allowed = set(await asyncio.to_thread(indexed_providers))
+    else:
+        allowed = set(allowed_providers)
     if provider is not None:
         allowed &= {provider}
 
-    total = count_search_items(
+    total_task = asyncio.to_thread(
+        count_search_items,
         query,
         provider=provider,
         quality=quality,
@@ -82,8 +88,10 @@ async def search_all(
         min_duration=min_duration,
         max_duration=max_duration,
         allowed_providers=allowed,
+        max_count=SEARCH_TOTAL_CAP,
     )
-    items = search_items(
+    items_task = asyncio.to_thread(
+        search_items,
         query,
         provider=provider,
         quality=quality,
@@ -97,6 +105,11 @@ async def search_all(
         limit=limit,
         sort=sort,
     )
+    total, items = await asyncio.gather(total_task, items_task)
     used = sorted(allowed)
-    has_more = total > offset + len(items)
+    has_more = (
+        len(items) >= limit
+        if total > SEARCH_TOTAL_CAP
+        else total > offset + len(items)
+    )
     return items, used, has_more, total
