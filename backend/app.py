@@ -183,8 +183,10 @@ def _provider_observability() -> dict[str, object]:
 @app.get("/api/health")
 async def health() -> dict[str, object]:
     try:
-        indexed_items = count_items()
-        provider_observability = _provider_observability()
+        indexed_items, provider_observability = await asyncio.gather(
+            asyncio.to_thread(count_items),
+            asyncio.to_thread(_provider_observability),
+        )
     except sqlite3.OperationalError as exc:
         logger.warning("index database unavailable during health check: %s", exc)
         raise HTTPException(
@@ -202,10 +204,11 @@ async def health() -> dict[str, object]:
 
 @app.get("/api/providers")
 async def providers() -> dict[str, object]:
+    indexed = await asyncio.to_thread(indexed_providers)
     available = (
         {provider.name for provider in PROVIDERS}
         | {adapter.name for adapter in LIVE_ADAPTERS}
-        | set(indexed_providers())
+        | set(indexed)
     )
     searchable = {
         name for name in trusted_provider_names() if is_searchable_provider(name)
@@ -259,10 +262,15 @@ async def resolve_preview(item_id: str) -> dict[str, str]:
 
 @app.get("/api/stats")
 async def stats() -> dict[str, object]:
+    indexed_items, counts, provider_observability = await asyncio.gather(
+        asyncio.to_thread(count_items),
+        asyncio.to_thread(provider_counts),
+        asyncio.to_thread(_provider_observability),
+    )
     return {
-        "indexed_items": count_items(),
-        "provider_counts": provider_counts(),
-        **_provider_observability(),
+        "indexed_items": indexed_items,
+        "provider_counts": counts,
+        **provider_observability,
     }
 
 
