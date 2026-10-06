@@ -8,7 +8,7 @@ from pathlib import Path
 from backend.content_enrichment import enrich_unknown_content
 from backend.content_reclassify import content_class_stats, reclassify_content
 from backend.live import LIVE_ADAPTERS
-from backend.preview_enrichment import enrich_missing_previews
+from backend.preview_enrichment import enrich_deterministic_previews, enrich_missing_previews
 from backend.preview_stats import preview_coverage_stats
 from backend.importer import load_jsonl
 from backend.index import (
@@ -74,6 +74,8 @@ async def _backfill_all(
     *,
     enrich_unknown_batch_size: int = 0,
     enrich_unknown_seconds: float = 0.0,
+    enrich_preview_local_batch_size: int = 0,
+    enrich_preview_local_seconds: float = 0.0,
     enrich_preview_batch_size: int = 0,
     enrich_preview_seconds: float = 0.0,
 ) -> None:
@@ -102,9 +104,6 @@ async def _backfill_all(
             f"{run.provider}: batches={run.batches} fetched={run.fetched} "
             f"status={status}"
         )
-    if failures:
-        raise SystemExit(1)
-
     if enrich_unknown_seconds > 0 and enrich_unknown_batch_size > 0:
         report = await enrich_unknown_content(
             PROVIDERS,
@@ -115,6 +114,18 @@ async def _backfill_all(
             f"content-enrichment: attempted={report.attempted} enriched={report.enriched} "
             f"amateur={report.classified_amateur} studio={report.classified_studio} "
             f"conflicts={report.conflicts} no_signal={report.no_signal} failures={report.failures}"
+        )
+
+    if enrich_preview_local_seconds > 0 and enrich_preview_local_batch_size > 0:
+        report = await enrich_deterministic_previews(
+            PROVIDERS,
+            batch_size=enrich_preview_local_batch_size,
+            max_seconds=enrich_preview_local_seconds,
+        )
+        print(
+            f"preview-local-enrichment: attempted={report.attempted} extracted={report.extracted} "
+            f"stored={report.stored} playable={report.playable} no_preview={report.no_preview} "
+            f"blocked_policy={report.blocked_policy} failures={report.failures}"
         )
 
     if enrich_preview_seconds > 0 and enrich_preview_batch_size > 0:
@@ -129,6 +140,9 @@ async def _backfill_all(
             f"stored={report.stored} playable={report.playable} no_preview={report.no_preview} "
             f"blocked_policy={report.blocked_policy} failures={report.failures}"
         )
+
+    if failures:
+        raise SystemExit(1)
 
 
 async def _probe_one(provider: SearchProvider, limit: int) -> None:
@@ -235,6 +249,8 @@ def main() -> None:
     backfill_all.add_argument("--max-seconds", type=float)
     backfill_all.add_argument("--enrich-unknown-batch-size", type=int, default=0)
     backfill_all.add_argument("--enrich-unknown-seconds", type=float, default=0.0)
+    backfill_all.add_argument("--enrich-preview-local-batch-size", type=int, default=0)
+    backfill_all.add_argument("--enrich-preview-local-seconds", type=float, default=0.0)
     backfill_all.add_argument("--enrich-preview-batch-size", type=int, default=0)
     backfill_all.add_argument("--enrich-preview-seconds", type=float, default=0.0)
 
@@ -371,6 +387,8 @@ def main() -> None:
                 args.max_seconds,
                 enrich_unknown_batch_size=args.enrich_unknown_batch_size,
                 enrich_unknown_seconds=args.enrich_unknown_seconds,
+                enrich_preview_local_batch_size=args.enrich_preview_local_batch_size,
+                enrich_preview_local_seconds=args.enrich_preview_local_seconds,
                 enrich_preview_batch_size=args.enrich_preview_batch_size,
                 enrich_preview_seconds=args.enrich_preview_seconds,
             )

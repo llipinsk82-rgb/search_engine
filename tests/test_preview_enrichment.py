@@ -10,7 +10,7 @@ from backend.index import (
     record_preview_enrichment_attempt,
 )
 from backend.models import SearchItem
-from backend.preview_enrichment import enrich_missing_previews
+from backend.preview_enrichment import enrich_deterministic_previews, enrich_missing_previews
 
 NOW = datetime(2026, 9, 21, 2, 0, tzinfo=timezone.utc)
 
@@ -130,3 +130,30 @@ def test_deadline_stops_before_unstarted_candidate(tmp_path, monkeypatch):
     assert report.attempted == 1
     assert p.calls == ["a"]
     assert _state(db, "b") is None
+
+
+def test_deterministic_custom_preview_is_derived_without_provider_network_call(tmp_path):
+    db = tmp_path / "e.db"
+    initialize(db)
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO items(id,provider,title,url,thumbnail,active) VALUES(?,?,?,?,?,1)",
+            ("xv-1", "xvideos", "Example", "https://www.xvideos.com/video.abc/example",
+             "https://thumb-cdn77.xvideos-cdn.com/videos/thumbs169ll/ab/cd/ef.jpg"),
+        )
+    p = FakeProvider("xvideos", error=AssertionError("network extractor must not run"))
+    report = asyncio.run(enrich_deterministic_previews([p], batch_size=100, max_seconds=10, path=db, now=NOW))
+    assert p.calls == []
+    assert (report.attempted, report.extracted, report.stored, report.playable) == (1, 1, 1, 1)
+    with sqlite3.connect(db) as conn:
+        preview = conn.execute("SELECT preview_url FROM items WHERE id='xv-1'").fetchone()[0]
+    assert preview.endswith("/preview.mp4")
+
+
+def test_deterministic_enrichment_ignores_non_custom_preview_rules(tmp_path):
+    db = tmp_path / "e.db"
+    _insert(db, "a", "bigfuck")
+    p = FakeProvider("bigfuck", error=AssertionError("remote provider must not run"))
+    report = asyncio.run(enrich_deterministic_previews([p], batch_size=100, max_seconds=10, path=db, now=NOW))
+    assert report.attempted == 0
+    assert p.calls == []

@@ -64,7 +64,7 @@ def test_successful_backfill_hands_off_to_enrichment(monkeypatch, capsys) -> Non
     assert "content-enrichment: attempted=2 enriched=1" in capsys.readouterr().out
 
 
-def test_backfill_error_skips_enrichment_and_preserves_failure(monkeypatch) -> None:
+def test_backfill_error_still_runs_enrichment_then_preserves_failure(monkeypatch) -> None:
     provider = PagedProvider()
     called = False
 
@@ -91,7 +91,7 @@ def test_backfill_error_skips_enrichment_and_preserves_failure(monkeypatch) -> N
             )
         )
     assert exc.value.code == 1
-    assert called is False
+    assert called is True
 
 
 def test_zero_enrichment_seconds_skips_handoff(monkeypatch) -> None:
@@ -224,3 +224,27 @@ def test_preview_item_failures_do_not_fail_maintenance(monkeypatch, capsys) -> N
     ))
     assert "preview-enrichment:" in capsys.readouterr().out
     assert "failures=2" in capsys.readouterr().out if False else True
+
+
+def test_backfill_runs_deterministic_preview_before_remote_preview(monkeypatch) -> None:
+    provider = PagedProvider()
+    events = []
+    async def fake_backfill(*args, **kwargs):
+        events.append("backfill")
+        return [BackfillRun("paged", 1, 10, False, None)]
+    async def fake_local(*args, **kwargs):
+        events.append("preview-local")
+        return _preview_report()
+    async def fake_remote(*args, **kwargs):
+        events.append("preview-remote")
+        return _preview_report()
+    monkeypatch.setattr(cli, "PROVIDERS", [provider])
+    monkeypatch.setattr(cli, "backfill_many", fake_backfill)
+    monkeypatch.setattr(cli, "enrich_deterministic_previews", fake_local, raising=False)
+    monkeypatch.setattr(cli, "enrich_missing_previews", fake_remote)
+    asyncio.run(cli._backfill_all(
+        500, 1, 180,
+        enrich_preview_local_batch_size=2000, enrich_preview_local_seconds=20,
+        enrich_preview_batch_size=10, enrich_preview_seconds=30,
+    ))
+    assert events == ["backfill", "preview-local", "preview-remote"]

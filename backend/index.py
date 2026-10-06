@@ -737,7 +737,11 @@ def list_preview_enrichment_candidates(
     placeholders = ",".join("?" for _ in names)
     now_value = now.astimezone(timezone.utc).isoformat()
     sql = f"""
-        SELECT i.id, COALESCE(s.failure_count, 0) AS failure_count
+        SELECT i.id, i.provider, i.title, i.url, i.thumbnail, i.preview_url,
+               i.duration_seconds, i.published_at, i.views, i.rating_percent,
+               i.rating_count, i.quality, i.content_class, i.studio,
+               i.age_check_status, i.tags_json,
+               COALESCE(s.failure_count, 0) AS failure_count
         FROM items i
         LEFT JOIN preview_enrichment_state s ON s.item_id = i.id
         WHERE i.active = 1
@@ -750,12 +754,22 @@ def list_preview_enrichment_candidates(
     """
     with _connect(path) as conn:
         rows = conn.execute(sql, [*names, now_value, max(1, int(limit))]).fetchall()
-    result: list[PreviewEnrichmentCandidate] = []
-    for row in rows:
-        item = get_item(str(row["id"]), path=path)
-        if item is not None:
-            result.append(PreviewEnrichmentCandidate(item=item, failure_count=int(row["failure_count"] or 0)))
-    return result
+    return [
+        PreviewEnrichmentCandidate(
+            item=SearchItem(
+                id=row["id"], provider=row["provider"], title=row["title"],
+                url=row["url"], thumbnail=row["thumbnail"], preview_url=row["preview_url"],
+                duration_seconds=row["duration_seconds"],
+                published_at=datetime.fromisoformat(row["published_at"]) if row["published_at"] else None,
+                views=row["views"], rating_percent=row["rating_percent"],
+                rating_count=row["rating_count"], quality=row["quality"],
+                tags=json.loads(row["tags_json"] or "[]"), content_class=row["content_class"],
+                studio=row["studio"], age_check_status=row["age_check_status"], score=0.0,
+            ),
+            failure_count=int(row["failure_count"] or 0),
+        )
+        for row in rows
+    ]
 
 
 @dataclass(frozen=True)
