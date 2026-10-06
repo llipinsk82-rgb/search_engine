@@ -24,8 +24,9 @@ def test_preview_is_manual_with_play_button() -> None:
     assert 'class="preview-toggle"' in html
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
-    assert "IntersectionObserver" not in app
-    assert "pointerenter" not in app
+    preview_block = app[app.index("function resultCard("):app.index("function renderSkeletons(")]
+    assert "IntersectionObserver" not in preview_block
+    assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in app
     assert ".preview-toggle {" in css
 
 
@@ -181,7 +182,9 @@ def test_non_relevance_visible_pool_is_not_round_robin_blended() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert 'function sortVisibleItems(items, sort)' in app
     assert 'function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE)' in app
-    assert 'if (sort === "relevance") return blendLiveAndLocal(liveItems, localItems, limit);' in app
+    merge = app[app.index("function mergeLiveAndLocal("):app.index("async function fetchLocal(")]
+    assert 'const candidates = blendLiveAndLocal(liveItems, localItems, limit * 3);' in merge
+    assert 'return collapseDuplicateResults(candidates, limit);' in merge
     assert app.count('mergeLiveAndLocal(') >= 3
 
 
@@ -292,8 +295,9 @@ def test_manual_one_active_preview_contract_is_preserved() -> None:
     start = app[app.index("function startMotionPreview("):app.index("function durationText(")]
     assert "activeMotionPreview?.motion && activeMotionPreview.motion !== motion" in start
     assert "stopMotionPreview(" in start
-    assert "IntersectionObserver" not in app
-    assert "pointerenter" not in app
+    preview_block = app[app.index("function resultCard("):app.index("function renderSkeletons(")]
+    assert "IntersectionObserver" not in preview_block
+    assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in app
 
 
 def test_explicit_search_state_helpers_exist() -> None:
@@ -520,7 +524,8 @@ def test_preview_button_contract_survives_card_redesign() -> None:
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
     assert 'event.stopPropagation();' in app
-    assert "IntersectionObserver" not in app
+    preview_block = app[app.index("function resultCard("):app.index("function renderSkeletons(")]
+    assert "IntersectionObserver" not in preview_block
 
 
 def test_mobile_content_segment_uses_full_width_second_row() -> None:
@@ -701,3 +706,29 @@ def test_initial_prefetch_waits_until_first_live_merge_finishes() -> None:
     block = app[search_start:search_end]
     before_live = block.split("if (shouldRefreshLive)", 1)[0]
     assert "startPrefetch(payload, generation);" not in before_live
+
+def test_desktop_preview_hover_uses_bounded_intent_and_memory_cache() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "const resolvedPreviewCache = new Map();" in app
+    assert "const PREVIEW_CACHE_LIMIT = 200;" in app
+    assert "window.matchMedia(\"(hover: hover) and (pointer: fine)\")" in app
+    assert 'mediaFrame.addEventListener("pointerenter"' in app
+    assert 'mediaFrame.addEventListener("pointerleave"' in app
+    assert "window.setTimeout" in app and "280" in app
+    assert "resolvedPreviewCache.get(item.id)" in app
+
+
+def test_visible_results_collapse_duplicate_titles_into_alternate_sources() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "function collapseDuplicateResults(items, limit = PAGE_SIZE)" in app
+    assert "alternate_sources" in app[app.index("function collapseDuplicateResults"):app.index("function compareOptionalNumber")]
+    merge = app[app.index("function mergeLiveAndLocal"):app.index("async function fetchLocal")]
+    assert "collapseDuplicateResults" in merge
+
+
+def test_more_results_autoload_near_viewport_with_button_fallback() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "new IntersectionObserver" in app
+    assert 'rootMargin: "900px 0px"' in app
+    assert "loadMore();" in app
+    assert 'moreBtn.addEventListener("click"' in app

@@ -34,6 +34,9 @@ let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
 let renderedItems = [];
+const resolvedPreviewCache = new Map();
+const PREVIEW_CACHE_LIMIT = 200;
+const fineHoverQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
 
 function setPrimaryStatus(text) {
   statusEl.textContent = text;
@@ -189,7 +192,18 @@ function resolvePreviewUrl(item, previewUrl = item.preview_url) {
   return previewUrl;
 }
 
+function rememberResolvedPreview(itemId, url) {
+  if (!itemId || !url) return;
+  if (resolvedPreviewCache.has(itemId)) resolvedPreviewCache.delete(itemId);
+  resolvedPreviewCache.set(itemId, url);
+  while (resolvedPreviewCache.size > PREVIEW_CACHE_LIMIT) {
+    resolvedPreviewCache.delete(resolvedPreviewCache.keys().next().value);
+  }
+}
+
 async function resolvePreviewForPlayback(item) {
+  const cached = resolvedPreviewCache.get(item.id);
+  if (cached) return cached;
   const policy = mediaPolicyFor(item.provider);
   const needsFresh = policy.preview_resolution_mode === "on_demand" && (!item.preview_url || policy.preview_storage_mode === "ephemeral");
   let previewUrl = item.preview_url || "";
@@ -200,7 +214,9 @@ async function resolvePreviewForPlayback(item) {
     previewUrl = String(payload?.preview_url || "");
   }
   if (!previewUrl) throw new Error("preview unavailable");
-  return resolvePreviewUrl(item, previewUrl);
+  const resolved = resolvePreviewUrl(item, previewUrl);
+  rememberResolvedPreview(item.id, resolved);
+  return resolved;
 }
 
 function setPreviewToggle(toggle, playing) {
@@ -391,6 +407,7 @@ function resultCard(item) {
   const motion = card.querySelector(".motion-preview");
   const placeholder = card.querySelector(".placeholder");
   const previewToggle = card.querySelector(".preview-toggle");
+  const mediaFrame = card.querySelector(".media-frame");
 
   card.dataset.itemId = item.id;
   thumb.href = item.url;
@@ -457,6 +474,29 @@ function resultCard(item) {
         previewToggle.removeAttribute("aria-busy");
       }
     });
+    if (fineHoverQuery.matches) {
+      let hoverIntent = 0;
+      mediaFrame.addEventListener("pointerenter", () => {
+        const intent = ++hoverIntent;
+        window.setTimeout(async () => {
+          if (intent !== hoverIntent || !mediaFrame.matches(":hover")) return;
+          try {
+            const resolvedPreview = await resolvePreviewForPlayback(item);
+            if (intent !== hoverIntent || !mediaFrame.matches(":hover")) return;
+            motion.dataset.previewUrl = resolvedPreview;
+            startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id);
+          } catch (_) {
+            failMotionPreview(item.id, motion, preview, previewToggle);
+          }
+        }, 280);
+      });
+      mediaFrame.addEventListener("pointerleave", () => {
+        hoverIntent += 1;
+        if (activeMotionPreview?.motion === motion) {
+          stopMotionPreview(motion, preview, previewToggle);
+        }
+      });
+    }
   } else {
     previewToggle.hidden = true;
   }
@@ -642,6 +682,44 @@ function blendLiveAndLocal(liveItems, localItems, limit = PAGE_SIZE) {
   return out;
 }
 
+function collapseDuplicateResults(items, limit = PAGE_SIZE) {
+  const rows = [];
+  const byKey = new Map();
+  const ids = new Set();
+
+  for (const item of items || []) {
+    if (!item?.id || ids.has(item.id)) continue;
+    ids.add(item.id);
+    const titleKey = String(item.title || "")
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+    const durationBucket = Math.round((Number(item.duration_seconds) || 0) / 15);
+    const key = `${titleKey}|${durationBucket}`;
+    const primary = byKey.get(key);
+
+    if (primary) {
+      const alternate = {
+        provider: item.provider,
+        url: item.url,
+        quality: item.quality || null,
+      };
+      const alternates = primary.alternate_sources || (primary.alternate_sources = []);
+      if (!alternates.some((row) => row.provider === alternate.provider && row.url === alternate.url)) {
+        alternates.push(alternate);
+      }
+      continue;
+    }
+
+    const clone = { ...item, alternate_sources: [...(item.alternate_sources || [])] };
+    byKey.set(key, clone);
+    rows.push(clone);
+    if (rows.length >= limit) break;
+  }
+  return rows;
+}
+
 function compareOptionalNumber(a, b, ascending = false) {
   const aKnown = Number.isFinite(a);
   const bKnown = Number.isFinite(b);
@@ -667,7 +745,10 @@ function sortVisibleItems(items, sort) {
 }
 
 function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE) {
-  if (sort === "relevance") return blendLiveAndLocal(liveItems, localItems, limit);
+  if (sort === "relevance") {
+    const candidates = blendLiveAndLocal(liveItems, localItems, limit * 3);
+    return collapseDuplicateResults(candidates, limit);
+  }
   const unique = [];
   const ids = new Set();
   for (const item of [...liveItems, ...localItems]) {
@@ -675,7 +756,7 @@ function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE) {
     ids.add(item.id);
     unique.push(item);
   }
-  return sortVisibleItems(unique, sort).slice(0, limit);
+  return collapseDuplicateResults(sortVisibleItems(unique, sort), limit);
 }
 
 async function fetchLocal(payload, { limit = PAGE_SIZE, excludeSeen = false } = {}) {
@@ -1042,6 +1123,20 @@ filterSheet.addEventListener("keydown", trapFilterSheetFocus);
 moreBtn.addEventListener("click", () => {
   search({ persist: false, append: true });
 });
+
+const moreRow = document.querySelector(".more-row");
+const moreObserver = "IntersectionObserver" in window
+  ? new IntersectionObserver((entries) => {
+      if (
+        entries.some((entry) => entry.isIntersecting) &&
+        !moreBtn.hidden &&
+        !moreBtn.disabled
+      ) {
+        loadMore();
+      }
+    }, { rootMargin: "900px 0px" })
+  : null;
+if (moreObserver && moreRow) moreObserver.observe(moreRow);
 
 clearBtn.addEventListener("click", () => {
   searchGeneration += 1;
