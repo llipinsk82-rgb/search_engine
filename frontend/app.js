@@ -36,6 +36,7 @@ let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
 let renderedItems = [];
+let autoLoadObserver = null;
 let renderedDuplicateGroups = new Map();
 let visibleResultCount = 0;
 
@@ -888,6 +889,20 @@ async function refreshLive(payload, generation, localData) {
   }
 }
 
+function setupAutoLoad() {
+  if (!("IntersectionObserver" in window) || autoLoadObserver) return;
+  autoLoadObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (!entry?.isIntersecting) return;
+      if (moreBtn.hidden || moreBtn.disabled) return;
+      loadMore();
+    },
+    { root: null, rootMargin: "900px 0px", threshold: 0.01 },
+  );
+  autoLoadObserver.observe(moreBtn);
+}
+
 async function loadMore() {
   const generation = searchGeneration;
   const stateParams = buildSearchParams();
@@ -1159,9 +1174,7 @@ filtersApplyBtn.addEventListener("click", applyFilterSheet);
 filterSheet.querySelector("[data-filter-close]").addEventListener("click", () => closeFilterSheet());
 filterSheet.addEventListener("keydown", trapFilterSheetFocus);
 
-moreBtn.addEventListener("click", () => {
-  search({ persist: false, append: true });
-});
+moreBtn.addEventListener("click", loadMore);
 
 clearBtn.addEventListener("click", () => {
   searchGeneration += 1;
@@ -1215,6 +1228,7 @@ window.addEventListener("pageshow", (event) => {
   }));
 });
 
+setupAutoLoad();
 boot();
 
 if ("serviceWorker" in navigator) {

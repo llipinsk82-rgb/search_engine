@@ -24,7 +24,8 @@ def test_preview_supports_desktop_hover_and_manual_play_button() -> None:
     assert 'class="preview-toggle"' in html
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
-    assert "IntersectionObserver" not in app
+    preview_start = app[app.index("function startMotionPreview("):app.index("function durationText(")]
+    assert "IntersectionObserver" not in preview_start
     assert 'const HOVER_PREVIEW_DELAY_MS = 300;' in app
     assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in app
     assert 'mediaFrame.addEventListener("pointerenter"' in app
@@ -295,7 +296,7 @@ def test_manual_one_active_preview_contract_is_preserved() -> None:
     start = app[app.index("function startMotionPreview("):app.index("function durationText(")]
     assert "activeMotionPreview?.motion && activeMotionPreview.motion !== motion" in start
     assert "stopMotionPreview(" in start
-    assert "IntersectionObserver" not in app
+    assert "IntersectionObserver" not in start
     assert 'source = "manual"' in start
     assert 'source === "hover"' in app
     assert 'new AbortController()' in app
@@ -527,7 +528,8 @@ def test_preview_button_contract_survives_card_redesign() -> None:
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
     assert 'event.stopPropagation();' in app
-    assert "IntersectionObserver" not in app
+    preview_block = app[app.index("function startMotionPreview("):app.index("function durationText(")]
+    assert "IntersectionObserver" not in preview_block
 
 
 def test_mobile_content_segment_uses_full_width_second_row() -> None:
@@ -749,3 +751,22 @@ def test_user_visible_shown_count_uses_visible_cards_not_raw_seen_ids() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert '${visibleResultCount} shown' in app
     assert '${nextOffset} shown' not in app
+
+
+def test_browse_auto_loads_near_end_with_show_more_fallback() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert 'id="more"' in html
+    assert 'function setupAutoLoad()' in app
+    assert 'new IntersectionObserver(' in app
+    assert 'rootMargin: "900px 0px"' in app
+    assert 'autoLoadObserver.observe(moreBtn);' in app
+    assert 'if (moreBtn.hidden || moreBtn.disabled) return;' in app
+    assert 'loadMore();' in app
+    assert 'moreBtn.addEventListener("click", loadMore);' in app
+
+
+def test_preview_contract_does_not_use_intersection_observer_for_playback() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    preview = app[app.index("function startMotionPreview("):app.index("function durationText(")]
+    assert "IntersectionObserver" not in preview
