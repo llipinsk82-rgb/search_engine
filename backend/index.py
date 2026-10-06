@@ -179,6 +179,22 @@ def initialize(path: Path = DB_PATH) -> None:
                     ("__system__", content_class_index_key),
                 )
 
+            active_provider_index_key = "migration:active_provider_index_v1"
+            active_provider_index_done = conn.execute(
+                "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
+                ("__system__", active_provider_index_key),
+            ).fetchone()
+            if active_provider_index_done is None:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_items_active_provider "
+                    "ON items(active, provider)"
+                )
+                conn.execute(
+                    "INSERT OR REPLACE INTO provider_state(provider,state_key,state_value,updated_at) "
+                    "VALUES(?,?, 'done', CURRENT_TIMESTAMP)",
+                    ("__system__", active_provider_index_key),
+                )
+
             content_enrichment_index_key = "migration:content_enrichment_index_v1"
             content_enrichment_index_done = conn.execute(
                 "SELECT 1 FROM provider_state WHERE provider = ? AND state_key = ?",
