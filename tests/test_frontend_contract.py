@@ -16,7 +16,7 @@ def test_age_check_frontend_contract_is_consistent() -> None:
     assert 'item.age_check_status === "not_required"' not in app
 
 
-def test_preview_is_manual_with_play_button() -> None:
+def test_preview_supports_desktop_hover_and_manual_play_button() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
@@ -25,7 +25,10 @@ def test_preview_is_manual_with_play_button() -> None:
     assert 'aria-label="Play preview"' in html
     assert 'previewToggle.addEventListener("click"' in app
     assert "IntersectionObserver" not in app
-    assert "pointerenter" not in app
+    assert 'const HOVER_PREVIEW_DELAY_MS = 300;' in app
+    assert 'window.matchMedia("(hover: hover) and (pointer: fine)")' in app
+    assert 'mediaFrame.addEventListener("pointerenter"' in app
+    assert 'mediaFrame.addEventListener("pointerleave"' in app
     assert ".preview-toggle {" in css
 
 
@@ -293,7 +296,10 @@ def test_manual_one_active_preview_contract_is_preserved() -> None:
     assert "activeMotionPreview?.motion && activeMotionPreview.motion !== motion" in start
     assert "stopMotionPreview(" in start
     assert "IntersectionObserver" not in app
-    assert "pointerenter" not in app
+    assert 'source = "manual"' in start
+    assert 'source === "hover"' in app
+    assert 'new AbortController()' in app
+    assert 'controller.signal' in app
 
 
 def test_explicit_search_state_helpers_exist() -> None:
@@ -333,21 +339,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v33() -> None:
+def test_frontend_assets_are_v34() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=33" in html
-    assert "/app.js?v=33" in html
-    assert 'register("/sw.js?v=33", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v33";' in sw
-    assert '"/styles.css?v=33"' in sw
-    assert '"/app.js?v=33"' in sw
+    assert "/styles.css?v=34" in html
+    assert "/app.js?v=34" in html
+    assert 'register("/sw.js?v=34", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v34";' in sw
+    assert '"/styles.css?v=34"' in sw
+    assert '"/app.js?v=34"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v33";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v34";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -376,26 +382,27 @@ def test_premium_body_selector_applies_page_surface() -> None:
     assert "var(--bg-page)" in body
 
 
-def test_on_demand_preview_resolution_is_click_driven_and_no_store() -> None:
+def test_on_demand_preview_resolution_supports_click_and_hover_no_store() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert 'policy.preview_resolution_mode === "on_demand"' in app
     assert 'policy.preview_storage_mode === "ephemeral"' in app
     assert "const needsOnDemand =" in app
-    assert 'async function resolvePreviewForPlayback(item)' in app
+    assert 'async function resolvePreviewForPlayback(item, { signal } = {})' in app
     assert "/api/preview/" in app
     assert "search.failedPreviewIds.v2" in app
     assert 'cache: "no-store"' in app
     assert 'previewToggle.addEventListener("click", async (event)' in app
+    assert 'mediaFrame.addEventListener("pointerenter"' in app
 
 
 def test_on_demand_preview_frontend_bumps_shell_cache() -> None:
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    assert 'search-shell-v33' in sw
-    assert '/app.js?v=33' in sw
-    assert '/styles.css?v=33' in sw
-    assert 'app.js?v=33' in html
-    assert 'styles.css?v=33' in html
+    assert 'search-shell-v34' in sw
+    assert '/app.js?v=34' in sw
+    assert '/styles.css?v=34' in sw
+    assert 'app.js?v=34' in html
+    assert 'styles.css?v=34' in html
 
 def test_premium_polish_removes_dev_badge() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -667,15 +674,15 @@ def test_manual_search_resets_scroll_but_back_restore_keeps_saved_position() -> 
     assert 'top: 0' not in restore
 
 
-def test_frontend_cache_v33_markers_are_synchronized() -> None:
+def test_frontend_cache_v34_markers_are_synchronized() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert html.count("?v=33") == 2
-    assert 'register("/sw.js?v=33", { updateViaCache: "none" })' in app
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v33";' in app
-    assert 'const CACHE = "search-shell-v33";' in sw
-    assert sw.count("?v=33") == 2
+    assert html.count("?v=34") == 2
+    assert 'register("/sw.js?v=34", { updateViaCache: "none" })' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v34";' in app
+    assert 'const CACHE = "search-shell-v34";' in sw
+    assert sw.count("?v=34") == 2
     assert "?v=31" not in html + app + sw
     assert "search-shell-v31" not in sw
     assert "search.swReload.v31" not in app
@@ -702,3 +709,11 @@ def test_large_cached_total_is_presented_as_bounded_count() -> None:
     assert "function formatCachedTotal(total, isCapped = false)" in app
     assert 'return isCapped ? `${total.toLocaleString()}+`' in app
     assert app.count("formatCachedTotal(total, Boolean(data.total_is_capped))") >= 2
+
+
+def test_hover_preview_abort_does_not_mark_item_failed() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    card = app[app.index("function resultCard(item)"):app.index("function renderSkeletons(")]
+    assert 'error?.name === "AbortError"' in card
+    assert 'hoverPreviewController.abort();' in card
+    assert 'startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id, "hover")' in card

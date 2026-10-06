@@ -23,6 +23,8 @@ const filterSheetPanel = document.querySelector(".filter-sheet-panel");
 let filterSheetOpen = false;
 
 const PAGE_SIZE = 40;
+const HOVER_PREVIEW_DELAY_MS = 300;
+const hoverPreviewMedia = window.matchMedia("(hover: hover) and (pointer: fine)");
 let nextOffset = 0;
 let searchGeneration = 0;
 let seenIds = new Set();
@@ -194,15 +196,20 @@ function resolvePreviewUrl(item, previewUrl = item.preview_url) {
   return previewUrl;
 }
 
-async function resolvePreviewForPlayback(item) {
+async function resolvePreviewForPlayback(item, { signal } = {}) {
   const policy = mediaPolicyFor(item.provider);
   const needsFresh = policy.preview_resolution_mode === "on_demand" && (!item.preview_url || policy.preview_storage_mode === "ephemeral");
   let previewUrl = item.preview_url || "";
   if (needsFresh) {
-    const response = await fetch("/api/preview/" + encodeURIComponent(item.id), { cache: "no-store", headers: { Accept: "application/json" } });
+    const response = await fetch("/api/preview/" + encodeURIComponent(item.id), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal,
+    });
     if (!response.ok) throw new Error("preview resolution failed: " + response.status);
     const payload = await response.json();
     previewUrl = String(payload?.preview_url || "");
+    if (previewUrl && policy.preview_storage_mode === "stable") item.preview_url = previewUrl;
   }
   if (!previewUrl) throw new Error("preview unavailable");
   return resolvePreviewUrl(item, previewUrl);
@@ -240,7 +247,7 @@ function failMotionPreview(itemId, motion, still, toggle) {
   toggle.hidden = true;
 }
 
-function startMotionPreview(motion, still, url, toggle, itemId) {
+function startMotionPreview(motion, still, url, toggle, itemId, source = "manual") {
   if (!motion || !url) return;
   toggle.closest(".media-frame")?.classList.remove("preview-failed");
   if (activeMotionPreview?.motion && activeMotionPreview.motion !== motion) {
@@ -253,7 +260,7 @@ function startMotionPreview(motion, still, url, toggle, itemId) {
   if (motion.src !== url) motion.src = url;
   motion.hidden = false;
   if (still?.src) still.hidden = false;
-  activeMotionPreview = { motion, still, toggle, itemId };
+  activeMotionPreview = { motion, still, toggle, itemId, source };
   motion._previewStartTimer = window.setTimeout(
     () => failMotionPreview(itemId, motion, still, toggle),
     4000,
@@ -396,6 +403,7 @@ function resultCard(item) {
   const motion = card.querySelector(".motion-preview");
   const placeholder = card.querySelector(".placeholder");
   const previewToggle = card.querySelector(".preview-toggle");
+  const mediaFrame = card.querySelector(".media-frame");
 
   card.dataset.itemId = item.id;
   thumb.href = item.url;
@@ -442,7 +450,57 @@ function resultCard(item) {
     motion.addEventListener("error", () => {
       failMotionPreview(item.id, motion, preview, previewToggle);
     });
+
+    let hoverPreviewTimer = null;
+    let hoverPreviewController = null;
+    let hoverPreviewGeneration = 0;
+
+    const cancelHoverPreview = ({ stopPlaying = true } = {}) => {
+      hoverPreviewGeneration += 1;
+      if (hoverPreviewTimer) {
+        window.clearTimeout(hoverPreviewTimer);
+        hoverPreviewTimer = null;
+      }
+      if (hoverPreviewController) {
+        hoverPreviewController.abort();
+        hoverPreviewController = null;
+      }
+      if (
+        stopPlaying &&
+        activeMotionPreview?.motion === motion &&
+        activeMotionPreview.source === "hover"
+      ) {
+        stopMotionPreview(motion, preview, previewToggle);
+      }
+    };
+
+    mediaFrame.addEventListener("pointerenter", () => {
+      if (!hoverPreviewMedia.matches) return;
+      const generation = ++hoverPreviewGeneration;
+      if (hoverPreviewTimer) window.clearTimeout(hoverPreviewTimer);
+      hoverPreviewTimer = window.setTimeout(async () => {
+        hoverPreviewTimer = null;
+        if (generation !== hoverPreviewGeneration || !hoverPreviewMedia.matches) return;
+        const controller = new AbortController();
+        hoverPreviewController = controller;
+        try {
+          const resolvedPreview = await resolvePreviewForPlayback(item, { signal: controller.signal });
+          if (generation !== hoverPreviewGeneration || controller.signal.aborted) return;
+          motion.dataset.previewUrl = resolvedPreview;
+          startMotionPreview(motion, preview, resolvedPreview, previewToggle, item.id, "hover");
+        } catch (error) {
+          if (error?.name === "AbortError" || generation !== hoverPreviewGeneration) return;
+          failMotionPreview(item.id, motion, preview, previewToggle);
+        } finally {
+          if (hoverPreviewController === controller) hoverPreviewController = null;
+        }
+      }, HOVER_PREVIEW_DELAY_MS);
+    });
+
+    mediaFrame.addEventListener("pointerleave", () => cancelHoverPreview());
+
     previewToggle.addEventListener("click", async (event) => {
+      cancelHoverPreview({ stopPlaying: false });
       event.preventDefault();
       event.stopPropagation();
       if (activeMotionPreview?.motion === motion && !motion.paused) {
@@ -1101,7 +1159,7 @@ window.addEventListener("pageshow", (event) => {
 boot();
 
 if ("serviceWorker" in navigator) {
-  const SW_RELOAD_GUARD = "search.swReload.v33";
+  const SW_RELOAD_GUARD = "search.swReload.v34";
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     try {
@@ -1119,7 +1177,7 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=33", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=34", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });
