@@ -43,10 +43,10 @@ Post-release staging cleanup:
 CSS consolidation was deliberately deferred: the remaining duplicate selectors are intentional cascade layers (base -> premium -> polish -> v3). Refactoring immediately before release had no user-visible benefit and carried unnecessary visual-regression risk. Treat it as an optional later refactor-only task.
 
 Post-release observation snapshot:
-- `/api/health` remained OK on build `e47fbef9d552`; indexed items 1,329,097;
+- `/api/health` remained OK on build `e47fbef9d552`; indexed items 1,329,098;
 - `search-engine.service`, sync timer and backfill timer remained active;
-- deterministic custom-preview pool: 49,975 stored of 246,154 eligible rows (20.3%) at the latest snapshot;
-- all stored previews across the full index: 65,470 / 1,329,090 (4.93%);
+- deterministic custom-preview pool: 52,879 stored of 246,154 eligible rows (21.48%) at the latest snapshot;
+- all stored previews across the full index: 68,374 / 1,329,098 (5.14%);
 - recent local preview cycles produced 2,875 / 2,892 / 2,888 / 2,876 / 2,895 / 2,891 / 2,874 / 2,885 playable previews from 3,000 attempts, with 0 failures;
 - remote preview enrichment continued producing 8-10 playable previews per 10 attempts with 0 failures in the sampled window;
 - no sync errors matched the 2-hour observation window; no backfill exceptions/timeouts/522s matched after the new local enrichment path was deployed.
