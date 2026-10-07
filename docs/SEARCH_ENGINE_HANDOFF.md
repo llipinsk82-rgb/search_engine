@@ -53,6 +53,14 @@ Post-release observation snapshot:
 - no sync errors matched the 2-hour observation window; no backfill exceptions/timeouts/522s matched after the new local enrichment path was deployed.
 - latest observation: 0 search/sync/backfill error matches in the last hour; local preview continued around 2.88-2.90k playable / 3,000 attempts per cycle with 0 failures and remote preview 9-10 playable / 10 attempts with 0 failures; test routing remains root `/api/` -> production 8775 and `/test-api/` -> isolated 8776; only 8776 remains listening among old test ports; production worker RSS ~127 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~114 ms `sis`, ~510 ms `step`, ~1.85 s `amateur`, ~16 ms `sis+step+perv` in the release verification window.
 
+Latest observation refresh:
+- production `/api/health` remains OK on build `01b864075144`; indexed items 1,329,356;
+- `search-engine.service`, sync timer and backfill timer remain active;
+- no new real search/sync/backfill errors were observed in the checked window; `SEARCH_MAINTENANCE=LOCKED` lines are expected lock contention between scheduled maintenance jobs, not failures;
+- stored previews reached 103,170 / 1,329,356 active rows (7.76%); deterministic custom pool reached 87,675 / 246,308 (35.60%);
+- latest local preview cycles remain around 2.88-2.92k playable / 3,000 attempts with 0 failures; remote preview remains 9-10 playable / 10 attempts with 0 failures;
+- production worker RSS ~104 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB; only intentional backend ports 8775 production and 8776 isolated test remain listening.
+
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
 Final observation refresh after canonical branch verification:
