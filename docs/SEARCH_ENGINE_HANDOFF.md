@@ -61,6 +61,12 @@ Final observation refresh after canonical branch verification:
 - stored previews: 77,081 / 1,329,098 active rows (5.80%); deterministic custom pool: 61,586 / 246,154 (25.02%);
 - production worker RSS ~127 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB; only ports 8775 production and intentional 8776 isolated test backend are listening among Search Engine backends.
 
+Latest provider transient observation:
+- one `xgroovy` read timeout occurred during a scheduled `sync-all`; the loop continued through every later provider and completed their updates instead of aborting early;
+- as designed, `sync-all` returned non-zero after finishing because one provider failed, leaving a visible monitoring signal rather than silently hiding it;
+- immediate bounded `backend.cli probe xgroovy --limit 5` recovered with `GENERIC_READY`, 5/5 results, 100% thumbnails/durations/tags, confirming the event was transient rather than a persistent provider regression;
+- no code change is justified from this single recovered timeout. Let the normal timer retry handle it.
+
 ---
 
 ## Pass 2 — PREVIEW / BROWSE — DEPLOYED
