@@ -93,6 +93,7 @@ Verification:
 - final clean current-build verification on 2026-10-07 04:00-04:05 CEST: after confirming sync/backfill idle, one normal `search-engine-sync.service` run was triggered and observed end-to-end; `Result=success`, `ExecMainStatus=0`, all configured providers completed, including `xgroovy` and `pussyspace`, with no timeout/retry/error lines.
 - the apparent failures at 03:09 (`xgroovy`) and 03:26 (`pussyspace`) in a broad two-hour journal window predated the final deferred-retry build being fully deployed; they are historical, not regressions of `01b864075144`. Bounded read-only probes immediately before the clean cycle returned healthy results for both providers (~1 s xgroovy, ~2 s pussyspace for 3 items).
 - fresh canonical gate after this observation: transient-retry targeted tests 3/3 PASS, full suite 429/429 PASS, compileall/JS/diff PASS; canonical branch clean before this docs-only update.
+- latest post-clean-cycle refresh: zero matching search/sync/backfill errors from 04:00 CEST onward; stored previews reached 100,269 / 1,329,356 active rows (7.54%); deterministic custom pool reached 84,774 / 246,308 (34.42%); `test.blackserv.eu/api/` resolves production build `01b864075144`, `/test-api/` remains intentional isolated build `2a00325f2844-test`, and only 8775/8776 are listening among Search Engine backend ports.
 
 ---
 
