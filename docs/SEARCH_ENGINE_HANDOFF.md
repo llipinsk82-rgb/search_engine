@@ -61,6 +61,15 @@ Latest observation refresh:
 - latest local preview cycles remain around 2.88-2.92k playable / 3,000 attempts with 0 failures; remote preview remains 9-10 playable / 10 attempts with 0 failures;
 - production worker RSS ~104 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB; only intentional backend ports 8775 production and 8776 isolated test remain listening.
 
+Fresh observation after final CTO loop:
+- production `/api/health` PASS on build `01b864075144`; indexed items 1,329,356;
+- canonical branch clean at `eccae554a959` before this docs-only update;
+- `search-engine.service`, sync timer and backfill timer active;
+- no real search/sync/backfill errors observed from 04:00 CEST onward; `SEARCH_MAINTENANCE=LOCKED` entries are expected timer lock contention;
+- stored previews: 106,072 / 1,329,356 active rows (7.98%); deterministic custom pool: 90,577 / 246,308 (36.77%);
+- latest local preview cycles remain ~2.88-2.92k playable / 3,000 attempts with 0 failures; remote preview remains 9-10 / 10 with 0 failures;
+- production worker RSS ~104 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB.
+
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
 Final observation refresh after canonical branch verification:
