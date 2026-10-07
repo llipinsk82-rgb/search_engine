@@ -72,6 +72,15 @@ Fresh observation after final CTO loop:
 
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
+Final CTO verification refresh — 2026-10-07 04:22 CEST:
+- canonical branch `feature/provider-registry-probe` clean before this docs-only update;
+- production `/api/health` PASS on build `01b864075144`;
+- transient-timeout retry tests 3/3 PASS; full suite 429/429 PASS; compileall/JS/diff PASS;
+- no matching search/sync/backfill errors from 04:00 CEST onward; latest full sync 04:00-04:05 completed with `Result=success`, `ExecMainStatus=0`;
+- post-04:00 deterministic local-preview cycles produced 2,879 / 2,891 / 2,892 playable previews from 3,000 attempts with 0 failures; remote preview cycles produced 9/10, 10/10 and 10/10 playable with 0 failures;
+- production worker RSS ~104 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB;
+- no code or deploy action is justified by this verification.
+
 Final observation refresh after canonical branch verification:
 - canonical branch `feature/provider-registry-probe` remained clean before this docs-only refresh; production remains `e47fbef9d552`;
 - zero matching search/sync/backfill errors in the latest one-hour journal window;
