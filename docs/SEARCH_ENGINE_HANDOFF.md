@@ -5,10 +5,11 @@
 ## Pass 3 — PREMIUM v3 — DEPLOYED
 
 Owner visual gate: PASS via `/go`.
-Production build: `e47fbef9d552`. Frontend cache: v36.
+Current production build: `01b864075144`. Frontend cache: v36.
+Pass3 visual release base: `e47fbef9d552`.
 Pass3 visual code commit: `3791f8749d3c`.
 Pass3 cache commit: `b6845ab348f0`.
-Pass3 pre-deploy handoff commit / deployed HEAD: `e47fbef9d552`.
+Pass3 release/handoff commit: `e47fbef9d552`.
 Working branch: `feature/search-premium-pass3`.
 Canonical base branch: `feature/provider-registry-probe` is fast-forward compatible and is synchronized to this final handoff head after the release closeout.
 
@@ -61,11 +62,34 @@ Final observation refresh after canonical branch verification:
 - stored previews: 77,081 / 1,329,098 active rows (5.80%); deterministic custom pool: 61,586 / 246,154 (25.02%);
 - production worker RSS ~127 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB; only ports 8775 production and intentional 8776 isolated test backend are listening among Search Engine backends.
 
-Latest provider transient observation:
-- one `xgroovy` read timeout occurred during a scheduled `sync-all`; the loop continued through every later provider and completed their updates instead of aborting early;
-- as designed, `sync-all` returned non-zero after finishing because one provider failed, leaving a visible monitoring signal rather than silently hiding it;
-- immediate bounded `backend.cli probe xgroovy --limit 5` recovered with `GENERIC_READY`, 5/5 results, 100% thumbnails/durations/tags, confirming the event was transient rather than a persistent provider regression;
-- no code change is justified from this single recovered timeout. Let the normal timer retry handle it.
+## Post-release sync timeout hardening — DEPLOYED
+
+A second recovered provider read timeout made the transient pattern repeatable enough to justify one bounded retry without hiding persistent failures.
+
+Commits:
+- `13d202fea875` — initial one-time transient timeout retry;
+- `01b864075144` — final strategy: defer the single timeout retry until the end of the whole `sync-all` cycle.
+
+Final contract:
+- first `TimeoutError` does not fail or block the remaining provider loop; the provider is queued once;
+- all other configured providers run normally;
+- queued transient providers receive exactly one retry after the main provider pass, giving the remote source several minutes to recover naturally;
+- non-timeout exceptions are never retried;
+- if the queued retry also fails, `sync-all` still exits non-zero, preserving the monitoring signal;
+- no retry loop and no silent failure suppression.
+
+Verification:
+- targeted retry tests: 3/3 PASS;
+- full suite: 429/429 PASS;
+- backend compileall, JS syntax and git diff check PASS;
+- test suite leaves no local `search_engine.db` artifact;
+- official deploy check: PASS for `01b864075144`;
+- first deploy attempt was safely blocked before changes by the maintenance lock while normal backfill was active;
+- timers were paused, the active backfill was allowed to finish naturally, then official deploy completed with `DEPLOY_PASS build=01b864075144`; timers were restored;
+- post-deploy `/api/health`: PASS, build `01b864075144`, indexed items 1,329,224 at final verification;
+- frontend remained v36; production `backend/cli.py` hash equals release;
+- `search-engine.service`, sync timer and backfill timer active;
+- the post-deploy real `sync-all` cycle completed successfully across all configured providers with `Result=success`, including xgroovy and pussyspace, and no timeout/error lines in that final cycle.
 
 ---
 
@@ -113,8 +137,8 @@ Production backend: `127.0.0.1:8775`
 Public: `search.blackserv.eu`
 
 Current working branch: `feature/provider-registry-probe`
-Current deployed code release: `e47fbef9d552`
-Previous production release: `3fbb32cae034`
+Current deployed code release: `01b864075144`
+Previous production release: `e47fbef9d552`
 Frontend cache shell: v36 production
 
 Official deploy path only:
