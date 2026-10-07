@@ -20,11 +20,13 @@ const filtersResetBtn = document.querySelector("#filters-reset");
 const filtersApplyBtn = document.querySelector("#filters-apply");
 const filterCountEl = document.querySelector("#filter-count");
 const filterSheetPanel = document.querySelector(".filter-sheet-panel");
+const searchShellEl = document.querySelector(".search-shell");
 let filterSheetOpen = false;
 
 const PAGE_SIZE = 40;
 const HOVER_PREVIEW_DELAY_MS = 300;
 const hoverPreviewMedia = window.matchMedia("(hover: hover) and (pointer: fine)");
+const mobileStickyMedia = window.matchMedia("(max-width: 680px)");
 let nextOffset = 0;
 let searchGeneration = 0;
 let seenIds = new Set();
@@ -37,6 +39,8 @@ let prefetchPromise = null;
 let activeMotionPreview = null;
 let renderedItems = [];
 let autoLoadObserver = null;
+let mobileStickyLastY = window.scrollY;
+let mobileStickyFrame = 0;
 let renderedDuplicateGroups = new Map();
 let visibleResultCount = 0;
 
@@ -52,6 +56,23 @@ function setLiveDetail(text) {
 function formatCachedTotal(total, isCapped = false) {
   if (!Number.isFinite(total)) return "";
   return isCapped ? `${total.toLocaleString()}+` : total.toLocaleString();
+}
+
+function updateMobileStickyDensity() {
+  if (!searchShellEl) return;
+  const currentY = window.scrollY;
+  const focusedInside = searchShellEl.contains(document.activeElement);
+  if (!mobileStickyMedia.matches || currentY < 120 || focusedInside) {
+    searchShellEl.classList.remove("is-compact");
+    mobileStickyLastY = currentY;
+    return;
+  }
+  if (currentY > mobileStickyLastY + 1) {
+    searchShellEl.classList.add("is-compact");
+  } else if (currentY < mobileStickyLastY - 1) {
+    searchShellEl.classList.remove("is-compact");
+  }
+  mobileStickyLastY = currentY;
 }
 
 function openFilterSheet() {
@@ -575,6 +596,7 @@ function resultCard(item) {
   }
 
   title.textContent = item.title;
+  card.querySelector(".media-provider").textContent = item.provider;
   card.querySelector(".source").textContent = item.provider;
   setOptionalText(card.querySelector(".published"), publishedText(item.published_at));
   setOptionalText(card.querySelector(".views"), viewsText(item.views));
@@ -1227,6 +1249,16 @@ window.addEventListener("pageshow", (event) => {
     try { sessionStorage.removeItem(RETURN_POSITION_KEY); } catch (_) {}
   }));
 });
+
+window.addEventListener("scroll", () => {
+  if (mobileStickyFrame) return;
+  mobileStickyFrame = window.requestAnimationFrame(() => {
+    mobileStickyFrame = 0;
+    updateMobileStickyDensity();
+  });
+}, { passive: true });
+searchShellEl.addEventListener("focusin", () => searchShellEl.classList.remove("is-compact"));
+mobileStickyMedia.addEventListener?.("change", updateMobileStickyDensity);
 
 setupAutoLoad();
 boot();

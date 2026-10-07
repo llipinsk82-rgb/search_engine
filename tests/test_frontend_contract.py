@@ -770,3 +770,35 @@ def test_preview_contract_does_not_use_intersection_observer_for_playback() -> N
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     preview = app[app.index("function startMotionPreview("):app.index("function durationText(")]
     assert "IntersectionObserver" not in preview
+
+
+def test_premium_v3_uses_four_columns_on_wide_desktop() -> None:
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert "@media (min-width: 1240px)" in css
+    wide = css[css.index("@media (min-width: 1240px)"):]
+    assert ".grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }" in wide
+
+
+def test_premium_v3_adds_provider_badge_to_media() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert 'class="media-provider"' in html
+    assert 'card.querySelector(".media-provider").textContent = item.provider;' in app
+    assert ".media-provider {" in css
+    assert "backdrop-filter: blur(" in css[css.index(".media-provider {"):css.index("}", css.index(".media-provider {")) + 1]
+
+
+def test_mobile_sticky_compacts_when_scrolling_down_and_expands_on_up() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert 'const mobileStickyMedia = window.matchMedia("(max-width: 680px)");' in app
+    assert "function updateMobileStickyDensity()" in app
+    assert 'searchShellEl.classList.add("is-compact")' in app
+    assert 'searchShellEl.classList.remove("is-compact")' in app
+    assert 'window.addEventListener("scroll"' in app
+    assert 'searchShellEl.addEventListener("focusin"' in app
+    mobile = css[css.rindex("@media (max-width: 680px)"):]
+    assert ".search-shell.is-compact" in mobile
+    assert ".search-shell.is-compact .control-row" in mobile
+    assert "display: none" in mobile
