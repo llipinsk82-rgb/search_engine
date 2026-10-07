@@ -54,6 +54,13 @@ Post-release observation snapshot:
 
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
+Final observation refresh after canonical branch verification:
+- canonical branch `feature/provider-registry-probe` clean at `14b6e867bf3d` before this docs-only refresh; production remains `e47fbef9d552`;
+- zero matching search/sync/backfill errors in the latest one-hour journal window;
+- local preview cycles continued at 2,874-2,896 playable previews / 3,000 attempts with 0 failures; remote preview remained 9-10 playable / 10 attempts with 0 failures;
+- stored previews: 74,167 / 1,329,098 active rows (5.58%); deterministic custom pool: 58,672 / 246,154 (23.84%);
+- production worker RSS ~127 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB; only ports 8775 production and intentional 8776 isolated test backend are listening among Search Engine backends.
+
 ---
 
 ## Pass 2 — PREVIEW / BROWSE — DEPLOYED
