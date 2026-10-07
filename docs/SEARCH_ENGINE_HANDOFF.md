@@ -2,15 +2,41 @@
 
 > This block supersedes all older authoritative-state blocks below. Older content is retained as history only.
 
+## Provider timeout headroom — DEPLOYED
+
+Current production build: `761ac2100b96`.
+Commit: `761ac2100b96` — `fix: add timeout headroom for slow sitemap providers`.
+
+Reason:
+- repeated but sparse sitemap read timeouts were causing whole `sync-all` service failures even after the existing single deferred retry; recent affected providers were `porndoe`, `xgroovy`, and `pussyspace`;
+- fresh measured probes showed `pussyspace` taking ~23.2 s with a configured 20 s per-request timeout and `porndoe` ~12.0 s with only 15 s headroom, while `xgroovy` was ~0.5 s and did not justify a timeout increase.
+
+Change:
+- `pussyspace` timeout: 20 -> 30 s;
+- `porndoe` timeout: 15 -> 25 s;
+- `xgroovy` remains 15 s;
+- global retry semantics are unchanged: one transient timeout is deferred to the end of the provider pass, a persistent second failure still preserves a non-zero monitoring signal.
+
+Verification:
+- targeted timeout/config tests: 4/4 PASS;
+- full suite: 430/430 PASS; compileall/JS/diff PASS;
+- repo-config real probe: xgroovy 0.52 s / 100 items, pussyspace 21.91 s / 100 items, porndoe 11.49 s / 70 items;
+- official deploy check PASS and deploy helper `DEPLOY_PASS build=761ac2100b96`;
+- active `/etc/search_engine-providers.json` verified as xgroovy=15, pussyspace=30, porndoe=25;
+- first production cycle under the deployed config showed pussyspace PASS with 100 items and no retry;
+- post-deploy `/api/health` PASS on `761ac2100b96`, all search/sync/backfill timers/services active, and zero new timeout/failure matches in the checked post-deploy window.
+
+---
+
 ## Pass 3 — PREMIUM v3 — DEPLOYED
 
 Owner visual gate: PASS via `/go`.
-Current production build: `01b864075144`. Frontend cache: v36.
+Current production build: `761ac2100b96`. Frontend cache: v36.
 Pass3 visual release base: `e47fbef9d552`.
 Pass3 visual code commit: `3791f8749d3c`.
 Pass3 cache commit: `b6845ab348f0`.
 Pass3 release/handoff commit: `e47fbef9d552`.
-Working branch: `feature/search-premium-pass3`.
+Working branch: `feature/provider-registry-probe`.
 Canonical base branch: `feature/provider-registry-probe` is fast-forward compatible and is synchronized to this final handoff head after the release closeout.
 
 Deployed visual behavior:
