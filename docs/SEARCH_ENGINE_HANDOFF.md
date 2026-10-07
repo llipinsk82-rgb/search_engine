@@ -99,7 +99,7 @@ Production DB: `/var/lib/search_engine/search.db`
 Production backend: `127.0.0.1:8775`
 Public: `search.blackserv.eu`
 
-Current working branch: `feature/search-premium-pass3`
+Current working branch: `feature/provider-registry-probe`
 Current deployed code release: `e47fbef9d552`
 Previous production release: `3fbb32cae034`
 Frontend cache shell: v36 production
