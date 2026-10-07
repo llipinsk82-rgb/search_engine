@@ -168,6 +168,23 @@ async def _probe_sitemap(
     await _probe_one(provider, limit)
 
 
+async def _sync_provider_with_timeout_retry(provider, *, limit: int, allow_empty: bool):
+    try:
+        return await sync_provider(
+            provider,
+            limit=limit,
+            allow_empty=allow_empty,
+        )
+    except TimeoutError:
+        print(f"{provider.name}: RETRY transient timeout")
+        await asyncio.sleep(0.5)
+        return await sync_provider(
+            provider,
+            limit=limit,
+            allow_empty=allow_empty,
+        )
+
+
 async def _sync_all(limit: int, allow_empty: bool) -> None:
     failures = 0
     provider_names = {provider.name for provider in PROVIDERS}
@@ -178,7 +195,7 @@ async def _sync_all(limit: int, allow_empty: bool) -> None:
 
     for provider in PROVIDERS:
         try:
-            result = await sync_provider(
+            result = await _sync_provider_with_timeout_retry(
                 provider,
                 limit=limit,
                 allow_empty=allow_empty,
