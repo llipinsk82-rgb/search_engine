@@ -45,12 +45,12 @@ CSS consolidation was deliberately deferred: the remaining duplicate selectors a
 Post-release observation snapshot:
 - `/api/health` remained OK on build `e47fbef9d552`; indexed items 1,329,098;
 - `search-engine.service`, sync timer and backfill timer remained active;
-- deterministic custom-preview pool: 55,784 stored of 246,154 eligible rows (22.66%) at the latest snapshot;
-- all stored previews across the full index: 71,279 / 1,329,098 (5.36%);
+- deterministic custom-preview pool: 58,672 stored of 246,154 eligible rows (23.84%) at the latest snapshot;
+- all stored previews across the full index: 74,167 / 1,329,098 (5.58%);
 - recent local preview cycles produced 2,875 / 2,892 / 2,888 / 2,876 / 2,895 / 2,891 / 2,874 / 2,885 playable previews from 3,000 attempts, with 0 failures;
 - remote preview enrichment continued producing 8-10 playable previews per 10 attempts with 0 failures in the sampled window;
 - no sync errors matched the 2-hour observation window; no backfill exceptions/timeouts/522s matched after the new local enrichment path was deployed.
-- latest observation: 0 search/sync/backfill error matches in the last hour; test routing verified with root `/api/` -> production 8775 and `/test-api/` -> isolated 8776; only 8776 remains listening among old test ports; production worker RSS ~106-108 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~97 ms `sis`, ~462 ms `step`, ~1.69 s `amateur`, ~12 ms `sis+step+perv`.
+- latest observation: 0 search/sync/backfill error matches in the last hour; local preview continued around 2.88k playable / 3,000 attempts per cycle with 0 failures; test routing verified with root `/api/` -> production 8775 and `/test-api/` -> isolated 8776; only 8776 remains listening among old test ports; production worker RSS ~106-108 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~97 ms `sis`, ~462 ms `step`, ~1.69 s `amateur`, ~12 ms `sis+step+perv`.
 
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
