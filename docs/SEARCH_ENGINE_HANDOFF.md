@@ -64,16 +64,13 @@ Verified behavior:
 
 Rejected during Pass1 remains rejected: SQLite 256 MB mmap was not deployed because test worker RSS grew to ~766 MB.
 
-## Next exact work — Pass 3 PREMIUM v3
+## Next exact work after Pass 3
 
-Visual work is a staging-first owner-visible gate. Do not deploy Pass3 visual changes to production until the owner sees the rendered test frontend and accepts it.
-
-Planned bounded order:
-1. A/B desktop density: 4 columns on wide desktop, retain 3 below the wide breakpoint, 2 tablet, 1 mobile;
-2. media depth: restrained bottom gradient/provider badge treatment without noisy metadata;
-3. compact mobile sticky behavior while scrolling;
-4. consolidate the accumulated premium CSS override layers after visual behavior is accepted;
-5. full test/gate and owner visual approval on `test.blackserv.eu`; only then production cache bump/deploy.
+The roast roadmap is now deployed end-to-end: SPEED, PREVIEW/BROWSE and PREMIUM v3.
+Next work should be observational or refactor-only unless a new product issue is found:
+1. monitor production preview accumulation and provider failure rates;
+2. optionally consolidate CSS cascade layers as a behavior-preserving refactor with visual regression review;
+3. avoid adding filters/features without a demonstrated user need.
 
 ---
 
@@ -90,7 +87,7 @@ Public: `search.blackserv.eu`
 Current working branch: `feature/search-premium-pass3`
 Current deployed code release: `e47fbef9d552`
 Previous production release: `3fbb32cae034`
-Frontend cache shell: v36 production / v36 staging
+Frontend cache shell: v36 production
 
 Official deploy path only:
 - `sudo -u blackserv /usr/local/bin/search-engine-deploy-client status`
