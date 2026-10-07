@@ -35,7 +35,9 @@ Final release verification:
 Post-release staging cleanup:
 - `test.blackserv.eu/api/` points back to production backend 8775 and reports `e47fbef9d552`;
 - test static frontend remains v36;
-- old isolated test services/ports 8776/8777 were not deleted because their remaining dependencies were not proven.
+- `/test-api/` intentionally remains on isolated premium-test backend 8776 (`2a00325f2844-test`);
+- verified orphaned Pass1/integration/speed test services on 8777/8779 plus the disabled speed-test environment were removed; their old test DB copies were deleted, freeing about 3.4 GB;
+- after cleanup only 8776 remains listening among the old test ports, `/test-api/health` PASS, production `/api/health` PASS.
 
 CSS consolidation was deliberately deferred: the remaining duplicate selectors are intentional cascade layers (base -> premium -> polish -> v3). Refactoring immediately before release had no user-visible benefit and carried unnecessary visual-regression risk. Treat it as an optional later refactor-only task.
 
