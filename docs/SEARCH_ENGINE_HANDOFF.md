@@ -45,12 +45,12 @@ CSS consolidation was deliberately deferred: the remaining duplicate selectors a
 Post-release observation snapshot:
 - `/api/health` remained OK on build `e47fbef9d552`; indexed items 1,328,972;
 - `search-engine.service`, sync timer and backfill timer remained active;
-- deterministic custom-preview pool: 47,081 stored of 246,069 eligible rows (19.13%) at the latest snapshot;
-- all stored previews across the full index: 62,576 / 1,328,973 (4.71%);
+- deterministic custom-preview pool: 49,975 stored of 246,154 eligible rows (20.3%) at the latest snapshot;
+- all stored previews across the full index: 65,470 / 1,329,090 (4.93%);
 - recent local preview cycles produced 2,875 / 2,892 / 2,888 / 2,876 / 2,895 / 2,891 / 2,874 playable previews from 3,000 attempts, with 0 failures;
 - remote preview enrichment continued producing 8-10 playable previews per 10 attempts with 0 failures in the sampled window;
 - no sync errors matched the 2-hour observation window; no backfill exceptions/timeouts/522s matched after the new local enrichment path was deployed.
-- latest 2-hour observation: no search/sync/backfill errors matched; production worker RSS ~96 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~97 ms `sis`, ~462 ms `step`, ~1.69 s `amateur`, ~12 ms `sis+step+perv`.
+- latest observation: 0 search/sync/backfill error matches in the last hour; production worker RSS ~106 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~97 ms `sis`, ~462 ms `step`, ~1.69 s `amateur`, ~12 ms `sis+step+perv`.
 
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
