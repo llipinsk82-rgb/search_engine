@@ -70,6 +70,15 @@ Fresh observation after final CTO loop:
 - latest local preview cycles remain ~2.88-2.92k playable / 3,000 attempts with 0 failures; remote preview remains 9-10 / 10 with 0 failures;
 - production worker RSS ~104 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB.
 
+Latest live observation from the current CTO loop:
+- production remains healthy on build `01b864075144`; canonical code delta since that deployed build is docs-only (`docs/SEARCH_ENGINE_HANDOFF.md`);
+- latest sync service result: `success`, `ExecMainStatus=0`; search service + sync/backfill timers active;
+- no real search/sync/backfill error matches were found in the latest 45-minute journal window;
+- stored previews reached 108,945 / 1,329,356 active rows (8.20%); deterministic custom pool reached 93,450 / 246,308 (37.94%);
+- latest local enrichment remained ~2.86-2.92k playable / 3,000 attempts with 0 failures; remote enrichment remained 9-10 / 10 with 0 failures;
+- production worker RSS ~106 MB; root filesystem ~38 GB free (60% used); DB ~1.1 GB;
+- fresh search smoke: `sis` ~207 ms, `step` ~575 ms, `amateur` ~1.85 s, `sis+step+perv` ~12 ms.
+
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
 Final CTO verification refresh — 2026-10-07 04:22 CEST:
