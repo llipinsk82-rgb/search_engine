@@ -10,6 +10,7 @@ Pass3 visual code commit: `3791f8749d3c`.
 Pass3 cache commit: `b6845ab348f0`.
 Pass3 pre-deploy handoff commit / deployed HEAD: `e47fbef9d552`.
 Working branch: `feature/search-premium-pass3`.
+Canonical base branch: `feature/provider-registry-probe` is fast-forward compatible and is synchronized to this final handoff head after the release closeout.
 
 Deployed visual behavior:
 - 4-column grid from 1240 px, 3 columns below the wide breakpoint, 2 tablet, 1 mobile;
