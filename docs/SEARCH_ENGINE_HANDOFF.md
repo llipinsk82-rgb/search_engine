@@ -33,16 +33,17 @@ Verification:
 No new product or reliability issue was found, so no code/deploy change was made in this loop.
 
 Fresh verified state:
-- canonical branch `feature/provider-registry-probe` clean at `052d3f08f1f5` before this docs-only update;
-- production `/api/health` PASS on build `761ac2100b96`; indexed items 1,329,391 at the first snapshot;
+- canonical branch `feature/provider-registry-probe` clean at `756da9b905cb` before this docs-only update;
+- production `/api/health` PASS on build `761ac2100b96`; indexed items 1,329,394 at the snapshot;
 - `search-engine.service`, sync timer and backfill timer active; latest sync and backfill results both `success`, `ExecMainStatus=0`;
 - zero matching traceback/exception/HTTP 5xx/timeout/failure lines in the checked 60-minute search/sync/backfill journal window;
-- stored previews: 108,945 / 1,329,391 active rows (8.20%); deterministic custom pool: 93,450 / 246,343 (37.93%);
 - recent deterministic preview cycles remained ~2.86-2.92k playable / 3,000 attempts with 0 failures; remote preview cycles remained 9-10 / 10 playable with 0 failures;
-- fresh search smoke: `sis` ~467 ms, `step` ~640 ms, `amateur` ~1.82 s, `sis+step+perv` ~12 ms; broad counts remain intentionally capped at 5000+;
-- production worker RSS ~84 MB; root filesystem 60% used with ~38 GB free; DB ~1.2 GB.
+- stored previews: 111,831 / 1,329,394 active rows (8.41%); deterministic custom pool: 96,336 / 246,343 (39.11%);
+- fresh search smoke: `sis` ~99 ms, `step` ~473 ms, `amateur` ~1.77 s, `sis+step+perv` ~12 ms; strict `+ = AND` remains PASS and broad counts remain intentionally capped at 5000+;
+- production worker RSS ~86 MB; root filesystem 60% used with ~38 GB free; DB ~1.2 GB;
+- only intentional search backends are listening: 8775 production and 8776 isolated test.
 
-CTO conclusion: the roast roadmap remains closed. Continue observation/normal maintenance only; do not add code unless a new measured issue appears. CSS consolidation remains optional refactor-only work.
+CTO conclusion: roast roadmap remains closed and production is healthy. Continue observation/normal maintenance only; do not add code unless a new measured issue appears. CSS consolidation remains optional refactor-only work.
 
 ---
 
