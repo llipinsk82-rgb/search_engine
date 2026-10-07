@@ -2,33 +2,42 @@
 
 > This block supersedes all older authoritative-state blocks below. Older content is retained as history only.
 
-## Pass 3 — PREMIUM v3 — STAGING / OWNER VISUAL GATE
+## Pass 3 — PREMIUM v3 — DEPLOYED
 
-Production is intentionally unchanged at `3fbb32cae034` / frontend cache v35.
+Owner visual gate: PASS via `/go`.
+Production build: `e47fbef9d552`. Frontend cache: v36.
 Pass3 visual code commit: `3791f8749d3c`.
-Pass3 cache/staging commit: `b6845ab348f0`.
+Pass3 cache commit: `b6845ab348f0`.
+Pass3 pre-deploy handoff commit / deployed HEAD: `e47fbef9d552`.
 Working branch: `feature/search-premium-pass3`.
-Staging frontend: `test.blackserv.eu`, cache v36.
 
-Implemented on staging only:
-- 4-column grid from 1240 px, 3 columns below that wide breakpoint, 2 tablet, 1 mobile;
+Deployed visual behavior:
+- 4-column grid from 1240 px, 3 columns below the wide breakpoint, 2 tablet, 1 mobile;
 - provider badge over media plus slightly richer bottom gradient;
 - compact mobile sticky search while scrolling down; scroll up/focus restores full controls;
-- all prior Pass2 hover-preview, dedupe and auto-load behavior retained.
+- prior Pass2 hover-preview, dedupe and auto-load behavior retained.
 
-Verification before staging:
-- targeted Premium v3: 3/3 PASS;
-- cache v36: 4/4 PASS;
-- frontend contract: 76/76 PASS;
-- full suite: 426/426 PASS;
+Final release verification:
+- fresh frontend contract: 76/76 PASS;
+- fresh full suite: 426/426 PASS;
 - backend compileall PASS;
 - JS syntax PASS;
 - git diff check PASS;
-- staging static smoke PASS for v36, wide-grid marker, media-provider marker and mobile compact marker;
-- staging app.js SHA-256 equals branch app.js.
+- official deploy check: PASS for `e47fbef9d552`;
+- official deploy helper: `DEPLOY_PASS build=e47fbef9d552`;
+- production `/api/health`: status OK, build `e47fbef9d552`;
+- production v36 + wide-grid/media-provider/mobile-compact/hover/dedupe/autoload markers verified;
+- release/production SHA-256 equality verified for frontend HTML/JS/CSS/SW and key backend search/preview files;
+- production search smoke: `sis` ~116 ms, `step` ~575 ms, `sis+step+perv` ~15 ms with strict AND verified;
+- on-demand XVideos preview smoke PASS;
+- `search-engine.service`, sync timer and backfill timer active.
 
-HARD GATE: do not deploy Pass3 to production until the owner visually accepts the rendered `test.blackserv.eu` frontend.
-After owner PASS: consolidate accepted CSS override layers if safe, rerun full gate, official deploy check, deploy, production smoke/hash verification, update handoff.
+Post-release staging cleanup:
+- `test.blackserv.eu/api/` points back to production backend 8775 and reports `e47fbef9d552`;
+- test static frontend remains v36;
+- old isolated test services/ports 8776/8777 were not deleted because their remaining dependencies were not proven.
+
+CSS consolidation was deliberately deferred: the remaining duplicate selectors are intentional cascade layers (base -> premium -> polish -> v3). Refactoring immediately before release had no user-visible benefit and carried unnecessary visual-regression risk. Treat it as an optional later refactor-only task.
 
 ---
 
@@ -79,9 +88,9 @@ Production backend: `127.0.0.1:8775`
 Public: `search.blackserv.eu`
 
 Current working branch: `feature/search-premium-pass3`
-Current deployed code release: `3fbb32cae034`
-Previous production release: `6e556acbd266`
-Frontend cache shell: v35 production / v36 staging
+Current deployed code release: `e47fbef9d552`
+Previous production release: `3fbb32cae034`
+Frontend cache shell: v36 production / v36 staging
 
 Official deploy path only:
 - `sudo -u blackserv /usr/local/bin/search-engine-deploy-client status`
