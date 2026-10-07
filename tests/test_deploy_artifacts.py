@@ -68,3 +68,11 @@ def test_api_thumbnail_nginx_routes_disable_auth():
     assert 'location /api/thumb-proxy' in nginx
     assert 'location /api/thumb/' in nginx
     assert nginx.count('auth_basic off;') >= 4
+
+
+def test_flaky_sitemap_sources_have_measured_timeout_headroom():
+    rows=json.loads((ROOT/'deploy'/'search-engine-providers.example.json').read_text())
+    by_name={r['name']:r for r in rows}
+    assert by_name['pussyspace']['timeout_seconds'] == 30
+    assert by_name['porndoe']['timeout_seconds'] == 25
+    assert by_name['xgroovy']['timeout_seconds'] == 15
