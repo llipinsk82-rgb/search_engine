@@ -49,7 +49,7 @@ Post-release observation snapshot:
 - recent local preview cycles produced 2,875 / 2,892 / 2,888 / 2,876 / 2,895 / 2,891 / 2,874 playable previews from 3,000 attempts, with 0 failures;
 - remote preview enrichment continued producing 8-10 playable previews per 10 attempts with 0 failures in the sampled window;
 - no sync errors matched the 2-hour observation window; no backfill exceptions/timeouts/522s matched after the new local enrichment path was deployed.
-- latest 60-minute observation: no search/sync/backfill errors matched; production worker RSS ~94 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~95 ms `sis`, ~492 ms `step`, ~1.79 s `amateur`, ~18 ms `sis+step+perv`.
+- latest 2-hour observation: no search/sync/backfill errors matched; production worker RSS ~96 MB; root filesystem 60% used with ~38 GB free; DB ~1.1 GB; search latency remained ~97 ms `sis`, ~462 ms `step`, ~1.69 s `amateur`, ~12 ms `sis+step+perv`.
 
 Conclusion: roast roadmap is closed. No further code change is justified without a new observed product or reliability issue. Continue normal maintenance/observation only; CSS consolidation remains optional refactor-only work.
 
