@@ -2,6 +2,26 @@
 
 > This block supersedes all older authoritative-state blocks below. Older content is retained as history only.
 
+## Latest CTO verification — 2026-10-07 04:47 CEST
+
+No new code change is required from this loop. Current production remains on build `761ac2100b96`; canonical branch is `feature/provider-registry-probe`.
+
+Fresh verified state:
+- canonical repo was clean at docs HEAD `225294f50b73` before this docs-only refresh;
+- `/api/health` PASS on build `761ac2100b96`, indexed items 1,329,394;
+- `search-engine.service`, sync timer and backfill timer active; latest sync/backfill service results are success / exit 0;
+- the `pussyspace` timeout + sync failure at 03:28-03:31 CEST occurred BEFORE the timeout-headroom deploy (`761ac21` deploy began ~04:34); it is not a post-fix regression;
+- post-fix full sync completed successfully: `pussyspace` fetched 100 items, `porndoe` fetched 70, service exit 0;
+- zero traceback/exception/HTTP 5xx/timeout/status=ERROR/failed matches were found after the completed `761ac21` deploy window;
+- recent deterministic preview cycles remain healthy: ~2.86-2.89k playable / 3,000 attempts, 0 failures; remote preview 9-10 / 10 playable, 0 failures;
+- stored previews: 111,831 / 1,329,394 active rows (8.41%); deterministic custom pool: 96,336 / 246,343 (39.11%);
+- fresh search smoke: `sis` ~96 ms, `step` ~468 ms, `amateur` ~1.70 s, `sis+step+perv` ~12 ms; strict `+ = AND` PASS and broad totals remain intentionally capped at 5000+;
+- production worker RSS ~89 MB; root filesystem ~38 GB free (60% used); DB ~1.2 GB; expected backends listening on 8775 production and 8776 isolated test only.
+
+CTO conclusion: current roadmap remains closed and production is healthy. Continue observation/normal maintenance; do not add code unless a new measured issue appears.
+
+---
+
 ## Provider timeout headroom — DEPLOYED
 
 Current production build: `761ac2100b96`.
