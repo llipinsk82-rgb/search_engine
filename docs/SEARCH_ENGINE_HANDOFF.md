@@ -23,7 +23,7 @@ Verification:
 - repo-config real probe: xgroovy 0.52 s / 100 items, pussyspace 21.91 s / 100 items, porndoe 11.49 s / 70 items;
 - official deploy check PASS and deploy helper `DEPLOY_PASS build=761ac2100b96`;
 - active `/etc/search_engine-providers.json` verified as xgroovy=15, pussyspace=30, porndoe=25;
-- first production cycle under the deployed config showed pussyspace PASS with 100 items and no retry;
+- first complete production sync cycle under the deployed config finished with `Result=success` / `ExecMainStatus=0`; pussyspace fetched 100 items and porndoe fetched 70 items with no retry/error;
 - post-deploy `/api/health` PASS on `761ac2100b96`, all search/sync/backfill timers/services active, and zero new timeout/failure matches in the checked post-deploy window.
 
 ---
