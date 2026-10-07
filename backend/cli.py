@@ -168,25 +168,9 @@ async def _probe_sitemap(
     await _probe_one(provider, limit)
 
 
-async def _sync_provider_with_timeout_retry(provider, *, limit: int, allow_empty: bool):
-    try:
-        return await sync_provider(
-            provider,
-            limit=limit,
-            allow_empty=allow_empty,
-        )
-    except TimeoutError:
-        print(f"{provider.name}: RETRY transient timeout")
-        await asyncio.sleep(0.5)
-        return await sync_provider(
-            provider,
-            limit=limit,
-            allow_empty=allow_empty,
-        )
-
-
 async def _sync_all(limit: int, allow_empty: bool) -> None:
     failures = 0
+    timeout_retries = []
     provider_names = {provider.name for provider in PROVIDERS}
     if "demo" not in provider_names:
         removed = deactivate_provider("demo")
@@ -195,7 +179,30 @@ async def _sync_all(limit: int, allow_empty: bool) -> None:
 
     for provider in PROVIDERS:
         try:
-            result = await _sync_provider_with_timeout_retry(
+            result = await sync_provider(
+                provider,
+                limit=limit,
+                allow_empty=allow_empty,
+            )
+        except TimeoutError:
+            print(f"{provider.name}: RETRY queued transient timeout")
+            timeout_retries.append(provider)
+            continue
+        except Exception as exc:
+            failures += 1
+            print(f"{provider.name}: ERROR {exc}")
+            continue
+
+        print(
+            f"{result.provider}: fetched={result.fetched} "
+            f"active_before={result.active_before} "
+            f"active_after={result.active_after} "
+            f"deactivated={result.deactivated}"
+        )
+
+    for provider in timeout_retries:
+        try:
+            result = await sync_provider(
                 provider,
                 limit=limit,
                 allow_empty=allow_empty,

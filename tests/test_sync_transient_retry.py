@@ -28,20 +28,26 @@ def _result(name: str = "xgroovy"):
     )
 
 
-def test_sync_all_retries_one_transient_timeout_then_succeeds(monkeypatch, capsys) -> None:
-    provider = _provider()
-    sync = AsyncMock(side_effect=[TimeoutError("The read operation timed out"), _result()])
-    sleep = AsyncMock()
-    monkeypatch.setattr(cli, "PROVIDERS", [provider])
-    monkeypatch.setattr(cli, "sync_provider", sync)
-    monkeypatch.setattr(cli.asyncio, "sleep", sleep)
+def test_sync_all_retries_transient_timeout_after_other_providers(monkeypatch, capsys) -> None:
+    first = _provider("xgroovy")
+    later = _provider("later")
+    calls = []
+
+    async def fake_sync(provider, **kwargs):
+        calls.append(provider.name)
+        if provider.name == "xgroovy" and calls.count("xgroovy") == 1:
+            raise TimeoutError("The read operation timed out")
+        return _result(provider.name)
+
+    monkeypatch.setattr(cli, "PROVIDERS", [first, later])
+    monkeypatch.setattr(cli, "sync_provider", fake_sync)
 
     asyncio.run(cli._sync_all(100, False))
 
-    assert sync.await_count == 2
-    sleep.assert_awaited_once()
+    assert calls == ["xgroovy", "later", "xgroovy"]
     out = capsys.readouterr().out
-    assert "xgroovy: RETRY transient timeout" in out
+    assert "xgroovy: RETRY queued transient timeout" in out
+    assert "later: fetched=100" in out
     assert "xgroovy: fetched=100" in out
     assert "xgroovy: ERROR" not in out
 
@@ -51,7 +57,6 @@ def test_sync_all_persistent_timeout_retries_once_then_fails(monkeypatch, capsys
     sync = AsyncMock(side_effect=[TimeoutError("timed out"), TimeoutError("timed out again")])
     monkeypatch.setattr(cli, "PROVIDERS", [provider])
     monkeypatch.setattr(cli, "sync_provider", sync)
-    monkeypatch.setattr(cli.asyncio, "sleep", AsyncMock())
 
     with pytest.raises(SystemExit) as exc:
         asyncio.run(cli._sync_all(100, False))
@@ -59,7 +64,7 @@ def test_sync_all_persistent_timeout_retries_once_then_fails(monkeypatch, capsys
     assert exc.value.code == 1
     assert sync.await_count == 2
     out = capsys.readouterr().out
-    assert "xgroovy: RETRY transient timeout" in out
+    assert "xgroovy: RETRY queued transient timeout" in out
     assert "xgroovy: ERROR timed out again" in out
 
 
