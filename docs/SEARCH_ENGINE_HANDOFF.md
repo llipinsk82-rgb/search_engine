@@ -831,7 +831,7 @@ No provider was auto-enabled in this pass.
 - Warmup result: items 293509 -> 293759, grown provider `sunporno`.
 - Production SunPorno count after deployment: 250.
 - Production search acceptance: total=250; first 5/5 results have thumbnail + duration + tags.
-- Current production build `c4b755ffb1ee`; service, sync timer and backfill timer active.
+- Production build at that release: `c4b755ffb1ee`; service, sync timer and backfill timer active.
 - Remaining provider work: XHamster browser/target stability, Tube8 login/source UX, XGroovy Cloudflare 403 (no bypass), then continue provider discovery/expansion.
 
 ## Production update 2026-09-04 — XHamster enabled + deploy startup hardening
