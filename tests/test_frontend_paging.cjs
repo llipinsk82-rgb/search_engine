@@ -118,3 +118,99 @@ test("next page drains live buffer before requesting another provider page", asy
   assert.equal(page.items.length, 40);
   assert.equal(page.liveBuffer.length + page.localBuffer.length, 90);
 });
+
+test("browse snapshot never resumes beyond its saved result rows", () => {
+  const start = app.indexOf("function restoreBrowseSnapshot(");
+  const end = app.indexOf("async function restoreBrowsePosition(", start);
+  const context = vm.createContext({
+    welcomeEl: { hidden: false },
+    queryInput: { value: "" },
+    sortSelect: { options: [{ value: "relevance" }], value: "relevance" },
+    setContentClassValue() {},
+    qualitySelect: { value: "" },
+    durationSelect: { value: "" },
+    ageCheckSelect: { value: "" },
+    render() {},
+    nextOffset: 120,
+    localHasMore: true,
+    liveHasMore: false,
+    visibleResultCount: 120,
+    updatePagingFlags() {},
+    moreBtn: {},
+    setPrimaryStatus() {},
+    setLiveDetail() {},
+    window: { requestAnimationFrame() {} },
+    sessionStorage: { removeItem() {} },
+    RETURN_POSITION_KEY: "return-position",
+  });
+  vm.runInContext(app.slice(start, end), context);
+  const saved = {
+    itemId: "local-10",
+    loadedCount: 200,
+    localOffset: 200,
+    items: Array.from({ length: 120 }, (_, i) => ({ id: `local-${i}` })),
+  };
+  assert.equal(context.restoreBrowseSnapshot(saved), false);
+});
+
+test("saving a deep browse position falls back to replay instead of truncating rows", () => {
+  const start = app.indexOf("function saveBrowsePosition(");
+  const end = app.indexOf("function readBrowsePosition(", start);
+  let saved;
+  const context = vm.createContext({
+    sessionStorage: { setItem: (_key, value) => { saved = JSON.parse(value); } },
+    RETURN_POSITION_KEY: "return-position",
+    window: { location: { href: "https://test.example/?q=4k" }, scrollY: 900 },
+    nextOffset: 200,
+    renderedItems: Array.from({ length: 200 }, (_, i) => ({ id: `local-${i}` })),
+    RETURN_SNAPSHOT_LIMIT: 120,
+    queryInput: { value: "4k" },
+    sortSelect: { value: "relevance" },
+    getContentClassValue: () => "",
+    providerSelect: { value: "" },
+    qualitySelect: { value: "" },
+    durationSelect: { value: "" },
+    ageCheckSelect: { value: "" },
+    localHasMore: false,
+    localOffset: 200,
+    localBuffer: [],
+    localSourceHasMore: false,
+    liveHasMore: false,
+    liveBuffer: [],
+    liveSourceHasMore: false,
+    livePage: 0,
+    liveStatusText: "",
+    statusEl: { textContent: "200 shown" },
+    liveDetailEl: { textContent: "" },
+  });
+  vm.runInContext(app.slice(start, end), context);
+  context.saveBrowsePosition("local-10");
+  assert.equal(saved.loadedCount, 200);
+  assert.equal(saved.items.length, 0);
+});
+
+test("return navigation replays every previously loaded page even when target is on page one", async () => {
+  const start = app.indexOf("async function restoreBrowsePosition(");
+  const end = app.indexOf("resultsEl.addEventListener(", start);
+  const target = { scrollIntoView() {} };
+  let loadedPages = 0;
+  const context = vm.createContext({
+    readBrowsePosition: () => ({ itemId: "local-10", loadedCount: 120, scrollY: 0 }),
+    document: { querySelector: () => target },
+    CSS: { escape: (value) => value },
+    window: { requestAnimationFrame: (callback) => callback() },
+    sessionStorage: { removeItem() {} },
+    RETURN_POSITION_KEY: "return-position",
+    nextOffset: 40,
+    localHasMore: true,
+    liveHasMore: false,
+    loadMore: async () => {
+      loadedPages += 1;
+      vm.runInContext("nextOffset += 40", context);
+    },
+  });
+  vm.runInContext(app.slice(start, end), context);
+  await context.restoreBrowsePosition();
+  assert.equal(loadedPages, 2);
+  assert.equal(vm.runInContext("nextOffset", context), 120);
+});

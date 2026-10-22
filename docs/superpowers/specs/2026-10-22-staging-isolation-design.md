@@ -13,7 +13,7 @@
 
 ## Release gates
 
-1. Verify the candidate is exactly commit `f16fe8f`, the test vhost routes only to 8776, and production health still reports build `761ac2100b96`.
+1. Verify the candidate matches the chosen release commit, the test vhost routes only to 8776, and production health reports its pre-deployment build.
 2. Verify the test service restarts without a prolonged memory increase; stop if memory or swap pressure threatens the shared host.
 3. Confirm staging health, representative searches (`4k`, plain multiword, forced `+` terms), pagination past offset 5000, UI states, and thumbnail fallback. Do not interpret upstream 404/410 images as fixed.
 4. Run the repository's Linux tests and the official production deployment `check`. Deploy production only when staging and checks pass, with the official rollback-capable deploy client.

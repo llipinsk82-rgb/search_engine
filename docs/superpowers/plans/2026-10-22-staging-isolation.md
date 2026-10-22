@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Validate commit `f16fe8f` on an API- and database-isolated staging site before any production deployment.
+**Goal:** Validate the search-completeness release branch HEAD on an API- and database-isolated staging site before any production deployment.
 
 **Architecture:** Keep the existing test service and database, route the test vhost only to that service, and point its working directory at a versioned code release. Retain immutable backups and use the official production deploy client only after staging passes.
 
@@ -15,7 +15,7 @@
 - Never direct-edit `/opt/search_engine` or `/var/lib/search_engine/search.db`.
 - Keep the test backend on `127.0.0.1:8776` and production on `127.0.0.1:8775`.
 - Stop when memory or swap pressure creates material risk to the shared VPS.
-- Candidate source must match Git commit `f16fe8f` exactly.
+- Candidate source must match the chosen Git release commit exactly; after any review fix, re-archive, restage, and rerun checks.
 
 ## Review Focus
 
@@ -43,10 +43,10 @@
 
 **Interfaces:** Test service runs candidate source from its release directory and retains `SEARCH_DB_PATH=/opt/search-engine-premium-test-data/search.db`.
 
-- [ ] **Step 1: Archive Git commit `f16fe8f` and verify archive integrity.**
-- [ ] **Step 2: Back up the test SQLite database using SQLite's online backup command.**
-- [ ] **Step 3: Install the release in a new directory; validate imports and shell syntax there.**
-- [ ] **Step 4: Add the test-only systemd working-directory/build-id override; run `daemon-reload`, restart only the test service, and verify build and memory.**
+- [x] **Step 1: Archive the selected candidate commit and verify archive integrity.** Repeat after review fixes.
+- [x] **Step 2: Back up the test SQLite database using SQLite's online backup command.**
+- [x] **Step 3: Install the release in a new directory; validate imports and shell syntax there.** Repeat after review fixes.
+- [x] **Step 4: Add the test-only systemd working-directory/build-id override; run `daemon-reload`, restart only the test service, and verify build and memory.** Repeat after review fixes.
 - [ ] **Step 5: If verification fails, remove the override, restart the old test service, and verify its old build.**
 
 ### Task 3: Stage the frontend and acceptance tests
@@ -55,9 +55,9 @@
 
 **Interfaces:** `test.blackserv.eu` serves candidate frontend v37 and isolated API 8776.
 
-- [ ] **Step 1: Back up the current test static root and install candidate assets.**
-- [ ] **Step 2: Verify health, page assets, search syntax, deep pagination, UI states, and image fallback against staging.**
-- [ ] **Step 3: Measure test memory/swap and production health after the workload. Roll back staging if thresholds indicate risk.**
+- [x] **Step 1: Back up the current test static root and install candidate assets.** Repeat asset update after review fixes.
+- [x] **Step 2: Verify health, page assets, search syntax, deep pagination, UI states, and image fallback against staging.** Repeat after review fixes.
+- [x] **Step 3: Measure test memory/swap and production health after the workload. Roll back staging if thresholds indicate risk.** Repeat after review fixes.
 
 ### Task 4: Production gate
 

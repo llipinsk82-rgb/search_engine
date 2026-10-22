@@ -1122,7 +1122,7 @@ function saveBrowsePosition(itemId) {
       itemId,
       scrollY: window.scrollY,
       loadedCount: nextOffset,
-      items: renderedItems.slice(0, RETURN_SNAPSHOT_LIMIT),
+      items: renderedItems.length <= RETURN_SNAPSHOT_LIMIT ? renderedItems : [],
       query: queryInput.value,
       sort: sortSelect.value,
       contentClass: getContentClassValue(),
@@ -1165,6 +1165,7 @@ function readBrowsePosition() {
 
 function restoreBrowseSnapshot(saved) {
   if (!saved?.items?.length) return false;
+  if (saved.items.length !== saved.loadedCount) return false;
   if (!saved.items.some((item) => item.id === saved.itemId)) return false;
   welcomeEl.hidden = true;
 
@@ -1212,7 +1213,6 @@ async function restoreBrowsePosition() {
     let target = document.querySelector(`[data-item-id="${CSS.escape(saved.itemId)}"]`);
     let previousOffset = -1;
     while (nextOffset < saved.loadedCount && (localHasMore || liveHasMore)) {
-      if (target) break;
       if (nextOffset === previousOffset) break;
       previousOffset = nextOffset;
       await loadMore();
