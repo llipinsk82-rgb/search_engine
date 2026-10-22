@@ -10,6 +10,8 @@ from backend.index import (
     count_items,
     deactivate_provider,
     merge_provider_items,
+    initialize,
+    optimize_indexes,
     replace_provider_items,
     search_items,
 )
@@ -138,6 +140,7 @@ class ProviderSnapshotTests(unittest.TestCase):
             [item("a", "First"), item("b", "Second")],
             path=self.db,
         )
+        optimize_indexes(path=self.db)
 
         with closing(sqlite3.connect(self.db)) as conn:
             plan = " ".join(
@@ -150,6 +153,15 @@ class ProviderSnapshotTests(unittest.TestCase):
 
         self.assertIn("idx_items_browse", plan)
         self.assertNotIn("USE TEMP B-TREE", plan)
+
+    def test_normal_startup_does_not_build_large_optional_indexes(self) -> None:
+        initialize(path=self.db)
+
+        with closing(sqlite3.connect(self.db)) as conn:
+            names = {row[1] for row in conn.execute("PRAGMA index_list(items)")}
+
+        self.assertNotIn("idx_items_browse", names)
+        self.assertNotIn("idx_items_quality_active", names)
 
 
 if __name__ == "__main__":

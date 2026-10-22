@@ -58,6 +58,26 @@ class SearchRankingTests(unittest.TestCase):
         self.assertEqual({row.id for row in search_items("sis step family", path=self.db)}, expected)
         self.assertEqual({row.id for row in search_items("sis+step+family", path=self.db)}, expected)
 
+    def test_quality_filter_includes_title_label_when_metadata_is_missing(self) -> None:
+        replace_provider_items(
+            "rank",
+            [
+                SearchItem(id="title-4k", provider="rank", title="Example scene 4K", url="https://example.com/4k"),
+                SearchItem(id="metadata-4k", provider="rank", title="Example scene", url="https://example.com/metadata", quality="4K"),
+                SearchItem(id="other", provider="rank", title="Example scene", url="https://example.com/other", quality="1080p"),
+            ],
+            path=self.db,
+        )
+
+        self.assertEqual(
+            {row.id for row in search_items("example", quality="4K", path=self.db)},
+            {"title-4k", "metadata-4k"},
+        )
+        self.assertEqual(
+            {row.id for row in search_items("", quality="4K", path=self.db)},
+            {"title-4k", "metadata-4k"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

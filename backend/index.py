@@ -85,6 +85,12 @@ def initialize(path: Path = DB_PATH) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)"
         )
+
+
+def optimize_indexes(path: Path = DB_PATH) -> None:
+    """Build optional search indexes in a planned maintenance step."""
+    initialize(path)
+    with _connect(path) as conn:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_items_browse "
             "ON items(active, indexed_at DESC, source_order ASC, id ASC)"
@@ -92,6 +98,10 @@ def initialize(path: Path = DB_PATH) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_items_provider_browse "
             "ON items(provider, active, indexed_at DESC, source_order ASC, id ASC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_quality_active "
+            "ON items(quality COLLATE NOCASE, active)"
         )
 
 
@@ -347,8 +357,18 @@ def search_items(
         where.append("i.provider = ?")
         params.append(provider)
     if quality:
-        where.append("LOWER(COALESCE(i.quality, '')) = LOWER(?)")
-        params.append(quality)
+        quality_term = quality.lower()
+        if quality_term in {"720p", "1080p", "1440p", "4k", "8k"}:
+            where.append(
+                "i.id IN ("
+                "SELECT id FROM items WHERE active = 1 AND quality = ? COLLATE NOCASE "
+                "UNION SELECT id FROM items_fts WHERE items_fts MATCH ?"
+                ")"
+            )
+            params.extend([quality, f'title:"{quality_term}"'])
+        else:
+            where.append("i.quality = ? COLLATE NOCASE")
+            params.append(quality)
     if min_duration is not None:
         where.append("COALESCE(i.duration_seconds, 0) >= ?")
         params.append(min_duration)

@@ -8,6 +8,7 @@ from backend.index import indexed_providers, search_items
 from backend.models import SearchItem, SourceVariant
 from backend.providers import PROVIDERS
 from backend.providers.base import SearchProvider
+from backend.providers.demo import DemoProvider
 
 _space_re = re.compile(r"\s+")
 _punct_re = re.compile(r"[^\w\s]", re.UNICODE)
@@ -126,6 +127,9 @@ async def search_all(
         if provider:
             providers = [name for name in providers if name == provider]
         return page, providers, has_more
+
+    if not PROVIDERS or any(not isinstance(item, DemoProvider) for item in PROVIDERS):
+        return [], [], False
 
     return await _live_search(
         query,
