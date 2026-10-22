@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 from backend.models import SearchItem
+from backend.query import query_tokens
 from backend.settings import DB_PATH
-
-_token_re = re.compile(r"\w+", re.UNICODE)
 
 
 @dataclass(frozen=True)
@@ -21,11 +21,16 @@ class ProviderSyncStats:
     deactivated: int
 
 
-def _connect(path: Path = DB_PATH) -> sqlite3.Connection:
+@contextmanager
+def _connect(path: Path = DB_PATH) -> Iterator[sqlite3.Connection]:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 
 def initialize(path: Path = DB_PATH) -> None:
@@ -79,6 +84,24 @@ def initialize(path: Path = DB_PATH) -> None:
                     raise
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)"
+        )
+
+
+def optimize_indexes(path: Path = DB_PATH) -> None:
+    """Build optional search indexes in a planned maintenance step."""
+    initialize(path)
+    with _connect(path) as conn:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_browse "
+            "ON items(active, indexed_at DESC, source_order ASC, id ASC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_provider_browse "
+            "ON items(provider, active, indexed_at DESC, source_order ASC, id ASC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_quality_active "
+            "ON items(quality COLLATE NOCASE, active)"
         )
 
 
@@ -309,6 +332,7 @@ def search_items(
     quality: str | None = None,
     min_duration: int | None = None,
     max_duration: int | None = None,
+    offset: int = 0,
     limit: int = 40,
     path: Path = DB_PATH,
 ) -> list[SearchItem]:
@@ -318,23 +342,33 @@ def search_items(
     params: list[object] = []
     joins = ""
     rank_select = "0.0 AS fts_rank"
-    order = "i.indexed_at DESC, i.source_order ASC"
+    order = "i.indexed_at DESC, i.source_order ASC, i.id ASC"
 
-    tokens = _token_re.findall(query.lower())
+    tokens = query_tokens(query)
     if tokens:
         fts_query = " ".join(f'"{token}"' for token in tokens)
         joins = "JOIN items_fts ON items_fts.id = i.id"
         where.append("items_fts MATCH ?")
         params.append(fts_query)
         rank_select = "bm25(items_fts, 0.0, 8.0, 2.0, 0.0) AS fts_rank"
-        order = "fts_rank ASC, i.indexed_at DESC, i.source_order ASC"
+        order = "fts_rank ASC, i.indexed_at DESC, i.source_order ASC, i.id ASC"
 
     if provider:
         where.append("i.provider = ?")
         params.append(provider)
     if quality:
-        where.append("LOWER(COALESCE(i.quality, '')) = LOWER(?)")
-        params.append(quality)
+        quality_term = quality.lower()
+        if quality_term in {"720p", "1080p", "1440p", "4k", "8k"}:
+            where.append(
+                "i.id IN ("
+                "SELECT id FROM items WHERE active = 1 AND quality = ? COLLATE NOCASE "
+                "UNION SELECT id FROM items_fts WHERE items_fts MATCH ?"
+                ")"
+            )
+            params.extend([quality, f'title:"{quality_term}"'])
+        else:
+            where.append("i.quality = ? COLLATE NOCASE")
+            params.append(quality)
     if min_duration is not None:
         where.append("COALESCE(i.duration_seconds, 0) >= ?")
         params.append(min_duration)
@@ -351,9 +385,9 @@ def search_items(
         {joins}
         WHERE {' AND '.join(where)}
         ORDER BY {order}
-        LIMIT ?
+        LIMIT ? OFFSET ?
     """
-    params.append(limit * 3)
+    params.extend([limit, offset])
 
     with _connect(path) as conn:
         rows = conn.execute(sql, params).fetchall()

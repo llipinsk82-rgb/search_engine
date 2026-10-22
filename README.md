@@ -10,7 +10,7 @@ Mobile-first search engine / PWA with a small FastAPI backend designed to sit be
 - **SQLite FTS5**: first-stage local search index
 - **Providers**: pluggable adapters that collect and normalize metadata
 - **Ingestion**: atomic provider snapshots plus normalized JSONL import
-- **Search layer**: weighted FTS ranking, browse recency and duplicate collapsing
+- **Search layer**: weighted FTS ranking, browse recency and deterministic paging; live-only fallback collapses duplicate source records
 
 The public request path is:
 
@@ -77,10 +77,14 @@ Search parameters:
 - `quality`
 - `min_duration`
 - `max_duration`
-- `offset` (0–5000)
+- `offset` (0 or greater)
 - `limit` (1–100)
 
-The response includes `offset`, `limit` and `has_more`. The PWA uses these fields for a dedupe-aware **Show more** flow.
+The response includes `offset`, `limit` and `has_more`. The PWA uses these fields for a paged **Show more** flow. Indexed results are ordered deterministically and fetched directly by page; individual source records remain visible.
+
+Search words are combined with AND, independent of order. Spaces and `+` separators are equivalent: `sis step family` and `sis+step+family` require all three terms across title and tags. This also applies to the live-only fallback. `total` currently reports the number of items in the returned page, not a catalog-wide count; clients should use `has_more` to paginate.
+
+For common quality filters (720p, 1080p, 1440p, 4K and 8K), search also includes records whose titles contain the quality label even if the collector omitted the dedicated quality field. This is an inferred label from source text, not independent verification of the video's resolution.
 
 The PWA uses `POST /api/search` and stores its restorable UI state in the URL fragment (`#...`), not the server-visible query string. API responses are marked `no-store`. The supplied Nginx and systemd examples disable Nginx/Uvicorn request access logs so search terms are not retained in ordinary request logs.
 
@@ -117,6 +121,10 @@ One JSON object per line:
 ```
 
 `id` is optional; when omitted it is derived deterministically from `provider + url`. Media files themselves are not copied into the index.
+
+Video stream URLs (`.mp4`, `.m3u8`, etc.) are rejected as thumbnails, including when reading older indexed rows. If a source provides no valid image URL, the frontend shows a fallback tile instead of attempting to load a video as an image. Expired or hotlink-blocked image URLs still require source-specific collector repairs; the browser fallback alone cannot regenerate them.
+
+On an existing large database, the optional browse-order and quality indexes are **not** created during API startup. Plan a maintenance window, keep a database backup, verify free disk space, stop the API and sync services, then run `SEARCH_DB_PATH=/var/lib/search_engine/search.db python -m backend.cli optimize-indexes` as a user with database write access. The command is idempotent. Restart the services after it completes. Search remains functional before this step, but unoptimized browsing and quality filters can be slower. Deep full-text pages still require ranking all matching rows and may be slower.
 
 ## Sitemap providers
 

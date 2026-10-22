@@ -4,6 +4,7 @@ import hashlib
 
 from backend.models import SearchItem
 from backend.providers.base import SearchProvider
+from backend.query import contains_all_terms, query_tokens
 
 
 class DemoProvider(SearchProvider):
@@ -17,15 +18,15 @@ class DemoProvider(SearchProvider):
     )
 
     async def search(self, query: str, limit: int = 40) -> list[SearchItem]:
-        needle = query.strip().lower()
+        terms = query_tokens(query)
         rows = []
         for title, url, duration, quality, tags in self._catalog:
             haystack = f"{title} {' '.join(tags)}".lower()
-            if needle and needle not in haystack:
+            if not contains_all_terms(haystack, terms):
                 continue
 
             digest = hashlib.sha1(f"{self.name}:{url}".encode()).hexdigest()[:16]
-            score = 1.0 if needle and needle in title.lower() else 0.6
+            score = 1.0 if terms and contains_all_terms(title, terms) else 0.6
             rows.append(
                 SearchItem(
                     id=digest,

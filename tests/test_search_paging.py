@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import unittest
-
 from backend.models import SearchItem
-from backend.search import _collapse, _slice_page
+from backend.search import _collapse, _slice_page, search_all
+from backend.models import SearchRequest
+from backend.providers.sitemap import SitemapProvider
+from unittest.mock import patch
+import asyncio
+from pydantic import ValidationError
 
 
 def item(item_id: str, title: str, duration: int = 60) -> SearchItem:
@@ -19,6 +23,46 @@ def item(item_id: str, title: str, duration: int = 60) -> SearchItem:
 
 
 class SearchPagingTests(unittest.TestCase):
+    def test_large_offset_is_accepted(self) -> None:
+        self.assertEqual(SearchRequest(offset=5001).offset, 5001)
+
+    def test_offset_above_sqlite_integer_range_is_rejected(self) -> None:
+        with self.assertRaises(ValidationError):
+            SearchRequest(offset=2**63)
+
+    def test_indexed_page_is_not_limited_by_candidate_window(self) -> None:
+        rows = [item(str(index), f"Unique item {index}") for index in range(150)]
+        def page_from_index(*args, **kwargs):
+            self.assertEqual(kwargs["offset"], 100)
+            return rows[100:100 + kwargs["limit"]]
+        with patch("backend.search.search_items", side_effect=page_from_index):
+            with patch("backend.search.indexed_providers", return_value=["sample"]):
+                page, _, has_more = asyncio.run(search_all("", offset=100, limit=20))
+        self.assertEqual(len(page), 20)
+        self.assertTrue(has_more)
+
+    def test_missing_indexed_provider_does_not_start_live_crawl(self) -> None:
+        with patch("backend.search.indexed_providers", return_value=["indexed"]), patch(
+            "backend.search.search_items", return_value=[]
+        ), patch(
+            "backend.search._live_search", return_value=([item("unexpected", "Live")], ["other"], False)
+        ):
+            page, providers, has_more = asyncio.run(search_all("word", provider="other"))
+
+        self.assertEqual(page, [])
+        self.assertEqual(providers, [])
+        self.assertFalse(has_more)
+
+    def test_empty_production_index_does_not_crawl_on_search(self) -> None:
+        provider = SitemapProvider(name="source", sitemap_url="https://example.com/sitemap.xml")
+        with patch("backend.search.indexed_providers", return_value=[]), patch(
+            "backend.search.PROVIDERS", [provider]
+        ), patch(
+            "backend.search._live_search", return_value=([item("unexpected", "Live")], ["source"], False)
+        ):
+            page, providers, has_more = asyncio.run(search_all("word"))
+
+        self.assertEqual((page, providers, has_more), ([], [], False))
     def test_slice_page_reports_more_results(self) -> None:
         rows = [item(str(index), f"Item {index}") for index in range(5)]
 

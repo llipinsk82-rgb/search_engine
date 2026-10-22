@@ -14,6 +14,7 @@ from xml.etree import ElementTree
 
 from backend.models import SearchItem
 from backend.providers.base import SearchProvider
+from backend.query import contains_all_terms, query_tokens
 
 _USER_AGENT = "SearchEngineIndexer/0.5"
 _VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
@@ -410,13 +411,13 @@ class SitemapProvider(SearchProvider):
 
     async def search(self, query: str, limit: int = 40) -> list[SearchItem]:
         items = await self.collect(limit=max(limit * 5, 100))
-        needle = query.strip().lower()
-        if not needle:
+        terms = query_tokens(query)
+        if not terms:
             return items[:limit]
 
         matched = [
             item
             for item in items
-            if needle in f"{item.title} {' '.join(item.tags)}".lower()
+            if contains_all_terms(f"{item.title} {' '.join(item.tags)}", terms)
         ]
         return matched[:limit]

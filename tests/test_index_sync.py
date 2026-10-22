@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from backend.index import (
     count_items,
     deactivate_provider,
     merge_provider_items,
+    initialize,
+    optimize_indexes,
     replace_provider_items,
     search_items,
 )
@@ -129,6 +133,35 @@ class ProviderSnapshotTests(unittest.TestCase):
                 [item("a", "Alpha", provider="other")],
                 path=self.db,
             )
+
+    def test_browse_query_uses_ordered_index(self) -> None:
+        replace_provider_items(
+            "demo",
+            [item("a", "First"), item("b", "Second")],
+            path=self.db,
+        )
+        optimize_indexes(path=self.db)
+
+        with closing(sqlite3.connect(self.db)) as conn:
+            plan = " ".join(
+                str(row[3])
+                for row in conn.execute(
+                    "EXPLAIN QUERY PLAN SELECT id FROM items "
+                    "WHERE active = 1 ORDER BY indexed_at DESC, source_order ASC, id ASC LIMIT 40"
+                )
+            )
+
+        self.assertIn("idx_items_browse", plan)
+        self.assertNotIn("USE TEMP B-TREE", plan)
+
+    def test_normal_startup_does_not_build_large_optional_indexes(self) -> None:
+        initialize(path=self.db)
+
+        with closing(sqlite3.connect(self.db)) as conn:
+            names = {row[1] for row in conn.execute("PRAGMA index_list(items)")}
+
+        self.assertNotIn("idx_items_browse", names)
+        self.assertNotIn("idx_items_quality_active", names)
 
 
 if __name__ == "__main__":

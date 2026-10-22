@@ -4,10 +4,11 @@ import asyncio
 import re
 from collections import defaultdict
 
-from backend.index import count_items, indexed_providers, search_items
+from backend.index import indexed_providers, search_items
 from backend.models import SearchItem, SourceVariant
 from backend.providers import PROVIDERS
 from backend.providers.base import SearchProvider
+from backend.providers.demo import DemoProvider
 
 _space_re = re.compile(r"\s+")
 _punct_re = re.compile(r"[^\w\s]", re.UNICODE)
@@ -107,28 +108,28 @@ async def search_all(
     offset: int = 0,
     limit: int = 40,
 ) -> tuple[list[SearchItem], list[str], bool]:
-    indexed_names = indexed_providers() if count_items() > 0 else []
-    can_use_index = bool(indexed_names) and (
-        provider is None or provider in indexed_names
-    )
+    indexed_names = indexed_providers()
+    can_use_index = bool(indexed_names)
 
     if can_use_index:
-        target = offset + limit + 1
         indexed = search_items(
             query,
             provider=provider,
             quality=quality,
             min_duration=min_duration,
             max_duration=max_duration,
-            limit=max(target * 2, limit),
+            offset=offset,
+            limit=limit + 1,
         )
-        collapsed = _collapse(indexed, target)
-        page, has_more = _slice_page(collapsed, offset=offset, limit=limit)
+        page, has_more = indexed[:limit], len(indexed) > limit
 
         providers = indexed_names
         if provider:
             providers = [name for name in providers if name == provider]
         return page, providers, has_more
+
+    if not PROVIDERS or any(not isinstance(item, DemoProvider) for item in PROVIDERS):
+        return [], [], False
 
     return await _live_search(
         query,

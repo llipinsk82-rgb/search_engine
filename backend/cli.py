@@ -9,6 +9,7 @@ from backend.index import (
     count_items,
     deactivate_provider,
     initialize,
+    optimize_indexes,
     provider_counts,
     replace_provider_items,
 )
@@ -76,6 +77,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init")
+    subparsers.add_parser("optimize-indexes")
     subparsers.add_parser("providers")
     subparsers.add_parser("stats")
 
@@ -101,6 +103,11 @@ def main() -> None:
     if args.command == "init":
         initialize()
         print("index initialized")
+        return
+
+    if args.command == "optimize-indexes":
+        optimize_indexes()
+        print("search indexes optimized")
         return
 
     if args.command == "providers":
