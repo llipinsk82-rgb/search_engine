@@ -573,7 +573,6 @@ def test_instant_back_restore_uses_session_snapshot_before_network() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     assert 'const RETURN_SNAPSHOT_LIMIT = 120;' in app
     assert 'let renderedItems = [];' in app
-    assert 'items: renderedItems.slice(0, RETURN_SNAPSHOT_LIMIT)' in app
     assert 'function restoreBrowseSnapshot(saved)' in app
     boot = app[app.index("async function boot()"):app.index('if ("scrollRestoration" in window.history)')]
     assert 'const saved = readBrowsePosition();' in boot

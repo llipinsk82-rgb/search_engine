@@ -187,6 +187,10 @@ test("saving a deep browse position falls back to replay instead of truncating r
   context.saveBrowsePosition("local-10");
   assert.equal(saved.loadedCount, 200);
   assert.equal(saved.items.length, 0);
+  vm.runInContext("nextOffset = 80; renderedItems = renderedItems.slice(0, 80)", context);
+  context.saveBrowsePosition("local-10");
+  assert.equal(saved.loadedCount, 80);
+  assert.equal(saved.items.length, 80);
 });
 
 test("return navigation replays every previously loaded page even when target is on page one", async () => {
