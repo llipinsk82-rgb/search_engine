@@ -2,15 +2,80 @@
 
 > This block supersedes all older authoritative-state blocks below. Older content is retained as history only.
 
+## Latest CTO verification — 2026-10-07 04:47 CEST
+
+No new code change is required from this loop. Current production remains on build `761ac2100b96`; canonical branch is `feature/provider-registry-probe`.
+
+Fresh verified state:
+- canonical repo was clean at docs HEAD `225294f50b73` before this docs-only refresh;
+- `/api/health` PASS on build `761ac2100b96`, indexed items 1,329,394;
+- `search-engine.service`, sync timer and backfill timer active; latest sync/backfill service results are success / exit 0;
+- the `pussyspace` timeout + sync failure at 03:28-03:31 CEST occurred BEFORE the timeout-headroom deploy (`761ac21` deploy began ~04:34); it is not a post-fix regression;
+- post-fix full sync completed successfully: `pussyspace` fetched 100 items, `porndoe` fetched 70, service exit 0;
+- zero traceback/exception/HTTP 5xx/timeout/status=ERROR/failed matches were found after the completed `761ac21` deploy window;
+- recent deterministic preview cycles remain healthy: ~2.86-2.89k playable / 3,000 attempts, 0 failures; remote preview 9-10 / 10 playable, 0 failures;
+- stored previews: 111,831 / 1,329,394 active rows (8.41%); deterministic custom pool: 96,336 / 246,343 (39.11%);
+- fresh search smoke: `sis` ~96 ms, `step` ~468 ms, `amateur` ~1.70 s, `sis+step+perv` ~12 ms; strict `+ = AND` PASS and broad totals remain intentionally capped at 5000+;
+- production worker RSS ~89 MB; root filesystem ~38 GB free (60% used); DB ~1.2 GB; expected backends listening on 8775 production and 8776 isolated test only.
+
+CTO conclusion: current roadmap remains closed and production is healthy. Continue observation/normal maintenance; do not add code unless a new measured issue appears.
+
+---
+
+## Provider timeout headroom — DEPLOYED
+
+Current production build: `761ac2100b96`.
+Commit: `761ac2100b96` — `fix: add timeout headroom for slow sitemap providers`.
+
+Reason:
+- repeated but sparse sitemap read timeouts were causing whole `sync-all` service failures even after the existing single deferred retry; recent affected providers were `porndoe`, `xgroovy`, and `pussyspace`;
+- fresh measured probes showed `pussyspace` taking ~23.2 s with a configured 20 s per-request timeout and `porndoe` ~12.0 s with only 15 s headroom, while `xgroovy` was ~0.5 s and did not justify a timeout increase.
+
+Change:
+- `pussyspace` timeout: 20 -> 30 s;
+- `porndoe` timeout: 15 -> 25 s;
+- `xgroovy` remains 15 s;
+- global retry semantics are unchanged: one transient timeout is deferred to the end of the provider pass, a persistent second failure still preserves a non-zero monitoring signal.
+
+Verification:
+- targeted timeout/config tests: 4/4 PASS;
+- full suite: 430/430 PASS; compileall/JS/diff PASS;
+- repo-config real probe: xgroovy 0.52 s / 100 items, pussyspace 21.91 s / 100 items, porndoe 11.49 s / 70 items;
+- official deploy check PASS and deploy helper `DEPLOY_PASS build=761ac2100b96`;
+- active `/etc/search_engine-providers.json` verified as xgroovy=15, pussyspace=30, porndoe=25;
+- first complete production sync cycle under the deployed config finished with `Result=success` / `ExecMainStatus=0`; pussyspace fetched 100 items and porndoe fetched 70 items with no retry/error;
+- post-deploy `/api/health` PASS on `761ac2100b96`, all search/sync/backfill timers/services active, and zero new timeout/failure matches in the checked post-deploy window.
+
+---
+
+## Fresh CTO verification — current loop
+
+No new product or reliability issue was found, so no code/deploy change was made in this loop.
+
+Fresh verified state:
+- canonical branch `feature/provider-registry-probe` clean at `756da9b905cb` before this docs-only update;
+- production `/api/health` PASS on build `761ac2100b96`; indexed items 1,329,394 at the snapshot;
+- `search-engine.service`, sync timer and backfill timer active; latest sync and backfill results both `success`, `ExecMainStatus=0`;
+- zero matching traceback/exception/HTTP 5xx/timeout/failure lines in the checked 60-minute search/sync/backfill journal window;
+- recent deterministic preview cycles remained ~2.86-2.92k playable / 3,000 attempts with 0 failures; remote preview cycles remained 9-10 / 10 playable with 0 failures;
+- stored previews: 111,831 / 1,329,394 active rows (8.41%); deterministic custom pool: 96,336 / 246,343 (39.11%);
+- fresh search smoke: `sis` ~99 ms, `step` ~473 ms, `amateur` ~1.77 s, `sis+step+perv` ~12 ms; strict `+ = AND` remains PASS and broad counts remain intentionally capped at 5000+;
+- production worker RSS ~86 MB; root filesystem 60% used with ~38 GB free; DB ~1.2 GB;
+- only intentional search backends are listening: 8775 production and 8776 isolated test.
+
+CTO conclusion: roast roadmap remains closed and production is healthy. Continue observation/normal maintenance only; do not add code unless a new measured issue appears. CSS consolidation remains optional refactor-only work.
+
+---
+
 ## Pass 3 — PREMIUM v3 — DEPLOYED
 
 Owner visual gate: PASS via `/go`.
-Current production build: `01b864075144`. Frontend cache: v36.
+Current production build: `761ac2100b96`. Frontend cache: v36.
 Pass3 visual release base: `e47fbef9d552`.
 Pass3 visual code commit: `3791f8749d3c`.
 Pass3 cache commit: `b6845ab348f0`.
 Pass3 release/handoff commit: `e47fbef9d552`.
-Working branch: `feature/search-premium-pass3`.
+Working branch: `feature/provider-registry-probe`.
 Canonical base branch: `feature/provider-registry-probe` is fast-forward compatible and is synchronized to this final handoff head after the release closeout.
 
 Deployed visual behavior:
