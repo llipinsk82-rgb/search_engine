@@ -1356,7 +1356,7 @@ setupAutoLoad();
 boot();
 
 if ("serviceWorker" in navigator) {
-  const SW_RELOAD_GUARD = "search.swReload.v37";
+  const SW_RELOAD_GUARD = "search.swReload.v38";
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     try {
@@ -1374,7 +1374,7 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=37", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=38", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

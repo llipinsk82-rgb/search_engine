@@ -22,7 +22,7 @@
 - A stale Nginx worker briefly serving the old route after reload: wait until repeated health reads show the test build.
 - A test worker that grows back to multi-gigabyte private memory: monitor cgroup memory and swap after realistic searches.
 - SQLite migration on the test database: take a consistent backup before the candidate service starts.
-- Static assets cached by the browser: verify cache version 37 and service-worker behavior on the test origin.
+- Static assets cached by the browser: verify the release cache version and service-worker behavior on the test origin.
 - Upstream thumbnails returning 404/410: verify graceful fallback, not perfect upstream availability.
 
 ---
@@ -53,7 +53,7 @@
 
 **Files:** Test static root only, with previous copy retained.
 
-**Interfaces:** `test.blackserv.eu` serves candidate frontend v37 and isolated API 8776.
+**Interfaces:** `test.blackserv.eu` serves the candidate frontend and isolated API 8776.
 
 - [x] **Step 1: Back up the current test static root and install candidate assets.** Repeat asset update after review fixes.
 - [x] **Step 2: Verify health, page assets, search syntax, deep pagination, UI states, and image fallback against staging.** Repeat after review fixes.
