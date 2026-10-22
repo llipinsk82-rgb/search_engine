@@ -30,10 +30,22 @@ class SearchPagingTests(unittest.TestCase):
             self.assertEqual(kwargs["offset"], 100)
             return rows[100:100 + kwargs["limit"]]
         with patch("backend.search.search_items", side_effect=page_from_index):
-            with patch("backend.search.count_items", return_value=150), patch("backend.search.indexed_providers", return_value=["sample"]):
+            with patch("backend.search.indexed_providers", return_value=["sample"]):
                 page, _, has_more = asyncio.run(search_all("", offset=100, limit=20))
         self.assertEqual(len(page), 20)
         self.assertTrue(has_more)
+
+    def test_missing_indexed_provider_does_not_start_live_crawl(self) -> None:
+        with patch("backend.search.indexed_providers", return_value=["indexed"]), patch(
+            "backend.search.search_items", return_value=[]
+        ), patch(
+            "backend.search._live_search", return_value=([item("unexpected", "Live")], ["other"], False)
+        ):
+            page, providers, has_more = asyncio.run(search_all("word", provider="other"))
+
+        self.assertEqual(page, [])
+        self.assertEqual(providers, [])
+        self.assertFalse(has_more)
     def test_slice_page_reports_more_results(self) -> None:
         rows = [item(str(index), f"Item {index}") for index in range(5)]
 

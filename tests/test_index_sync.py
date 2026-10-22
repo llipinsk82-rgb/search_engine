@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from backend.index import (
@@ -129,6 +131,25 @@ class ProviderSnapshotTests(unittest.TestCase):
                 [item("a", "Alpha", provider="other")],
                 path=self.db,
             )
+
+    def test_browse_query_uses_ordered_index(self) -> None:
+        replace_provider_items(
+            "demo",
+            [item("a", "First"), item("b", "Second")],
+            path=self.db,
+        )
+
+        with closing(sqlite3.connect(self.db)) as conn:
+            plan = " ".join(
+                str(row[3])
+                for row in conn.execute(
+                    "EXPLAIN QUERY PLAN SELECT id FROM items "
+                    "WHERE active = 1 ORDER BY indexed_at DESC, source_order ASC, id ASC LIMIT 40"
+                )
+            )
+
+        self.assertIn("idx_items_browse", plan)
+        self.assertNotIn("USE TEMP B-TREE", plan)
 
 
 if __name__ == "__main__":

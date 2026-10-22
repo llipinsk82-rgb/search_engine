@@ -4,7 +4,7 @@ import asyncio
 import re
 from collections import defaultdict
 
-from backend.index import count_items, indexed_providers, search_items
+from backend.index import indexed_providers, search_items
 from backend.models import SearchItem, SourceVariant
 from backend.providers import PROVIDERS
 from backend.providers.base import SearchProvider
@@ -107,10 +107,8 @@ async def search_all(
     offset: int = 0,
     limit: int = 40,
 ) -> tuple[list[SearchItem], list[str], bool]:
-    indexed_names = indexed_providers() if count_items() > 0 else []
-    can_use_index = bool(indexed_names) and (
-        provider is None or provider in indexed_names
-    )
+    indexed_names = indexed_providers()
+    can_use_index = bool(indexed_names)
 
     if can_use_index:
         indexed = search_items(

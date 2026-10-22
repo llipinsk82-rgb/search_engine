@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, HttpUrl
+import re
+from urllib.parse import unquote, urlsplit
+
+from pydantic import BaseModel, Field, HttpUrl, field_validator
+
+
+_VIDEO_PATH = re.compile(r"\.(?:mp4|m3u8|webm|mov|avi|wmv|flv)(?:/|$)", re.IGNORECASE)
 
 
 class SearchItem(BaseModel):
@@ -14,6 +20,13 @@ class SearchItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     score: float = 0.0
     alternate_sources: list["SourceVariant"] = Field(default_factory=list)
+
+    @field_validator("thumbnail", mode="before")
+    @classmethod
+    def reject_video_as_thumbnail(cls, value: object) -> object:
+        if value and _VIDEO_PATH.search(unquote(urlsplit(str(value)).path)):
+            return None
+        return value
 
 
 class SourceVariant(BaseModel):

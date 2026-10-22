@@ -43,6 +43,21 @@ class SearchRankingTests(unittest.TestCase):
         self.assertEqual([row.id for row in rows[:2]], ["title", "tag"])
         self.assertGreater(rows[0].score, rows[1].score)
 
+    def test_space_and_plus_queries_require_every_word(self) -> None:
+        replace_provider_items(
+            "rank",
+            [
+                make_item("all-title", "sis step family", []),
+                make_item("split", "sis step", ["family"]),
+                make_item("missing", "sis family", []),
+            ],
+            path=self.db,
+        )
+
+        expected = {"all-title", "split"}
+        self.assertEqual({row.id for row in search_items("sis step family", path=self.db)}, expected)
+        self.assertEqual({row.id for row in search_items("sis+step+family", path=self.db)}, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

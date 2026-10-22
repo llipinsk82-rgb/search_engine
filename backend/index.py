@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -9,9 +8,8 @@ from pathlib import Path
 from typing import Iterator
 
 from backend.models import SearchItem
+from backend.query import query_tokens
 from backend.settings import DB_PATH
-
-_token_re = re.compile(r"\w+", re.UNICODE)
 
 
 @dataclass(frozen=True)
@@ -86,6 +84,14 @@ def initialize(path: Path = DB_PATH) -> None:
                     raise
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_items_source_order ON items(source_order)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_browse "
+            "ON items(active, indexed_at DESC, source_order ASC, id ASC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_items_provider_browse "
+            "ON items(provider, active, indexed_at DESC, source_order ASC, id ASC)"
         )
 
 
@@ -328,7 +334,7 @@ def search_items(
     rank_select = "0.0 AS fts_rank"
     order = "i.indexed_at DESC, i.source_order ASC, i.id ASC"
 
-    tokens = _token_re.findall(query.lower())
+    tokens = query_tokens(query)
     if tokens:
         fts_query = " ".join(f'"{token}"' for token in tokens)
         joins = "JOIN items_fts ON items_fts.id = i.id"
