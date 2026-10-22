@@ -113,17 +113,16 @@ async def search_all(
     )
 
     if can_use_index:
-        target = offset + limit + 1
         indexed = search_items(
             query,
             provider=provider,
             quality=quality,
             min_duration=min_duration,
             max_duration=max_duration,
-            limit=max(target * 2, limit),
+            offset=offset,
+            limit=limit + 1,
         )
-        collapsed = _collapse(indexed, target)
-        page, has_more = _slice_page(collapsed, offset=offset, limit=limit)
+        page, has_more = indexed[:limit], len(indexed) > limit
 
         providers = indexed_names
         if provider:

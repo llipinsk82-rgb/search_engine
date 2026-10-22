@@ -77,10 +77,10 @@ Search parameters:
 - `quality`
 - `min_duration`
 - `max_duration`
-- `offset` (0–5000)
+- `offset` (0 or greater)
 - `limit` (1–100)
 
-The response includes `offset`, `limit` and `has_more`. The PWA uses these fields for a dedupe-aware **Show more** flow.
+The response includes `offset`, `limit` and `has_more`. The PWA uses these fields for a paged **Show more** flow. Indexed results are ordered deterministically and fetched directly by page; individual source records remain visible.
 
 The PWA uses `POST /api/search` and stores its restorable UI state in the URL fragment (`#...`), not the server-visible query string. API responses are marked `no-store`. The supplied Nginx and systemd examples disable Nginx/Uvicorn request access logs so search terms are not retained in ordinary request logs.
 

@@ -11,6 +11,7 @@ const template = document.querySelector("#card-template");
 
 const PAGE_SIZE = 40;
 let nextOffset = 0;
+let activeRequest = null;
 
 function durationText(seconds) {
   if (!Number.isFinite(seconds)) return "";
@@ -121,7 +122,7 @@ function render(items, { append = false } = {}) {
   if (!items.length && !append) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "No results";
+    empty.textContent = "No matches yet. Try different words or broaden your filters.";
     resultsEl.append(empty);
     return;
   }
@@ -132,6 +133,9 @@ function render(items, { append = false } = {}) {
 }
 
 async function search({ persist = true, append = false } = {}) {
+  if (activeRequest) activeRequest.abort();
+  const controller = new AbortController();
+  activeRequest = controller;
   const stateParams = buildSearchParams();
   if (persist) persistState(stateParams);
 
@@ -153,9 +157,10 @@ async function search({ persist = true, append = false } = {}) {
   if (!append) {
     nextOffset = 0;
     moreBtn.hidden = true;
+    resultsEl.setAttribute("aria-busy", "true");
   }
   moreBtn.disabled = true;
-  statusEl.textContent = append ? "Loading more…" : "Searching…";
+  statusEl.textContent = append ? "Loading more results…" : "Searching across sources…";
 
   try {
     const response = await fetch("/api/search", {
@@ -165,6 +170,7 @@ async function search({ persist = true, append = false } = {}) {
         "Cache-Control": "no-store",
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.detail || "Search failed");
@@ -176,13 +182,18 @@ async function search({ persist = true, append = false } = {}) {
     moreBtn.hidden = !data.has_more;
     moreBtn.disabled = false;
 
-    statusEl.textContent =
-      `${nextOffset} shown · ${data.providers.join(", ") || "no provider"}`;
+    statusEl.textContent = `${nextOffset} results shown`;
   } catch (error) {
+    if (error.name === "AbortError") return;
     if (!append) resultsEl.replaceChildren();
-    moreBtn.hidden = true;
+    moreBtn.hidden = !append;
     moreBtn.disabled = false;
-    statusEl.textContent = error.message || "Search failed";
+    statusEl.textContent = `Search failed: ${error.message || "try again"}`;
+  } finally {
+    if (activeRequest === controller) {
+      activeRequest = null;
+      resultsEl.removeAttribute("aria-busy");
+    }
   }
 }
 
@@ -200,6 +211,7 @@ moreBtn.addEventListener("click", () => {
 });
 
 clearBtn.addEventListener("click", () => {
+  if (activeRequest) activeRequest.abort();
   queryInput.value = "";
   providerSelect.value = "";
   qualitySelect.value = "";
@@ -207,7 +219,7 @@ clearBtn.addEventListener("click", () => {
   resultsEl.replaceChildren();
   nextOffset = 0;
   moreBtn.hidden = true;
-  statusEl.textContent = "Ready";
+  statusEl.textContent = "Ready to search";
   persistState(new URLSearchParams());
   queryInput.focus();
 });

@@ -3,27 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111111">
+  <meta name="theme-color" content="#10131b">
   <meta name="robots" content="noindex,nofollow">
-  <title>Search</title>
+  <title>Search — find your scene</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">SEARCH</div>
-    <span class="badge">DEV</span>
+    <a class="brand" href="/" aria-label="Search — home"><span class="brand-mark">S</span><span>SEARCH<span class="brand-dot">.</span></span></a>
+    <span class="topbar-note">THE VIDEO INDEX</span>
   </header>
 
   <main class="shell">
     <section class="hero">
-      <h1>Find content. Skip the noise.</h1>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="signal"></span> YOUR NEXT FIND STARTS HERE</p>
+        <h1>Find the scene.<br><em>Lose the noise.</em></h1>
+        <p class="intro">Search across sources in one place. Every word you enter matters.</p>
+      </div>
       <form id="search-form" class="searchbox">
-        <input id="q" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Search…" autofocus>
-        <button type="submit">Search</button>
+        <label class="sr-only" for="q">Search videos</label>
+        <input id="q" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Search titles, tags, anything…" autofocus>
+        <button type="submit">Search <span aria-hidden="true">↗</span></button>
       </form>
 
-      <div class="filters">
+      <div class="filters" aria-label="Search filters">
         <select id="provider" aria-label="Provider"><option value="">All sources</option></select>
         <select id="quality" aria-label="Quality">
           <option value="">Any quality</option>
@@ -41,13 +46,13 @@
     </section>
 
     <section class="statusbar">
-      <span id="status">Ready</span>
-      <button id="clear" class="ghost" type="button">Clear</button>
+      <div><span class="results-label">RESULTS</span><span id="status" role="status" aria-live="polite">Ready to search</span></div>
+      <button id="clear" class="ghost" type="button">Clear filters <span aria-hidden="true">×</span></button>
     </section>
 
     <section id="results" class="grid" aria-live="polite"></section>
     <div class="more-row">
-      <button id="more" class="more" type="button" hidden>Show more</button>
+      <button id="more" class="more" type="button" hidden>Show more results <span aria-hidden="true">↓</span></button>
     </div>
   </main>
 
@@ -55,7 +60,7 @@
     <article class="card">
       <a class="thumb">
         <img class="preview" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" hidden>
-        <div class="placeholder">Preview</div>
+        <div class="placeholder"><span class="placeholder-glyph" aria-hidden="true">▶</span><span>Preview unavailable</span></div>
         <span class="duration"></span>
       </a>
       <div class="meta">

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import unittest
-
 from backend.models import SearchItem
-from backend.search import _collapse, _slice_page
+from backend.search import _collapse, _slice_page, search_all
+from backend.models import SearchRequest
+from unittest.mock import patch
+import asyncio
 
 
 def item(item_id: str, title: str, duration: int = 60) -> SearchItem:
@@ -19,6 +21,19 @@ def item(item_id: str, title: str, duration: int = 60) -> SearchItem:
 
 
 class SearchPagingTests(unittest.TestCase):
+    def test_large_offset_is_accepted(self) -> None:
+        self.assertEqual(SearchRequest(offset=5001).offset, 5001)
+
+    def test_indexed_page_is_not_limited_by_candidate_window(self) -> None:
+        rows = [item(str(index), f"Unique item {index}") for index in range(150)]
+        def page_from_index(*args, **kwargs):
+            self.assertEqual(kwargs["offset"], 100)
+            return rows[100:100 + kwargs["limit"]]
+        with patch("backend.search.search_items", side_effect=page_from_index):
+            with patch("backend.search.count_items", return_value=150), patch("backend.search.indexed_providers", return_value=["sample"]):
+                page, _, has_more = asyncio.run(search_all("", offset=100, limit=20))
+        self.assertEqual(len(page), 20)
+        self.assertTrue(has_more)
     def test_slice_page_reports_more_results(self) -> None:
         rows = [item(str(index), f"Item {index}") for index in range(5)]
 

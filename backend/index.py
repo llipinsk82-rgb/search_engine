@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 from backend.models import SearchItem
 from backend.settings import DB_PATH
@@ -21,11 +23,16 @@ class ProviderSyncStats:
     deactivated: int
 
 
-def _connect(path: Path = DB_PATH) -> sqlite3.Connection:
+@contextmanager
+def _connect(path: Path = DB_PATH) -> Iterator[sqlite3.Connection]:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 
 def initialize(path: Path = DB_PATH) -> None:
@@ -309,6 +316,7 @@ def search_items(
     quality: str | None = None,
     min_duration: int | None = None,
     max_duration: int | None = None,
+    offset: int = 0,
     limit: int = 40,
     path: Path = DB_PATH,
 ) -> list[SearchItem]:
@@ -318,7 +326,7 @@ def search_items(
     params: list[object] = []
     joins = ""
     rank_select = "0.0 AS fts_rank"
-    order = "i.indexed_at DESC, i.source_order ASC"
+    order = "i.indexed_at DESC, i.source_order ASC, i.id ASC"
 
     tokens = _token_re.findall(query.lower())
     if tokens:
@@ -327,7 +335,7 @@ def search_items(
         where.append("items_fts MATCH ?")
         params.append(fts_query)
         rank_select = "bm25(items_fts, 0.0, 8.0, 2.0, 0.0) AS fts_rank"
-        order = "fts_rank ASC, i.indexed_at DESC, i.source_order ASC"
+        order = "fts_rank ASC, i.indexed_at DESC, i.source_order ASC, i.id ASC"
 
     if provider:
         where.append("i.provider = ?")
@@ -351,9 +359,9 @@ def search_items(
         {joins}
         WHERE {' AND '.join(where)}
         ORDER BY {order}
-        LIMIT ?
+        LIMIT ? OFFSET ?
     """
-    params.append(limit * 3)
+    params.extend([limit, offset])
 
     with _connect(path) as conn:
         rows = conn.execute(sql, params).fetchall()

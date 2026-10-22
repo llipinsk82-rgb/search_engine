@@ -99,7 +99,7 @@ async def search_get(
     quality: str | None = None,
     min_duration: int | None = Query(default=None, ge=0),
     max_duration: int | None = Query(default=None, ge=0),
-    offset: int = Query(default=0, ge=0, le=5000),
+    offset: int = Query(default=0, ge=0),
     limit: int = Query(default=40, ge=1, le=100),
 ) -> SearchResponse:
     return await _search_response(

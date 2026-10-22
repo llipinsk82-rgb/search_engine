@@ -1,4 +1,4 @@
-const CACHE = "search-shell-v4";
+const CACHE = "search-shell-v5";
 const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
