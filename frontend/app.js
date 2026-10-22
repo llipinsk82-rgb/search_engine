@@ -1338,7 +1338,7 @@ window.addEventListener("pageshow", (event) => {
   if (!saved) return;
   window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
     window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });
-    try { sessionStorage.removeItem(RETURN_POSITION_KEY); } catch (_) {}
+    // Keep the marker until boot can consume it if a service-worker update reloads us.
   }));
 });
 

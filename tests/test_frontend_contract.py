@@ -652,7 +652,7 @@ def test_bfcache_return_does_not_run_network_restore() -> None:
     assert "search(" not in pageshow
     assert "readBrowsePosition()" in pageshow
     assert 'window.scrollTo({ top: saved.scrollY, left: 0, behavior: "auto" });' in pageshow
-    assert "sessionStorage.removeItem(RETURN_POSITION_KEY)" in pageshow
+    assert "sessionStorage.removeItem(RETURN_POSITION_KEY)" not in pageshow
 
 
 def test_snapshot_restore_refuses_partial_snapshot_missing_clicked_item() -> None:
