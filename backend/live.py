@@ -11,7 +11,7 @@ import re
 import threading
 import time
 from typing import Protocol
-from urllib.parse import quote, quote_plus, urlencode, urljoin, urlparse
+from urllib.parse import parse_qs, quote, quote_plus, urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 try:
@@ -1517,6 +1517,21 @@ class _HttpLiveAdapter:
     async def extract_preview(self, item: SearchItem) -> str | None:
         if not self.preview_resolution:
             return None
+        rule = PREVIEW_RULES.get(self.name)
+        existing = str(item.preview_url or "").strip()
+        if (
+            existing
+            and rule is not None
+            and rule.storage_mode == "ephemeral"
+            and media_url_allowed(self.name, "preview", existing)
+        ):
+            query = parse_qs(urlparse(existing).query)
+            try:
+                valid_to = float((query.get("validto") or [""])[0])
+            except (TypeError, ValueError):
+                valid_to = 0.0
+            if valid_to > time.time() + 30:
+                return existing
         result = await self.search(item.title, page=1, limit=40)
         candidate = select_exact_live_preview(result.items, str(item.url))
         if not candidate or not media_url_allowed(self.name, "preview", candidate):

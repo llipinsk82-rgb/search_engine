@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
+from unittest.mock import AsyncMock
 
 from backend.live import LIVE_ADAPTERS
+from backend.models import SearchItem
 from backend.providers.sitemap import SitemapProvider
 
 
@@ -82,6 +85,49 @@ def test_resolution_capability_includes_ephemeral_rules():
     assert live["tube8"].preview_enrichment is False
     assert live["bigfuck"].preview_resolution is True
     assert live["bigfuck"].preview_enrichment is True
+
+
+def test_ephemeral_live_preview_reuses_unexpired_item_url_without_second_search():
+    tube8 = next(adapter for adapter in LIVE_ADAPTERS if adapter.name == "tube8")
+    item = SearchItem(
+        id="tube8-fresh",
+        provider="tube8",
+        title="Fresh Tube8 result",
+        url="https://www.tube8.com/porn-video/123/",
+        thumbnail="https://ei-ph.t8cdn.com/videos/1.jpg",
+        preview_url="https://ev-ph.t8cdn.com/videos/1.mp4?validto=4102444800",
+        tags=[],
+    )
+    original_search = tube8.search
+    tube8.search = AsyncMock(side_effect=AssertionError("fresh preview should not search again"))
+    try:
+        resolved = asyncio.run(tube8.extract_preview(item))
+    finally:
+        tube8.search = original_search
+    assert resolved == str(item.preview_url)
+
+
+def test_ephemeral_live_preview_refreshes_expired_item_url():
+    tube8 = next(adapter for adapter in LIVE_ADAPTERS if adapter.name == "tube8")
+    item = SearchItem(
+        id="tube8-expired",
+        provider="tube8",
+        title="Expired Tube8 result",
+        url="https://www.tube8.com/porn-video/123/",
+        thumbnail="https://ei-ph.t8cdn.com/videos/1.jpg",
+        preview_url="https://ev-ph.t8cdn.com/videos/1.mp4?validto=1",
+        tags=[],
+    )
+    fresh = "https://ev-ph.t8cdn.com/videos/2.mp4?validto=4102444800"
+    original_search = tube8.search
+    tube8.search = AsyncMock(return_value=type("Result", (), {"items": [
+        type("Candidate", (), {"url": item.url, "preview_url": fresh})()
+    ]})())
+    try:
+        resolved = asyncio.run(tube8.extract_preview(item))
+    finally:
+        tube8.search = original_search
+    assert resolved == fresh
 
 
 def test_custom_rules_enable_sitemap_provider_not_same_named_live_adapter():
