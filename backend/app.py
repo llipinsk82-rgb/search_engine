@@ -24,6 +24,7 @@ from backend.index import (
 from backend.live import LIVE_ADAPTERS, cache_live_provider_results, refresh_live_search, sort_live_items
 from backend.media_policy import media_policy_rows, media_url_allowed, provider_media_policy
 from backend.models import (
+    MAX_SEARCH_OFFSET,
     LiveProviderStatus,
     LiveRefreshRequest,
     LiveRefreshResponse,
@@ -529,7 +530,7 @@ async def search_get(
     min_duration: int | None = Query(default=None, ge=0),
     max_duration: int | None = Query(default=None, ge=0),
     sort: SortMode = Query(default="relevance"),
-    offset: int = Query(default=0, ge=0, le=5000),
+    offset: int = Query(default=0, ge=0, le=MAX_SEARCH_OFFSET),
     limit: int = Query(default=40, ge=1, le=100),
 ) -> SearchResponse:
     return await _search_response(

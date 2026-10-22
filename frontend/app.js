@@ -8,6 +8,7 @@ const qualitySelect = document.querySelector("#quality");
 const durationSelect = document.querySelector("#duration");
 const ageCheckSelect = document.querySelector("#age-check");
 const resultsEl = document.querySelector("#results");
+const welcomeEl = document.querySelector("#welcome");
 const statusEl = document.querySelector("#status");
 const liveDetailEl = document.querySelector("#live-detail");
 const clearBtn = document.querySelector("#clear");
@@ -34,6 +35,11 @@ let livePage = 0;
 let liveHasMore = false;
 let liveStatusText = "";
 let localHasMore = false;
+let localOffset = 0;
+let localBuffer = [];
+let localSourceHasMore = false;
+let liveBuffer = [];
+let liveSourceHasMore = false;
 let prefetchedPage = null;
 let prefetchPromise = null;
 let activeMotionPreview = null;
@@ -726,7 +732,8 @@ function upstreamHasMore(live, requestedLimit) {
 
 function applyLiveState(live, page, requestedLimit = 24) {
   livePage = page;
-  liveHasMore = upstreamHasMore(live, requestedLimit);
+  liveSourceHasMore = upstreamHasMore(live, requestedLimit);
+  updatePagingFlags();
   const summary = liveSummary(live.providers);
   const failures = liveFailureCount(live.providers);
   const unavailable = failures
@@ -734,6 +741,11 @@ function applyLiveState(live, page, requestedLimit = 24) {
     : "";
   liveStatusText = [summary, unavailable].filter(Boolean).join(" · ");
   setLiveDetail(liveStatusText);
+}
+
+function updatePagingFlags() {
+  localHasMore = localBuffer.length > 0 || localSourceHasMore;
+  liveHasMore = liveBuffer.length > 0 || liveSourceHasMore;
 }
 
 async function requestLive(payload, generation, page, { commit = true } = {}) {
@@ -759,8 +771,7 @@ async function requestLive(payload, generation, page, { commit = true } = {}) {
     },
     body: JSON.stringify(livePayload),
   });
-  const live = await response.json();
-  if (!response.ok) throw new Error(live.detail || "Live refresh failed");
+  const live = await apiJson(response);
   if (generation !== searchGeneration) return null;
 
   if (commit) applyLiveState(live, page, requestedLimit);
@@ -823,11 +834,32 @@ function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE) {
   return sortVisibleItems(unique, sort).slice(0, limit);
 }
 
-async function fetchLocal(payload, { limit = PAGE_SIZE, excludeSeen = false } = {}) {
-  const body = { ...payload, offset: 0, limit };
-  if (excludeSeen && seenIds.size) {
-    body.exclude_ids = [...seenIds].slice(-800);
+function partitionMergedPage(liveItems, localItems, sort, limit = PAGE_SIZE) {
+  const items = mergeLiveAndLocal(liveItems, localItems, sort, limit);
+  const selectedIds = new Set(items.map((item) => item.id));
+  return {
+    items,
+    liveRemaining: liveItems.filter((item) => item?.id && !selectedIds.has(item.id)),
+    localRemaining: localItems.filter((item) => item?.id && !selectedIds.has(item.id)),
+  };
+}
+
+async function apiJson(response) {
+  let data;
+  try {
+    data = await response.json();
+  } catch (_) {
+    throw new Error("Search temporarily unavailable. Try again.");
   }
+  if (!response.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : "";
+    throw new Error(detail || "Search temporarily unavailable. Try again.");
+  }
+  return data;
+}
+
+async function fetchLocal(payload, { offset = 0, limit = PAGE_SIZE } = {}) {
+  const body = { ...payload, offset, limit };
   const response = await fetch("/api/search", {
     method: "POST",
     headers: {
@@ -836,31 +868,42 @@ async function fetchLocal(payload, { limit = PAGE_SIZE, excludeSeen = false } = 
     },
     body: JSON.stringify(body),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || "Search failed");
-  return data;
+  return apiJson(response);
 }
 
 async function prepareNextPage(payload, generation) {
   if (generation !== searchGeneration || !(localHasMore || liveHasMore)) return null;
 
-  const nextLivePage = livePage + 1;
-  const livePromise = payload.q && liveHasMore
+  const pendingLocal = localBuffer.filter((item) => item?.id && !seenIds.has(item.id));
+  const pendingLive = liveBuffer.filter((item) => item?.id && !seenIds.has(item.id));
+  const fetchMoreLocal = localSourceHasMore && pendingLocal.length < PAGE_SIZE / 2;
+  const fetchMoreLive = Boolean(payload.q) && liveSourceHasMore && pendingLive.length < PAGE_SIZE / 2;
+  const nextLivePage = livePage + (fetchMoreLive ? 1 : 0);
+  const livePromise = fetchMoreLive
     ? requestLive(payload, generation, nextLivePage, { commit: false }).catch(() => null)
     : Promise.resolve(null);
-  const localPromise = localHasMore
-    ? fetchLocal(payload, { limit: PAGE_SIZE, excludeSeen: true })
-    : Promise.resolve({ items: [], has_more: false });
+  const localPromise = fetchMoreLocal
+    ? fetchLocal(payload, { offset: localOffset, limit: PAGE_SIZE })
+    : Promise.resolve({ items: [], has_more: localSourceHasMore });
 
   const [local, live] = await Promise.all([localPromise, livePromise]);
   if (generation !== searchGeneration) return null;
 
-  const liveItems = (live?.items || []).filter((item) => item?.id && !seenIds.has(item.id));
-  const localItems = (local.items || []).filter((item) => item?.id && !seenIds.has(item.id));
+  const liveItems = [...pendingLive, ...(live?.items || [])]
+    .filter((item) => item?.id && !seenIds.has(item.id));
+  const localItems = [...pendingLocal, ...(local.items || [])]
+    .filter((item) => item?.id && !seenIds.has(item.id));
+  const page = partitionMergedPage(liveItems, localItems, payload.sort || "relevance");
+  const nextLocalSourceHasMore = fetchMoreLocal ? Boolean(local.has_more) : localSourceHasMore;
+  const nextLiveSourceHasMore = live ? upstreamHasMore(live, 24) : liveSourceHasMore;
 
   return {
-    items: mergeLiveAndLocal(liveItems, localItems, payload.sort || "relevance", PAGE_SIZE),
-    localHasMore: Boolean(local.has_more),
+    items: page.items,
+    localBuffer: page.localRemaining,
+    liveBuffer: page.liveRemaining,
+    localOffset: localOffset + (fetchMoreLocal ? (local.items || []).length : 0),
+    localSourceHasMore: nextLocalSourceHasMore,
+    liveSourceHasMore: nextLiveSourceHasMore,
     live,
     livePage: nextLivePage,
     requestedLimit: 24,
@@ -890,12 +933,14 @@ function startPrefetch(payload, generation) {
 
 async function refreshLive(payload, generation, localData) {
   try {
-    const live = await requestLive(payload, generation, 1);
+    const live = await requestLive(payload, generation, 1, { commit: false });
     if (!live || generation !== searchGeneration) return;
 
-    const merged = mergeLiveAndLocal(live.items || [], localData.items || [], payload.sort || "relevance");
-    render(merged);
-    localHasMore = Boolean(localData.has_more);
+    const page = partitionMergedPage(live.items || [], localData.items || [], payload.sort || "relevance");
+    render(page.items);
+    localBuffer = page.localRemaining;
+    liveBuffer = page.liveRemaining;
+    applyLiveState(live, 1);
 
     moreBtn.hidden = !(localHasMore || liveHasMore);
     moreBtn.disabled = false;
@@ -962,7 +1007,12 @@ async function loadMore() {
     if (page.live) {
       applyLiveState(page.live, page.livePage, page.requestedLimit);
     }
-    localHasMore = page.localHasMore;
+    localOffset = page.localOffset;
+    localBuffer = page.localBuffer;
+    liveBuffer = page.liveBuffer;
+    localSourceHasMore = page.localSourceHasMore;
+    liveSourceHasMore = page.liveSourceHasMore;
+    updatePagingFlags();
 
     clearSkeletons();
     render(page.items || [], { append: true });
@@ -985,6 +1035,7 @@ async function loadMore() {
 async function search({ persist = true, append = false, resetScroll = false } = {}) {
   if (append) return loadMore();
   if (resetScroll) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  welcomeEl.hidden = true;
 
   const generation = ++searchGeneration;
   const stateParams = buildSearchParams();
@@ -1006,6 +1057,11 @@ async function search({ persist = true, append = false, resetScroll = false } = 
   liveStatusText = "";
   setLiveDetail("");
   localHasMore = false;
+  localOffset = 0;
+  localBuffer = [];
+  localSourceHasMore = false;
+  liveBuffer = [];
+  liveSourceHasMore = false;
   prefetchedPage = null;
   prefetchPromise = null;
   moreBtn.hidden = true;
@@ -1019,7 +1075,9 @@ async function search({ persist = true, append = false, resetScroll = false } = 
     clearSkeletons();
     render(data.items || []);
     if (!seenIds.size) renderEmptyState();
-    localHasMore = Boolean(data.has_more);
+    localOffset = (data.items || []).length;
+    localSourceHasMore = Boolean(data.has_more);
+    updatePagingFlags();
 
     const total = Number.isFinite(data.total) ? data.total : nextOffset;
     const shouldRefreshLive = Boolean(payload.q);
@@ -1043,6 +1101,11 @@ async function search({ persist = true, append = false, resetScroll = false } = 
     clearSkeletons();
     seenIds = new Set();
     nextOffset = 0;
+    localOffset = 0;
+    localBuffer = [];
+    localSourceHasMore = false;
+    liveBuffer = [];
+    liveSourceHasMore = false;
     moreBtn.hidden = true;
     moreBtn.disabled = false;
     renderErrorState(error.message || "Search failed");
@@ -1068,7 +1131,12 @@ function saveBrowsePosition(itemId) {
       duration: durationSelect.value,
       ageCheck: ageCheckSelect.value,
       localHasMore,
+      localOffset,
+      localBuffer,
+      localSourceHasMore,
       liveHasMore,
+      liveBuffer,
+      liveSourceHasMore,
       livePage,
       liveStatusText,
       primaryStatus: statusEl.textContent,
@@ -1098,6 +1166,7 @@ function readBrowsePosition() {
 function restoreBrowseSnapshot(saved) {
   if (!saved?.items?.length) return false;
   if (!saved.items.some((item) => item.id === saved.itemId)) return false;
+  welcomeEl.hidden = true;
 
   queryInput.value = String(saved.query || "");
   sortSelect.value = [...sortSelect.options].some((option) => option.value === saved.sort)
@@ -1109,8 +1178,18 @@ function restoreBrowseSnapshot(saved) {
   ageCheckSelect.value = String(saved.ageCheck || "");
 
   render(saved.items);
-  localHasMore = Boolean(saved.localHasMore);
-  liveHasMore = Boolean(saved.liveHasMore);
+  localOffset = Number.isFinite(Number(saved.localOffset))
+    ? Math.max(0, Number(saved.localOffset))
+    : nextOffset;
+  localBuffer = Array.isArray(saved.localBuffer)
+    ? saved.localBuffer.filter((item) => item?.id).slice(0, 1000)
+    : [];
+  liveBuffer = Array.isArray(saved.liveBuffer)
+    ? saved.liveBuffer.filter((item) => item?.id).slice(0, 1000)
+    : [];
+  localSourceHasMore = Boolean(saved.localSourceHasMore ?? saved.localHasMore);
+  liveSourceHasMore = Boolean(saved.liveSourceHasMore ?? saved.liveHasMore);
+  updatePagingFlags();
   livePage = Number.isFinite(Number(saved.livePage)) ? Number(saved.livePage) : 0;
   liveStatusText = String(saved.liveStatusText || "");
   moreBtn.hidden = !(localHasMore || liveHasMore);
@@ -1209,11 +1288,17 @@ clearBtn.addEventListener("click", () => {
   ageCheckSelect.value = "";
   updateFilterCount();
   resultsEl.replaceChildren();
+  welcomeEl.hidden = false;
   seenIds = new Set();
   renderedItems = [];
   nextOffset = 0;
+  localOffset = 0;
+  localBuffer = [];
+  localSourceHasMore = false;
   livePage = 0;
   liveHasMore = false;
+  liveBuffer = [];
+  liveSourceHasMore = false;
   liveStatusText = "";
   setLiveDetail("");
   localHasMore = false;
@@ -1223,6 +1308,13 @@ clearBtn.addEventListener("click", () => {
   setPrimaryStatus("Ready");
   persistState(new URLSearchParams());
   queryInput.focus();
+});
+
+welcomeEl.addEventListener("click", (event) => {
+  const suggestion = event.target.closest("[data-suggested-query]");
+  if (!suggestion) return;
+  queryInput.value = suggestion.dataset.suggestedQuery || "";
+  search({ resetScroll: true });
 });
 
 async function boot() {
@@ -1264,7 +1356,7 @@ setupAutoLoad();
 boot();
 
 if ("serviceWorker" in navigator) {
-  const SW_RELOAD_GUARD = "search.swReload.v36";
+  const SW_RELOAD_GUARD = "search.swReload.v37";
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     try {
@@ -1282,7 +1374,7 @@ if ("serviceWorker" in navigator) {
 
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js?v=36", { updateViaCache: "none" });
+      const registration = await navigator.serviceWorker.register("/sw.js?v=37", { updateViaCache: "none" });
       await registration.update();
     } catch (_) {}
   });

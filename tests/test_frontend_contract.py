@@ -186,7 +186,7 @@ def test_non_relevance_visible_pool_is_not_round_robin_blended() -> None:
     assert 'function sortVisibleItems(items, sort)' in app
     assert 'function mergeLiveAndLocal(liveItems, localItems, sort, limit = PAGE_SIZE)' in app
     assert 'if (sort === "relevance") return blendLiveAndLocal(liveItems, localItems, limit);' in app
-    assert app.count('mergeLiveAndLocal(') >= 3
+    assert app.count('partitionMergedPage(') >= 3
 
 
 def test_content_class_filter_state_and_payload_contract() -> None:
@@ -340,21 +340,21 @@ def test_load_more_null_page_clears_own_skeletons_without_touching_stale_generat
     assert "clearSkeletons();" in null_page
     assert 'moreBtn.textContent = "Show more";' in null_page
 
-def test_frontend_assets_are_v36() -> None:
+def test_frontend_assets_are_v37() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert "/styles.css?v=36" in html
-    assert "/app.js?v=36" in html
-    assert 'register("/sw.js?v=36", { updateViaCache: "none" })' in app
-    assert 'const CACHE = "search-shell-v36";' in sw
-    assert '"/styles.css?v=36"' in sw
-    assert '"/app.js?v=36"' in sw
+    assert "/styles.css?v=37" in html
+    assert "/app.js?v=37" in html
+    assert 'register("/sw.js?v=37", { updateViaCache: "none" })' in app
+    assert 'const CACHE = "search-shell-v37";' in sw
+    assert '"/styles.css?v=37"' in sw
+    assert '"/app.js?v=37"' in sw
 
 
 def test_service_worker_reload_is_guarded() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v36";' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v37";' in app
     controller = app[app.index('navigator.serviceWorker.addEventListener("controllerchange"'):]
     assert "sessionStorage.getItem(SW_RELOAD_GUARD)" in controller
     assert "sessionStorage.setItem(SW_RELOAD_GUARD" in controller
@@ -399,11 +399,11 @@ def test_on_demand_preview_resolution_supports_click_and_hover_no_store() -> Non
 def test_on_demand_preview_frontend_bumps_shell_cache() -> None:
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
-    assert 'search-shell-v36' in sw
-    assert '/app.js?v=36' in sw
-    assert '/styles.css?v=36' in sw
-    assert 'app.js?v=36' in html
-    assert 'styles.css?v=36' in html
+    assert 'search-shell-v37' in sw
+    assert '/app.js?v=37' in sw
+    assert '/styles.css?v=37' in sw
+    assert 'app.js?v=37' in html
+    assert 'styles.css?v=37' in html
 
 def test_premium_polish_removes_dev_badge() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
@@ -676,15 +676,15 @@ def test_manual_search_resets_scroll_but_back_restore_keeps_saved_position() -> 
     assert 'top: 0' not in restore
 
 
-def test_frontend_cache_v36_markers_are_synchronized() -> None:
+def test_frontend_cache_v37_markers_are_synchronized() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     sw = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
-    assert html.count("?v=36") == 2
-    assert 'register("/sw.js?v=36", { updateViaCache: "none" })' in app
-    assert 'const SW_RELOAD_GUARD = "search.swReload.v36";' in app
-    assert 'const CACHE = "search-shell-v36";' in sw
-    assert sw.count("?v=36") == 2
+    assert html.count("?v=37") == 2
+    assert 'register("/sw.js?v=37", { updateViaCache: "none" })' in app
+    assert 'const SW_RELOAD_GUARD = "search.swReload.v37";' in app
+    assert 'const CACHE = "search-shell-v37";' in sw
+    assert sw.count("?v=37") == 2
     assert "?v=35" not in html + app + sw
     assert "search-shell-v35" not in sw
     assert "search.swReload.v35" not in app
@@ -763,6 +763,19 @@ def test_browse_auto_loads_near_end_with_show_more_fallback() -> None:
     assert 'autoLoadObserver.observe(moreBtn);' in app
     assert 'if (moreBtn.hidden || moreBtn.disabled) return;' in app
     assert 'loadMore();' in app
+
+
+def test_initial_state_offers_search_guidance_without_covering_results() -> None:
+    html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    css = (ROOT / "frontend" / "styles.css").read_text(encoding="utf-8")
+    assert 'id="welcome"' in html
+    assert 'data-suggested-query="4k"' in html
+    assert 'const welcomeEl = document.querySelector("#welcome");' in app
+    assert 'welcomeEl.hidden = true;' in app
+    assert 'welcomeEl.hidden = false;' in app
+    assert 'welcomeEl.addEventListener("click"' in app
+    assert '.welcome {' in css
     assert 'moreBtn.addEventListener("click", loadMore);' in app
 
 

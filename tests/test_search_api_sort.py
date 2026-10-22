@@ -69,6 +69,22 @@ def test_get_search_rejects_invalid_sort_mode():
     assert payload["detail"]
 
 
+def test_get_search_accepts_deep_offset() -> None:
+    search = AsyncMock(return_value=([], [], False, 6000))
+    with (
+        patch("backend.app.search_all", search),
+        patch("backend.app.trusted_provider_names", return_value=set()),
+    ):
+        status, _ = asyncio.run(asgi_get("/api/search", {"q": "4k", "offset": "6000"}))
+
+    assert status == 200
+    assert search.await_args.kwargs["offset"] == 6000
+
+
+def test_post_search_accepts_deep_offset() -> None:
+    assert SearchRequest(q="4k", offset=6000).offset == 6000
+
+
 def test_post_search_forwards_sort_mode():
     search = AsyncMock(return_value=([], [], False, 0))
     with (

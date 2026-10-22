@@ -37,7 +37,7 @@ def test_search_all_keeps_event_loop_responsive_during_sqlite_work() -> None:
 
     def slow_search(*args, **kwargs):
         time.sleep(0.08)
-        return [_item(i) for i in range(40)]
+        return [_item(i) for i in range(41)]
 
     async def scenario():
         ticked = False
@@ -62,6 +62,31 @@ def test_search_all_keeps_event_loop_responsive_during_sqlite_work() -> None:
     assert ticked is True
     assert len(items) == 40
     assert total == SEARCH_TOTAL_CAP + 1
+    assert has_more is True
+
+
+def test_search_all_uses_lookahead_instead_of_capped_total_for_last_page() -> None:
+    async def scenario(rows):
+        with (
+            patch("backend.search.count_search_items", return_value=SEARCH_TOTAL_CAP + 1),
+            patch("backend.search.search_items", return_value=rows) as search,
+        ):
+            result = await search_all(
+                "common", allowed_providers={"sample"}, offset=6000, limit=40
+            )
+        return result, search.call_args.kwargs
+
+    (items, _, has_more, _), kwargs = asyncio.run(
+        scenario([_item(i) for i in range(40)])
+    )
+    assert len(items) == 40
+    assert has_more is False
+    assert kwargs["limit"] == 41
+
+    (items, _, has_more, _), _ = asyncio.run(
+        scenario([_item(i) for i in range(41)])
+    )
+    assert len(items) == 40
     assert has_more is True
 
 

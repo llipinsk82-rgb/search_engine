@@ -102,14 +102,10 @@ async def search_all(
         allowed_providers=allowed,
         exclude_ids=exclude_ids,
         offset=offset,
-        limit=limit,
+        limit=limit + 1,
         sort=sort,
     )
     total, items = await asyncio.gather(total_task, items_task)
     used = sorted(allowed)
-    has_more = (
-        len(items) >= limit
-        if total > SEARCH_TOTAL_CAP
-        else total > offset + len(items)
-    )
-    return items, used, has_more, total
+    has_more = len(items) > limit
+    return items[:limit], used, has_more, total

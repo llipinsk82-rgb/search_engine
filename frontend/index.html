@@ -7,12 +7,12 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Search</title>
   <link rel="manifest" href="/manifest.webmanifest?v=22" crossorigin="use-credentials">
-  <link rel="stylesheet" href="/styles.css?v=36">
+  <link rel="stylesheet" href="/styles.css?v=37">
 </head>
 <body>
   <main class="shell">
     <section class="search-shell" aria-label="Search controls">
-      <form id="search-form" class="searchbox">
+      <form id="search-form" class="searchbox" novalidate>
         <label class="sr-only" for="q">Search</label>
         <input id="q" name="q" type="search" maxlength="200" autocomplete="off"
                placeholder="Search videos, creators, topics…" autofocus>
@@ -54,6 +54,23 @@
         <span id="live-detail" class="live-detail"></span>
       </div>
       <button id="clear" class="ghost" type="button">Clear</button>
+    </section>
+
+    <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+      <div class="welcome-main">
+        <p class="welcome-kicker">Cross-source video search</p>
+        <h1 id="welcome-title">One search.<br><span>More to discover.</span></h1>
+        <p class="welcome-description">Search the catalog, then see fresh matches from live sources. Start with a topic or try a quick search.</p>
+        <div class="welcome-suggestions" aria-label="Quick searches">
+          <button type="button" data-suggested-query="4k">4K <span aria-hidden="true">↗</span></button>
+          <button type="button" data-suggested-query="amateur">Amateur <span aria-hidden="true">↗</span></button>
+          <button type="button" data-suggested-query="vintage">Vintage <span aria-hidden="true">↗</span></button>
+        </div>
+      </div>
+      <div class="welcome-tip">
+        <span class="welcome-tip-label">Search tip</span>
+        <p>Use <code>word+word</code> when every term must appear in live matches, in any order.</p>
+      </div>
     </section>
 
     <section id="results" class="grid"></section>
@@ -118,6 +135,6 @@
     </article>
   </template>
 
-  <script src="/app.js?v=36" defer></script>
+  <script src="/app.js?v=37" defer></script>
 </body>
 </html>

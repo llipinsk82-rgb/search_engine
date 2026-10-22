@@ -1,0 +1,120 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+const vm = require("node:vm");
+
+const app = fs.readFileSync(path.join(__dirname, "../frontend/app.js"), "utf8");
+
+function purePagingContext() {
+  const start = app.indexOf("function blendLiveAndLocal(");
+  const end = app.indexOf("async function fetchLocal(", start);
+  assert.ok(start >= 0 && end > start);
+  const context = vm.createContext({});
+  vm.runInContext(`const PAGE_SIZE = 40;\n${app.slice(start, end)}`, context);
+  return context;
+}
+
+test("merged page keeps every unused live and cached hit for subsequent pages", () => {
+  const context = purePagingContext();
+  const live = Array.from({ length: 120 }, (_, i) => ({ id: `live-${i}` }));
+  const local = Array.from({ length: 40 }, (_, i) => ({ id: `local-${i}` }));
+  const page = context.partitionMergedPage(live, local, "relevance");
+  assert.equal(page.items.length, 40);
+  assert.equal(page.liveRemaining.length + page.localRemaining.length, 120);
+  const ids = [
+    ...page.items,
+    ...page.liveRemaining,
+    ...page.localRemaining,
+  ].map((item) => item.id);
+  assert.equal(new Set(ids).size, 160);
+});
+
+test("cross-stream duplicate is not put back into either buffer", () => {
+  const context = purePagingContext();
+  const page = context.partitionMergedPage(
+    [{ id: "shared" }, { id: "live-only" }],
+    [{ id: "shared" }, { id: "local-only" }],
+    "relevance",
+    1,
+  );
+  assert.equal(page.items[0].id, "shared");
+  assert.deepEqual(
+    [...page.liveRemaining, ...page.localRemaining].map((item) => item.id).sort(),
+    ["live-only", "local-only"],
+  );
+});
+
+test("cached fetch advances to a caller-provided offset", async () => {
+  const start = app.indexOf("async function apiJson(");
+  const end = app.indexOf("async function prepareNextPage(", start);
+  assert.ok(start >= 0 && end > start);
+  let sent;
+  const context = vm.createContext({
+    fetch: async (_url, options) => {
+      sent = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ items: [], has_more: false }) };
+    },
+  });
+  vm.runInContext(`const PAGE_SIZE = 40;\n${app.slice(start, end)}`, context);
+  await context.fetchLocal({ q: "4k" }, { offset: 6000, limit: 40 });
+  assert.equal(sent.offset, 6000);
+  assert.equal(sent.limit, 40);
+  assert.equal(sent.exclude_ids, undefined);
+});
+
+test("non-JSON gateway failure shows a recoverable search message", async () => {
+  const start = app.indexOf("async function apiJson(");
+  const end = app.indexOf("async function prepareNextPage(", start);
+  const context = vm.createContext({
+    fetch: async () => ({
+      ok: false,
+      json: async () => { throw new SyntaxError("Unexpected token '<'"); },
+    }),
+  });
+  vm.runInContext(`const PAGE_SIZE = 40;\n${app.slice(start, end)}`, context);
+  await assert.rejects(
+    () => context.fetchLocal({ q: "4k" }),
+    /Search temporarily unavailable/,
+  );
+});
+
+test("next page drains live buffer before requesting another provider page", async () => {
+  const pureStart = app.indexOf("function blendLiveAndLocal(");
+  const prepareStart = app.indexOf("async function prepareNextPage(");
+  const prepareEnd = app.indexOf("function startPrefetch(", prepareStart);
+  let liveCalls = 0;
+  let localOffsetRequested;
+  const context = vm.createContext({
+    searchGeneration: 1,
+    localHasMore: true,
+    liveHasMore: true,
+    localBuffer: Array.from({ length: 10 }, (_, i) => ({ id: `local-${i}` })),
+    liveBuffer: Array.from({ length: 80 }, (_, i) => ({ id: `live-${i}` })),
+    localSourceHasMore: true,
+    liveSourceHasMore: true,
+    localOffset: 40,
+    livePage: 1,
+    seenIds: new Set(),
+    requestLive: async () => { liveCalls += 1; throw new Error("should not fetch live"); },
+    fetchLocal: async (_payload, options) => {
+      localOffsetRequested = options.offset;
+      return {
+        items: Array.from({ length: 40 }, (_, i) => ({ id: `new-local-${i}` })),
+        has_more: true,
+      };
+    },
+    upstreamHasMore: () => true,
+  });
+  vm.runInContext(
+    `const PAGE_SIZE = 40;\n${app.slice(pureStart, app.indexOf("async function fetchLocal(", pureStart))}\n${app.slice(prepareStart, prepareEnd)}`,
+    context,
+  );
+  const page = await context.prepareNextPage({ q: "4k" }, 1);
+  assert.equal(liveCalls, 0);
+  assert.equal(localOffsetRequested, 40);
+  assert.equal(page.livePage, 1);
+  assert.equal(page.localOffset, 80);
+  assert.equal(page.items.length, 40);
+  assert.equal(page.liveBuffer.length + page.localBuffer.length, 90);
+});

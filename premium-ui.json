@@ -1,0 +1,6 @@
+{
+  "sourceRoots": ["frontend"],
+  "ownership": {
+    "Select/Listbox": "native"
+  }
+}

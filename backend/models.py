@@ -9,6 +9,7 @@ from backend.content_class import ContentClass
 
 
 SortMode = Literal["relevance", "newest", "views", "rating", "longest", "shortest"]
+MAX_SEARCH_OFFSET = 2_147_483_647
 
 
 class SearchItem(BaseModel):
@@ -54,7 +55,7 @@ class SearchRequest(BaseModel):
     min_duration: int | None = Field(default=None, ge=0)
     max_duration: int | None = Field(default=None, ge=0)
     sort: SortMode = "relevance"
-    offset: int = Field(default=0, ge=0, le=5000)
+    offset: int = Field(default=0, ge=0, le=MAX_SEARCH_OFFSET)
     limit: int = Field(default=40, ge=1, le=100)
     exclude_ids: list[str] = Field(default_factory=list, max_length=800)
 
