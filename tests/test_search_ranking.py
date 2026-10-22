@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from backend.index import replace_provider_items, search_items
+from backend.index import count_search_items, replace_provider_items, search_items
 from backend.models import SearchItem
 
 
@@ -43,6 +43,41 @@ class SearchRankingTests(unittest.TestCase):
         self.assertEqual([row.id for row in rows[:2]], ["title", "tag"])
         self.assertGreater(rows[0].score, rows[1].score)
 
+    def test_plain_space_query_matches_any_term(self) -> None:
+        replace_provider_items(
+            "rank",
+            [
+                make_item("sis", "Sis only", []),
+                make_item("family", "Family only", []),
+                make_item("step", "Step only", []),
+                make_item("all", "Sis family step", []),
+            ],
+            path=self.db,
+        )
+
+        rows = search_items("sis family step", path=self.db, limit=20)
+
+        self.assertEqual({row.id for row in rows}, {"sis", "family", "step", "all"})
+        self.assertEqual(count_search_items("sis family step", path=self.db), 4)
+
+    def test_plus_query_requires_every_term(self) -> None:
+        replace_provider_items(
+            "rank",
+            [
+                make_item("sis", "Sis only", []),
+                make_item("family", "Family only", []),
+                make_item("step", "Step only", []),
+                make_item("all", "Sis family step", []),
+            ],
+            path=self.db,
+        )
+
+        rows = search_items("sis+family+step", path=self.db, limit=20)
+
+        self.assertEqual([row.id for row in rows], ["all"])
+        self.assertEqual(count_search_items("sis+family+step", path=self.db), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
+

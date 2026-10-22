@@ -535,9 +535,15 @@ def _where_for_search(
     params: list[object] = []
     joins = ""
     rank_select = "0.0 AS fts_rank"
-    tokens = parse_search_query(query).tokens
+    parsed_query = parse_search_query(query)
+    tokens = parsed_query.tokens
     if tokens:
-        fts_query = " ".join(f'"{token}"' for token in tokens)
+        # A plain space-separated query is a broad discovery search: return
+        # rows matching any of the entered terms and let BM25 rank rows that
+        # contain more terms higher. A plus-separated query is the explicit
+        # intersection syntax used when every term must be present.
+        separator = " " if parsed_query.explicit_and else " OR "
+        fts_query = separator.join(f'"{token}"' for token in tokens)
         joins = "JOIN items_fts ON items_fts.id = i.id"
         where.append("items_fts MATCH ?")
         params.append(fts_query)
@@ -1090,3 +1096,4 @@ def delete_provider_state(
             "DELETE FROM provider_state WHERE provider = ? AND state_key = ?",
             (provider, state_key),
         )
+
