@@ -15,6 +15,16 @@ def test_thumbzilla_policy_uses_proxy_thumbnail_and_preview():
     assert not media_url_allowed("thumbzilla", "thumbnail", "https://evil.example/a.jpg")
 
 
+def test_redtube_policy_proxies_cdn_thumbnails_with_provider_host_allowlist():
+    p = provider_media_policy("redtube")
+    assert p.thumbnail_mode == "proxy"
+    assert p.thumbnail_referer == "https://www.redtube.com/"
+    assert media_url_allowed("redtube", "thumbnail", "https://ei-ph.rdtcdn.com/videos/sample.jpg")
+    assert media_url_allowed("redtube", "thumbnail", "https://wi-ph.rdtcdn.com/videos/sample.jpg")
+    assert not media_url_allowed("redtube", "thumbnail", "https://evil.example/videos/sample.jpg")
+    assert p.preview_mode == "disabled"
+
+
 def test_non_https_credentials_and_non_default_ports_are_rejected():
     assert not media_url_allowed("thumbzilla", "thumbnail", "http://pix-cdn77.ypncdn.com/a.jpg")
     assert not media_url_allowed("thumbzilla", "thumbnail", "https://u:p@pix-cdn77.ypncdn.com/a.jpg")

@@ -70,6 +70,13 @@ def _build_policies() -> dict[str, ProviderMediaPolicy]:
         preview_mode="direct",
         preview_host_suffixes=_PREVIEW_SUFFIXES["tube8"],
     )
+    policies["redtube"] = ProviderMediaPolicy(
+        name="redtube",
+        thumbnail_mode="proxy",
+        preview_mode="disabled",
+        thumbnail_host_suffixes=(".rdtcdn.com",),
+        thumbnail_referer="https://www.redtube.com/",
+    )
     for name in ("pornhat", "porndr", "anyporn"):
         policies[name] = ProviderMediaPolicy(
             name=name,
