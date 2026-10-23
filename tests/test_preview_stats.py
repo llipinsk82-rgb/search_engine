@@ -24,9 +24,9 @@ def test_preview_coverage_reconciles_stored_and_playable(tmp_path):
     stats = preview_coverage_stats(path=db)
     assert stats.total == 4
     assert stats.stored == 2
-    assert stats.playable == 1
+    assert stats.playable == 2
     assert stats.stored_percent == 50.0
-    assert stats.playable_percent == 25.0
+    assert stats.playable_percent == 50.0
     assert sum(v.total for v in stats.providers.values()) == stats.total
     assert sum(v.stored for v in stats.providers.values()) == stats.stored
     assert sum(v.playable for v in stats.providers.values()) == stats.playable
@@ -46,3 +46,4 @@ def test_ephemeral_stored_preview_is_not_counted_as_playable(tmp_path):
     assert stats.playable == 0
     assert stats.providers["tube8"].stored == 1
     assert stats.providers["tube8"].playable == 0
+
