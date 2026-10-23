@@ -495,7 +495,7 @@ function resultCard(item) {
     preview.addEventListener("error", () => {
       const policy = mediaPolicyFor(item.provider);
       const attempt = Number(preview.dataset.healAttempt || "0");
-      if (policy.thumbnail_mode === "refresh" && attempt < 2) {
+      if ((policy.thumbnail_mode === "refresh" || item.provider === "redtube") && attempt < 2) {
         preview.dataset.healAttempt = String(attempt + 1);
         const retry = () => {
           preview.src = `/api/thumb/${encodeURIComponent(item.id)}?refresh=true&_=${Date.now()}`;
@@ -1384,3 +1384,4 @@ if ("serviceWorker" in navigator) {
     } catch (_) {}
   });
 }
+
