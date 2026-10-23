@@ -149,6 +149,19 @@ def test_cards_ui_v2_separates_primary_and_live_status() -> None:
     assert 'cached matches · live:' not in app
 
 
+def test_live_fetch_size_covers_the_visible_page() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "const PAGE_SIZE = 40;" in app
+    assert "const requestedLimit = PAGE_SIZE;" in app
+    assert "requestedLimit: PAGE_SIZE," in app
+
+
+def test_live_status_exposes_fresh_match_count() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    assert "fresh matches" in app
+    assert "item.fetched" in app
+
+
 def test_sort_selector_state_and_payload_contract() -> None:
     html = (ROOT / "frontend" / "index.html").read_text(encoding="utf-8")
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")

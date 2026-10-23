@@ -713,7 +713,12 @@ function liveSummary(providers) {
     (item) => !item.error,
   );
   if (!available.length) return "";
-  return `${available.length} live source${available.length === 1 ? "" : "s"}`;
+  const fetched = available.reduce(
+    (total, item) => total + (Number.isFinite(item.fetched) ? item.fetched : 0),
+    0,
+  );
+  const freshMatches = fetched ? ` · ${fetched} fresh matches` : "";
+  return `${available.length} live source${available.length === 1 ? "" : "s"}${freshMatches}`;
 }
 
 function liveFailureCount(providers) {
@@ -730,7 +735,7 @@ function upstreamHasMore(live, requestedLimit) {
   });
 }
 
-function applyLiveState(live, page, requestedLimit = 24) {
+function applyLiveState(live, page, requestedLimit = PAGE_SIZE) {
   livePage = page;
   liveSourceHasMore = upstreamHasMore(live, requestedLimit);
   updatePagingFlags();
@@ -749,7 +754,7 @@ function updatePagingFlags() {
 }
 
 async function requestLive(payload, generation, page, { commit = true } = {}) {
-  const requestedLimit = 24;
+  const requestedLimit = PAGE_SIZE;
   const livePayload = {
     q: payload.q,
     page,
@@ -895,7 +900,7 @@ async function prepareNextPage(payload, generation) {
     .filter((item) => item?.id && !seenIds.has(item.id));
   const page = partitionMergedPage(liveItems, localItems, payload.sort || "relevance");
   const nextLocalSourceHasMore = fetchMoreLocal ? Boolean(local.has_more) : localSourceHasMore;
-  const nextLiveSourceHasMore = live ? upstreamHasMore(live, 24) : liveSourceHasMore;
+  const nextLiveSourceHasMore = live ? upstreamHasMore(live, PAGE_SIZE) : liveSourceHasMore;
 
   return {
     items: page.items,
@@ -906,7 +911,7 @@ async function prepareNextPage(payload, generation) {
     liveSourceHasMore: nextLiveSourceHasMore,
     live,
     livePage: nextLivePage,
-    requestedLimit: 24,
+    requestedLimit: PAGE_SIZE,
   };
 }
 
