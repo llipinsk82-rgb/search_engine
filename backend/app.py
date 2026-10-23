@@ -383,7 +383,12 @@ async def thumbnail_redirect(
         raise HTTPException(status_code=404, detail="thumbnail not found")
 
     provider = next(
-        (candidate for candidate in PROVIDERS if candidate.name == item.provider),
+        (
+            candidate
+            for candidate in [*PROVIDERS, *LIVE_ADAPTERS]
+            if candidate.name == item.provider
+            and callable(getattr(candidate, "resolve_thumbnail", None))
+        ),
         None,
     )
     if provider is None and item.provider in {"thumbzilla", "tube8"}:
@@ -420,7 +425,7 @@ async def thumbnail_redirect(
                         exc_info=True,
                     )
 
-    if item.provider == "thumbzilla":
+    if item.provider in {"thumbzilla", "redtube"}:
         try:
             body, content_type = await asyncio.to_thread(
                 _thumbnail_proxy_fetch, item.provider, resolved
@@ -562,3 +567,4 @@ async def search_post(payload: SearchRequest) -> SearchResponse:
         limit=payload.limit,
         exclude_ids=set(payload.exclude_ids),
     )
+
