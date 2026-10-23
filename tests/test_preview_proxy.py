@@ -46,6 +46,31 @@ def test_thumbzilla_preview_proxy_adds_referer_and_bounded_range():
         assert isinstance(headers, dict)
 
 
+def test_redirecting_preview_proxy_follows_only_allowlisted_provider_cdn():
+    with patch("backend.app._preview_proxy_open") as opened:
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+        response.status = 206
+        response.headers.get_content_type.return_value = "video/mp4"
+        response.headers.get.return_value = None
+        response.read.return_value = b"video"
+        opened.return_value = response
+
+        body, content_type, status, _ = _preview_proxy_fetch(
+            "anyporn",
+            "https://anyporn.com/get_file/sample_preview.mp4/",
+            "bytes=0-1023",
+        )
+
+        request = opened.call_args.args[1]
+        assert request.headers["Referer"] == "https://anyporn.com/"
+        assert request.headers["Range"] == "bytes=0-1023"
+        assert body == b"video"
+        assert content_type == "video/mp4"
+        assert status == 206
+
+
 def test_preview_proxy_rejects_non_video_content():
     with patch("backend.app._thumbnail_proxy_open") as opened:
         response = MagicMock()
@@ -61,3 +86,4 @@ def test_preview_proxy_rejects_non_video_content():
                 "https://ev-ph.ypncdn.com/videos/example.mp4",
                 None,
             )
+
