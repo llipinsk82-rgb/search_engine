@@ -44,9 +44,14 @@ def test_provider_rows_expose_modes_without_url_secrets():
     assert ".t8cdn.com" in row["preview_host_suffixes"]
 
 
-def test_redirecting_preview_providers_are_disabled():
-    for name in ("pornhat", "porndr", "anyporn"):
-        assert provider_media_policy(name).preview_mode == "disabled"
+def test_redirecting_preview_providers_use_allowlisted_proxy_targets():
+    assert provider_media_policy("pornhat").preview_mode == "proxy"
+    assert media_url_allowed("pornhat", "preview", "https://nvms16.cdn.privatehost.com/x.mp4")
+    assert provider_media_policy("porndr").preview_mode == "proxy"
+    assert media_url_allowed("porndr", "preview", "https://vcdn1.porndr.com/x.mp4")
+    assert provider_media_policy("anyporn").preview_mode == "proxy"
+    assert media_url_allowed("anyporn", "preview", "https://cdn123.ahacdn.me/x.mp4")
+    assert not media_url_allowed("anyporn", "preview", "https://evil.example/x.mp4")
 
 
 def test_thumbzilla_preview_requires_strict_proxy():
@@ -75,3 +80,4 @@ def test_audited_preview_rules_match_media_policy_exactly():
             assert not media_url_allowed(name, "preview", f"https://u:p@{host}/sample.mp4")
             assert not media_url_allowed(name, "preview", f"https://{host}:8443/sample.mp4")
         assert not media_url_allowed(name, "preview", "https://evil.example/sample.mp4")
+
