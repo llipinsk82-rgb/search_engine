@@ -749,6 +749,13 @@ def test_render_collapses_cross_provider_duplicates_into_alternate_sources() -> 
     assert "visibleResultCount += 1;" in render
 
 
+def test_redtube_thumbnail_failure_uses_on_demand_refresh_route() -> None:
+    app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
+    card = app[app.index("function resultCard(item)"):app.index("function renderSkeletons(")]
+    assert 'item.provider === "redtube"' in card
+    assert '/api/thumb/${encodeURIComponent(item.id)}?refresh=true' in card
+
+
 def test_duplicate_result_key_uses_normalized_title_and_duration_bucket() -> None:
     app = (ROOT / "frontend" / "app.js").read_text(encoding="utf-8")
     start = app.index("function duplicateResultKey(item)")
@@ -827,3 +834,4 @@ def test_mobile_sticky_compacts_when_scrolling_down_and_expands_on_up() -> None:
     assert ".search-shell.is-compact" in mobile
     assert ".search-shell.is-compact .control-row" in mobile
     assert "display: none" in mobile
+
