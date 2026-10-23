@@ -45,6 +45,10 @@ _QUALITY_RE = re.compile(
     r"\b(?P<quality>8k|4k|4320p|2160p|1440p|1080p|720p|480p|360p)\b",
     re.IGNORECASE,
 )
+_REDTUBE_EMBED_IMAGE_RE = re.compile(
+    r'"image_url"\s*:\s*"(?P<url>(?:\\.|[^"])*)"',
+    re.IGNORECASE,
+)
 
 _PORNHUB_CARD_RE = re.compile(
     r'<li\s+class="pcVideoListItem[^"]*"(?P<body>.*?)</li>',
@@ -1463,6 +1467,18 @@ def parse_redtube_video(row: object) -> SearchItem | None:
     )
 
 
+def _extract_redtube_embed_thumbnail(raw_html: str) -> str | None:
+    match = _REDTUBE_EMBED_IMAGE_RE.search(raw_html.replace('\\"', '"'))
+    if match is None:
+        return None
+    try:
+        candidate = json.loads(f'"{match.group("url")}"')
+    except json.JSONDecodeError:
+        candidate = match.group("url").replace("\\/", "/")
+    candidate = str(candidate).strip()
+    return candidate if media_url_allowed("redtube", "thumbnail", candidate) else None
+
+
 def parse_tnaflix_listing(raw_html: str, *, limit: int) -> list[SearchItem]:
     items: list[SearchItem] = []
     seen: set[str] = set()
@@ -2058,6 +2074,23 @@ class BustyBusLiveAdapter(_HttpLiveAdapter):
 class RedTubeLiveAdapter(_HttpLiveAdapter):
     name = "redtube"
     api_url = "https://api.redtube.com/"
+    embed_url = "https://embed.redtube.com/"
+
+    def _resolve_thumbnail_sync(self, item: SearchItem) -> str | None:
+        parsed = urlparse(str(item.url))
+        if parsed.scheme != "https" or (parsed.hostname or "").lower() not in {
+            "redtube.com",
+            "www.redtube.com",
+        }:
+            return None
+        match = re.search(r"/(\d+)/?$", parsed.path)
+        if match is None:
+            return None
+        raw = self._fetch_text(f"{self.embed_url}?{urlencode({'id': match.group(1)})}")
+        return _extract_redtube_embed_thumbnail(raw)
+
+    async def resolve_thumbnail(self, item: SearchItem, *, force: bool = False) -> str | None:
+        return await asyncio.to_thread(self._resolve_thumbnail_sync, item)
 
     def _search_sync(self, query: str, *, page: int, limit: int) -> LiveProviderResult:
         started = time.monotonic()
@@ -2523,3 +2556,4 @@ async def refresh_live_search(
 
     # Since 2c33510 the HTTP response is intentionally decoupled from FTS writes.
     return LiveRefreshResult(providers=results, cached_items=0)
+
