@@ -5,7 +5,7 @@ import logging
 import re
 import sqlite3
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.request import HTTPRedirectHandler, Request as UrlRequest, build_opener, urlopen
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
@@ -57,6 +57,24 @@ class _ThumbnailProxyNoRedirect(HTTPRedirectHandler):
 
 def _thumbnail_proxy_open(request: UrlRequest):
     return build_opener(_ThumbnailProxyNoRedirect()).open(request, timeout=8.0)
+
+
+class _PreviewProxyRedirect(HTTPRedirectHandler):
+    def __init__(self, provider: str):
+        super().__init__()
+        self.provider = provider
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urljoin(req.full_url, newurl)
+        if not media_url_allowed(self.provider, "preview", target):
+            raise ValueError("preview redirect host is not allowed")
+        return super().redirect_request(req, fp, code, msg, headers, target)
+
+
+def _preview_proxy_open(provider: str, request: UrlRequest):
+    if provider not in {"anyporn", "pornhat", "porndr"}:
+        return _thumbnail_proxy_open(request)
+    return build_opener(_PreviewProxyRedirect(provider)).open(request, timeout=8.0)
 
 
 def _thumbnail_proxy_fetch(provider: str, url: str) -> tuple[bytes, str]:
@@ -118,7 +136,7 @@ def _preview_proxy_fetch(
     if policy.preview_referer:
         headers["Referer"] = policy.preview_referer
     request = UrlRequest(url, headers=headers)
-    with _thumbnail_proxy_open(request) as response:
+    with _preview_proxy_open(provider, request) as response:
         content_type = response.headers.get_content_type()
         if not content_type.startswith("video/"):
             raise ValueError("upstream did not return video content")
