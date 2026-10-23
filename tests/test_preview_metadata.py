@@ -11,11 +11,18 @@ class PreviewMetadataTests(unittest.TestCase):
     def test_existing_database_gets_preview_url_column(self):
         with tempfile.TemporaryDirectory() as d:
             db=Path(d)/"x.db"
-            with sqlite3.connect(db) as c:
+            c = sqlite3.connect(db)
+            try:
                 c.execute("CREATE TABLE items (id TEXT PRIMARY KEY, provider TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL, thumbnail TEXT, duration_seconds INTEGER, quality TEXT, tags_json TEXT NOT NULL DEFAULT '[]', indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, source_order INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1)")
+                c.commit()
+            finally:
+                c.close()
             initialize(db)
-            with sqlite3.connect(db) as c:
+            c = sqlite3.connect(db)
+            try:
                 cols={r[1] for r in c.execute("PRAGMA table_info(items)")}
+            finally:
+                c.close()
             self.assertIn("preview_url", cols)
             self.assertIn("age_check_status", cols)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,14 +31,15 @@ class PreviewCoverageStats:
 
 def preview_coverage_stats(path: Path = DB_PATH) -> PreviewCoverageStats:
     initialize(path)
-    with sqlite3.connect(path) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT provider, preview_url FROM items WHERE active = 1 ORDER BY provider"
-        ).fetchall()
-        state_rows = conn.execute(
-            "SELECT status, COUNT(*) AS n FROM preview_enrichment_state GROUP BY status ORDER BY status"
-        ).fetchall()
+    with closing(sqlite3.connect(path)) as conn:
+        with conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT provider, preview_url FROM items WHERE active = 1 ORDER BY provider"
+            ).fetchall()
+            state_rows = conn.execute(
+                "SELECT status, COUNT(*) AS n FROM preview_enrichment_state GROUP BY status ORDER BY status"
+            ).fetchall()
 
     per: dict[str, list[int]] = {}
     stored = 0

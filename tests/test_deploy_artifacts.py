@@ -1,10 +1,13 @@
 from __future__ import annotations
-import json, subprocess, unittest
+import json, shutil, subprocess, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 class DeployArtifactTests(unittest.TestCase):
     def test_deploy_scripts_have_valid_bash_syntax(self):
-        for name in ('acceptance.sh','post-deploy-warmup.sh','run-maintenance.sh','deploy-production.sh'): subprocess.run(['bash','-n',str(ROOT/'deploy'/name)],check=True)
+        bash = shutil.which('bash')
+        if bash is None:
+            self.skipTest('bash is required to validate deployment scripts')
+        for name in ('acceptance.sh','post-deploy-warmup.sh','run-maintenance.sh','deploy-production.sh'): subprocess.run([bash,'-n',str(ROOT/'deploy'/name)],check=True)
     def test_production_deploy_has_backup_and_rollback_guards(self):
         t=(ROOT/'deploy'/'deploy-production.sh').read_text()
         for x in ('SEARCH_DEPLOY_ROLLBACK=START','SEARCH_DEPLOY=PASS','maintenance.lock','nginx -t','SEARCH_EXPECT_BUILD','requirements.txt changed','NGINX_SITE'): self.assertIn(x,t)

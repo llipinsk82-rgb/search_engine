@@ -4,6 +4,7 @@ import json
 import re
 import sqlite3
 import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +35,17 @@ def _connect(path: Path = DB_PATH) -> sqlite3.Connection:
     return conn
 
 
+@contextmanager
+def _connection(path: Path = DB_PATH):
+    """Yield a transactional connection and always release its file handle."""
+    conn = _connect(path)
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+
 def initialize(path: Path = DB_PATH) -> None:
     key = str(path.resolve())
     if key in _initialized_paths:
@@ -41,7 +53,7 @@ def initialize(path: Path = DB_PATH) -> None:
     with _initialize_lock:
         if key in _initialized_paths:
             return
-        with _connect(path) as conn:
+        with _connection(path) as conn:
             conn.executescript(
                 """
                 PRAGMA journal_mode=WAL;
@@ -338,7 +350,7 @@ def _write_items(
 
 def upsert_items(items: list[SearchItem], path: Path = DB_PATH) -> int:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         _write_items(
             conn,
             [(item, source_order) for source_order, item in enumerate(items)],
@@ -359,7 +371,7 @@ def merge_provider_batches(
     initialize(path)
     pairs = batches.items() if isinstance(batches, dict) else batches
     written = 0
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         entries: list[tuple[SearchItem, int]] = []
         for provider, items in pairs:
             for source_order, item in enumerate(items):
@@ -389,7 +401,7 @@ def merge_provider_items(
         )
 
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         active_before = int(
             conn.execute(
                 "SELECT COUNT(*) AS n FROM items WHERE provider = ? AND active = 1",
@@ -427,7 +439,7 @@ def replace_provider_items(
         )
 
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(
             "SELECT id FROM items WHERE provider = ? AND active = 1", (provider,)
         ).fetchall()
@@ -466,7 +478,7 @@ def replace_provider_items(
 
 def deactivate_provider(provider: str, path: Path = DB_PATH) -> int:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(
             "SELECT id FROM items WHERE provider = ? AND active = 1", (provider,)
         ).fetchall()
@@ -490,14 +502,14 @@ def deactivate_provider(provider: str, path: Path = DB_PATH) -> int:
 
 def count_items(path: Path = DB_PATH) -> int:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         row = conn.execute("SELECT COUNT(*) AS n FROM items WHERE active = 1").fetchone()
         return int(row["n"])
 
 
 def indexed_providers(path: Path = DB_PATH) -> list[str]:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(
             "SELECT DISTINCT provider FROM items WHERE active = 1 ORDER BY provider"
         ).fetchall()
@@ -506,7 +518,7 @@ def indexed_providers(path: Path = DB_PATH) -> list[str]:
 
 def provider_counts(path: Path = DB_PATH) -> dict[str, int]:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(
             """
             SELECT provider, COUNT(*) AS n
@@ -609,7 +621,7 @@ def count_search_items(
         min_duration=min_duration,
         max_duration=max_duration,
     )
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         if max_count is not None:
             cap = max(0, int(max_count))
             row = conn.execute(
@@ -630,7 +642,7 @@ def count_search_items(
 
 def get_item(item_id: str, path: Path = DB_PATH) -> SearchItem | None:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         row = conn.execute(
             """
             SELECT id, provider, title, url, thumbnail, preview_url,
@@ -680,7 +692,7 @@ def update_preview_url(
     if not value or not value.startswith("https://"):
         raise ValueError("preview_url must use https")
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         row = conn.execute(
             "SELECT provider, preview_url FROM items WHERE id = ? AND active = 1",
             (item_id,),
@@ -712,7 +724,7 @@ def record_preview_enrichment_attempt(
     initialize(path)
     last_value = last_attempt_at.astimezone(timezone.utc).isoformat()
     next_value = next_attempt_at.astimezone(timezone.utc).isoformat() if next_attempt_at is not None else None
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         conn.execute(
             """
             INSERT INTO preview_enrichment_state(
@@ -758,7 +770,7 @@ def list_preview_enrichment_candidates(
         ORDER BY i.id
         LIMIT ?
     """
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(sql, [*names, now_value, max(1, int(limit))]).fetchall()
     return [
         PreviewEnrichmentCandidate(
@@ -792,7 +804,7 @@ def update_content_evidence(
     path: Path = DB_PATH,
 ) -> bool:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         row = conn.execute(
             """
             SELECT id, provider, title, url, thumbnail, preview_url,
@@ -871,7 +883,7 @@ def record_content_enrichment_attempt(
         if next_attempt_at is not None
         else None
     )
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         conn.execute(
             """
             INSERT INTO content_enrichment_state(
@@ -922,7 +934,7 @@ def list_content_enrichment_candidates(
         ORDER BY i.id
         LIMIT ?
     """
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(
             sql,
             [*names, now_value, max(1, int(limit))],
@@ -948,7 +960,7 @@ def update_item_thumbnail(
     path: Path = DB_PATH,
 ) -> bool:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         cursor = conn.execute(
             "UPDATE items SET thumbnail = ? WHERE id = ? AND active = 1",
             (thumbnail, item_id),
@@ -1013,7 +1025,7 @@ def search_items(
         LIMIT ? OFFSET ?
     """
     params.extend((max(1, int(limit)), max(0, int(offset))))
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         rows = conn.execute(sql, params).fetchall()
 
     result: list[SearchItem] = []
@@ -1055,7 +1067,7 @@ def get_provider_state(
     path: Path = DB_PATH,
 ) -> str | None:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         row = conn.execute(
             "SELECT state_value FROM provider_state WHERE provider = ? AND state_key = ?",
             (provider, state_key),
@@ -1071,7 +1083,7 @@ def set_provider_state(
     path: Path = DB_PATH,
 ) -> None:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         conn.execute(
             """
             INSERT INTO provider_state (provider, state_key, state_value, updated_at)
@@ -1091,7 +1103,7 @@ def delete_provider_state(
     path: Path = DB_PATH,
 ) -> None:
     initialize(path)
-    with _connect(path) as conn:
+    with _connection(path) as conn:
         conn.execute(
             "DELETE FROM provider_state WHERE provider = ? AND state_key = ?",
             (provider, state_key),

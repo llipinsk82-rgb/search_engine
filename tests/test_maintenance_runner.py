@@ -1,5 +1,6 @@
 from __future__ import annotations
 import subprocess
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,11 @@ from pathlib import Path
 RUNNER=Path(__file__).resolve().parents[1]/"deploy"/"run-maintenance.sh"
 
 class MaintenanceRunnerTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if shutil.which("bash") is None or shutil.which("flock") is None:
+            raise unittest.SkipTest("bash and flock are required for maintenance runner tests")
+
     def test_usage_error(self):
         p=subprocess.run([str(RUNNER)],capture_output=True,text=True)
         self.assertEqual(p.returncode,64)

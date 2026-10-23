@@ -35,8 +35,8 @@ def test_live_search_fixtures_require_exact_canonical_match():
     for row in _confirmed().values():
         if row["rule_kind"] != "live_search_exact":
             continue
-        positive = json.loads((ROOT / row["fixture"]).read_text())
-        negative = json.loads((ROOT / row["negative_fixture"]).read_text())
+        positive = json.loads((ROOT / row["fixture"]).read_text(encoding="utf-8"))
+        negative = json.loads((ROOT / row["negative_fixture"]).read_text(encoding="utf-8"))
         assert m.select_exact_live_preview(
             [positive["result"]], positive["canonical_url"]
         ) == positive["result"]["preview_url"]
