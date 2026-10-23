@@ -77,12 +77,24 @@ def _build_policies() -> dict[str, ProviderMediaPolicy]:
         thumbnail_host_suffixes=(".rdtcdn.com",),
         thumbnail_referer="https://www.redtube.com/",
     )
-    for name in ("pornhat", "porndr", "anyporn"):
-        policies[name] = ProviderMediaPolicy(
-            name=name,
-            preview_mode="disabled",
-            preview_host_suffixes=_PREVIEW_SUFFIXES[name],
-        )
+    policies["pornhat"] = ProviderMediaPolicy(
+        name="pornhat",
+        preview_mode="proxy",
+        preview_host_suffixes=("pornhat.one", ".cdn.privatehost.com"),
+        preview_referer="https://www.pornhat.one/",
+    )
+    policies["porndr"] = ProviderMediaPolicy(
+        name="porndr",
+        preview_mode="proxy",
+        preview_host_suffixes=("porndr.com",),
+        preview_referer="https://www.porndr.com/",
+    )
+    policies["anyporn"] = ProviderMediaPolicy(
+        name="anyporn",
+        preview_mode="proxy",
+        preview_host_suffixes=("anyporn.com", ".ahacdn.me"),
+        preview_referer="https://anyporn.com/",
+    )
     return policies
 
 
@@ -139,3 +151,4 @@ def media_policy_rows(names: set[str]) -> list[dict[str, object]]:
             }
         )
     return rows
+
