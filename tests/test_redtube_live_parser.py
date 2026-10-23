@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from backend.live import RedTubeLiveAdapter, parse_redtube_video
+from backend.live import RedTubeLiveAdapter, _extract_redtube_embed_thumbnail, parse_redtube_video
 
 
 def _fixture_video():
@@ -57,6 +57,14 @@ def test_redtube_adapter_uses_api_pagination_and_count():
     assert len(result.items) == 1
 
 
+def test_extract_redtube_embed_thumbnail_uses_current_image_url():
+    html = r'''<script>var config={"image_url":"https:\/\/pix-cdn77.rdtcdn.com\/c6371\/videos\/202601\/06\/35054405\/original_35054405.mp4\/plain\/rs:fit:448:252\/vts:672?hash=x&validto=1792795975"};</script>'''
+    assert _extract_redtube_embed_thumbnail(html) == (
+        "https://pix-cdn77.rdtcdn.com/c6371/videos/202601/06/35054405/"
+        "original_35054405.mp4/plain/rs:fit:448:252/vts:672?hash=x&validto=1792795975"
+    )
+
+
 def test_parse_redtube_video_malformed_sort_metadata_becomes_none():
     row = _fixture_video()
     row["video"]["publish_date"] = "not-a-date"
@@ -71,3 +79,4 @@ def test_parse_redtube_video_malformed_sort_metadata_becomes_none():
     assert item.views is None
     assert item.rating_percent is None
     assert item.rating_count is None
+
